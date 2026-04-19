@@ -522,3 +522,43 @@ class LOAItem(Base):
     authorized_amount: Mapped[float] = mapped_column(Float)
     executed_amount: Mapped[float] = mapped_column(Float, default=0.0)
     loa = relationship("LOA", back_populates="items")
+
+
+# ── Módulo Almoxarifado ───────────────────────────────────────────────────────
+
+class ItemAlmoxarifado(Base):
+    """Cadastro de itens/materiais do almoxarifado."""
+    __tablename__ = "itens_almoxarifado"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    codigo: Mapped[str] = mapped_column(String(30), unique=True, index=True)   # código interno/CATMAT
+    descricao: Mapped[str] = mapped_column(String(200))
+    unidade: Mapped[str] = mapped_column(String(10))                           # UN, KG, CX, L, etc.
+    categoria: Mapped[str] = mapped_column(String(60), default="geral")        # material_consumo, permanente, etc.
+    localizacao: Mapped[str] = mapped_column(String(80), default="")           # prateleira/corredor
+    estoque_minimo: Mapped[float] = mapped_column(Float, default=0.0)
+    estoque_atual: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_unitario: Mapped[float] = mapped_column(Float, default=0.0)          # custo médio
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    movimentacoes = relationship("MovimentacaoEstoque", back_populates="item", order_by="MovimentacaoEstoque.id.desc()")
+
+
+class MovimentacaoEstoque(Base):
+    """Entrada ou saída de estoque do almoxarifado."""
+    __tablename__ = "movimentacoes_estoque"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("itens_almoxarifado.id"), index=True)
+    tipo: Mapped[str] = mapped_column(String(10))                # entrada, saida
+    quantidade: Mapped[float] = mapped_column(Float)
+    valor_unitario: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_total: Mapped[float] = mapped_column(Float, default=0.0)
+    data_movimentacao: Mapped[date] = mapped_column(Date)
+    departamento_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    responsavel_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    documento_ref: Mapped[str] = mapped_column(String(80), default="")        # NF, requisição, etc.
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    saldo_pos: Mapped[float] = mapped_column(Float, default=0.0)              # saldo após a movimentação
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    item = relationship("ItemAlmoxarifado", back_populates="movimentacoes")
+    departamento = relationship("Department", foreign_keys=[departamento_id])
+    responsavel = relationship("User", foreign_keys=[responsavel_id])

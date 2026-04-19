@@ -27,6 +27,7 @@ const QUICK_LINKS = [
   { href: "/rh", label: "8) RH e Folha", roles: ["admin", "hr", "read_only"] },
   { href: "/portal-servidor", label: "9) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
   { href: "/patrimonio", label: "10) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
+  { href: "/almoxarifado", label: "11) Almoxarifado", roles: ["admin", "procurement", "read_only"] },
   { href: "/auditoria", label: "11) Auditoria", roles: ["admin", "read_only"] },
 ];
 

@@ -732,3 +732,71 @@ class ParcelamentoDividaOut(BaseModel):
     parcelas: list["ParcelaDividaOut"] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Almoxarifado ──────────────────────────────────────────────────────────────
+
+class ItemAlmoxarifadoCreate(BaseModel):
+    codigo: str
+    descricao: str
+    unidade: str
+    categoria: str = "geral"
+    localizacao: str = ""
+    estoque_minimo: float = 0.0
+    valor_unitario: float = 0.0
+    ativo: bool = True
+
+
+class ItemAlmoxarifadoUpdate(BaseModel):
+    descricao: str | None = None
+    unidade: str | None = None
+    categoria: str | None = None
+    localizacao: str | None = None
+    estoque_minimo: float | None = None
+    valor_unitario: float | None = None
+    ativo: bool | None = None
+
+
+class ItemAlmoxarifadoOut(BaseModel):
+    id: int
+    codigo: str
+    descricao: str
+    unidade: str
+    categoria: str
+    localizacao: str
+    estoque_minimo: float
+    estoque_atual: float
+    valor_unitario: float
+    ativo: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MovimentacaoCreate(BaseModel):
+    item_id: int
+    tipo: str                           # entrada, saida
+    quantidade: float
+    valor_unitario: float = 0.0
+    data_movimentacao: date
+    departamento_id: int | None = None
+    documento_ref: str = ""
+    observacoes: str = ""
+
+
+class MovimentacaoOut(BaseModel):
+    id: int
+    item_id: int
+    tipo: str
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+    data_movimentacao: date
+    departamento_id: int | None
+    responsavel_id: int | None
+    documento_ref: str
+    observacoes: str
+    saldo_pos: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

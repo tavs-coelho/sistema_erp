@@ -264,11 +264,20 @@ O sistema atingiu **79% de aderência plena e 90% incluindo parciais** em relaç
 - Portal do contribuinte e certidão de situação fiscal (TRIB-07) disponíveis publicamente
 - GED com upload/download/delete de anexos por protocolo
 
-**Riscos maiores remanescentes:**
-1. **DIRF e obrigações acessórias de RH** — obrigações fiscais com prazo determinado; multas por atraso
-2. **Reavaliação de ativos** — sem conformidade NBCASP 16.9 / IPSAS 17
-3. **Demonstrações contábeis consolidadas** — obrigação anual TCE/TCU
-4. **Multi-tenancy** — necessário se o sistema for implantado como SaaS
+**Ponto de congelamento recomendado:** 2026-04-19
+
+**Riscos maiores remanescentes (documentados como ressalvas):**
+1. **DIRF e obrigações acessórias de RH** — obrigações fiscais com prazo determinado; fora do TR atual
+2. **Reavaliação de ativos** — sem conformidade NBCASP 16.9 / IPSAS 17; candidato à última sprint
+3. **Demonstrações contábeis consolidadas** — obrigação anual TCE/TCU; fora do TR atual
+4. **Multi-tenancy** — necessário para SaaS multi-município; fora do TR atual
 5. **Rate limiting Redis** — slowapi usa memória local; em deploy multi-instância deve usar Redis como backend
 
+**Última sprint opcional (FRO-08 + FRO-09 + PAT-06) — elevaria aderência para 82% (72/87).**
+
 **SICONFI Fase 2** (envio real) permanece bloqueado por dependências externas (certificado ICP-Brasil + credenciais gov.br do gestor). Pode ser implementado tecnicamente em paralelo com os demais itens assim que os artefatos forem fornecidos pelo cliente.
+
+**Documentos de suporte:**
+- [`docs/matriz-aderencia-final.md`](./matriz-aderencia-final.md) — visão consolidada de todos os 87 requisitos por grupo
+- [`docs/roteiro-demonstracao-final.md`](./roteiro-demonstracao-final.md) — script de demonstração para avaliadores (90 min)
+- [`docs/resumo-executivo-erp.md`](./resumo-executivo-erp.md) — resumo executivo para proposta comercial

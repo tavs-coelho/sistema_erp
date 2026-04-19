@@ -226,11 +226,12 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ **Integração Ponto → Folha** — implementada na onda 16 (descontos faltas/atrasos + crédito HE, idempotente, preview dry-run, logs, CSV, dashboard)
 - ✅ **Recálculo Automático do Payslip** — implementado na onda 17 (ciclo frequência → eventos → holerite, flag recalcular_payslip, logs auditáveis, taxa configurável, 24 testes)
 - ✅ **Camada preparatória SICONFI/SIOP** — implementada na onda 18 (FINBRA, RREO, RGF, SIOP-programas, validação interna, log de exportações, 36 testes)
+- ✅ **SICONFI Onda 19 Fase 1** — geração XML + validação XSD inline (FINBRA/RREO/RGF), log auditável, download, stub Fase 2 com 501 Not Implemented, 37 testes
 
 O ciclo interno de RH está **completo**: frequência apurada → `PayrollEvents` (desconto/provento) → `Payslip` (gross/deductions/net) → PDF do holerite.
 
-A camada preparatória de prestação de contas federal está **completa para geração local**: dados mapeados, validações internas, payloads estruturados, log auditável.
+A camada de geração XML SICONFI está **completa para validação local**. O XML pode ser baixado e revisado antes do envio real.
 
-**Próximo passo ideal:** integração **SICONFI real** — conversão JSON→XSD, envio via webservice do Tesouro Nacional com certificado digital (Onda 19).
+**Próximo passo:** Auditoria final do TR (em paralelo à obtenção de certificado digital ICP-Brasil para Fase 2 SICONFI).
 
 

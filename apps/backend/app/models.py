@@ -413,6 +413,53 @@ class ExportacaoSiconfi(Base):
     gerado_por = relationship("User")
 
 
+class ValidacaoXmlLog(Base):
+    """Log de cada validação de XML gerado para SICONFI (Fase 1 da Onda 19).
+
+    Registra se o XML passou na validação XSD local e quais erros foram
+    encontrados. Permite rastrear histórico de tentativas antes do envio real.
+    """
+    __tablename__ = "validacoes_xml_siconfi"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(40), index=True)       # finbra | rreo | rgf
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)
+    periodo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    valido: Mapped[bool] = mapped_column(Boolean, default=False)
+    erros_xsd: Mapped[list | None] = mapped_column(JSON, nullable=True)    # lista de mensagens de erro
+    avisos: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    xml_gerado: Mapped[str | None] = mapped_column(Text, nullable=True)    # XML string (truncado se >50kb)
+    xsd_fonte: Mapped[str] = mapped_column(String(80), default="inline")   # inline | arquivo | url
+    gerado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    gerado_por = relationship("User")
+
+
+class EnvioSiconfiLog(Base):
+    """Log de cada tentativa de envio real ao webservice SICONFI (Fase 2 — Onda 19).
+
+    Preparado como stub — preenchido quando o endpoint de envio real for implementado.
+    status: pendente → enviado | falha | cancelado
+    """
+    __tablename__ = "envios_siconfi"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    validacao_xml_id: Mapped[int | None] = mapped_column(ForeignKey("validacoes_xml_siconfi.id"), nullable=True)
+    tipo: Mapped[str] = mapped_column(String(40), index=True)
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)
+    periodo: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="pendente")    # pendente | enviado | falha | cancelado
+    protocolo: Mapped[str | None] = mapped_column(String(100), nullable=True)  # nº de protocolo retornado pelo SICONFI
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resposta_raw: Mapped[str | None] = mapped_column(Text, nullable=True)       # resposta bruta do webservice
+    erro_detalhe: Mapped[str | None] = mapped_column(Text, nullable=True)
+    certificado_serial: Mapped[str | None] = mapped_column(String(80), nullable=True)  # serial do cert usado (sem a chave)
+    tentativas: Mapped[int] = mapped_column(Integer, default=0)
+    enviado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    enviado_por = relationship("User")
+    validacao_xml = relationship("ValidacaoXmlLog")
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)

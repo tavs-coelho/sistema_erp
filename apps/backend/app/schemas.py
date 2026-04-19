@@ -1431,3 +1431,49 @@ class InconsistenciaItem(BaseModel):
     mensagem: str
     valor_encontrado: str | None = None
     valor_esperado: str | None = None
+
+
+# ── SICONFI Onda 19 — XML + Envio ─────────────────────────────────────────────
+
+class ValidacaoXmlRequest(BaseModel):
+    tipo: str               # finbra | rreo | rgf
+    exercicio: int
+    periodo: str | None = None  # bimestre_N | quad_N
+
+
+class ValidacaoXmlOut(BaseModel):
+    id: int
+    tipo: str
+    exercicio: int
+    periodo: str | None
+    valido: bool
+    erros_xsd: list[str] | None
+    avisos: list[str] | None
+    xsd_fonte: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EnvioSiconfiRequest(BaseModel):
+    """Stub de configuração para envio real (Fase 2)."""
+    validacao_xml_id: int
+    certificado_pfx_base64: str  # certificado A1 PFX codificado em base64
+    certificado_senha: str        # senha do PFX
+    url_webservice: str = "https://siconfi.tesouro.gov.br/siconfi/api/public/relatorios"
+    dry_run: bool = True          # se True, simula envio sem postar
+
+
+class EnvioSiconfiOut(BaseModel):
+    id: int
+    tipo: str
+    exercicio: int
+    periodo: str | None
+    status: str
+    protocolo: str | None
+    http_status: int | None
+    certificado_serial: str | None
+    tentativas: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

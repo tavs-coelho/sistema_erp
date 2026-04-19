@@ -74,7 +74,7 @@ const anoAtual = new Date().getFullYear();
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SiconfiSiopPage() {
-  const [tab, setTab] = useState<"dashboard" | "config" | "finbra" | "rreo" | "rgf" | "siop" | "exportar" | "historico">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "config" | "finbra" | "rreo" | "rgf" | "siop" | "exportar" | "historico" | "xml">("dashboard");
   const [msg, setMsg] = useState("");
   const [exercicio, setExercicio] = useState(String(anoAtual));
 
@@ -226,6 +226,54 @@ export default function SiconfiSiopPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // XML / Validação (Onda 19)
+  const [xmlTipo, setXmlTipo] = useState("finbra");
+  const [xmlBimestre, setXmlBimestre] = useState("1");
+  const [xmlQuad, setXmlQuad] = useState("1");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [xmlResult, setXmlResult] = useState<any>(null);
+  const [xmlLoading, setXmlLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [xmlHistorico, setXmlHistorico] = useState<Paged<any> | null>(null);
+  const [xmlHistPage, setXmlHistPage] = useState(1);
+  const [xmlHistFiltro, setXmlHistFiltro] = useState("");
+  const [xmlHistValido, setXmlHistValido] = useState("");
+
+  async function gerarXml(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(""); setXmlResult(null); setXmlLoading(true);
+    try {
+      const params = new URLSearchParams({ exercicio });
+      if (xmlTipo === "rreo") params.set("bimestre", xmlBimestre);
+      if (xmlTipo === "rgf") params.set("quadrimestre", xmlQuad);
+      const d = await authJson(`/siconfi/xml/${xmlTipo}?${params}`);
+      setXmlResult(d);
+      setMsg(d.valido ? "✓ XML válido — pronto para export." : `⚠ XML gerado com ${d.erros_xsd?.length ?? 0} erro(s)`);
+    } catch (err) { setMsg("Erro: " + messageFrom(err)); }
+    finally { setXmlLoading(false); }
+  }
+
+  async function downloadXml(tipo: string) {
+    const params = new URLSearchParams({ exercicio });
+    if (tipo === "rreo") params.set("bimestre", xmlBimestre);
+    if (tipo === "rgf") params.set("quadrimestre", xmlQuad);
+    params.set("download", "true");
+    window.open(`/api/proxy/siconfi/xml/${tipo}?${params}`, "_blank");
+  }
+
+  async function loadXmlHistorico() {
+    try {
+      const params = new URLSearchParams({ page: String(xmlHistPage), size: "20" });
+      if (xmlHistFiltro) params.set("tipo", xmlHistFiltro);
+      if (exercicio) params.set("exercicio", exercicio);
+      if (xmlHistValido) params.set("valido", xmlHistValido);
+      const d = await authJson(`/siconfi/xml/historico?${params}`);
+      setXmlHistorico(d);
+    } catch (err) { setMsg("Erro: " + messageFrom(err)); }
+  }
+
+  useEffect(() => { if (tab === "xml") loadXmlHistorico(); }, [tab, xmlHistPage, xmlHistFiltro, xmlHistValido, exercicio]);
+
   const TABS = [
     { key: "dashboard", label: "Dashboard" },
     { key: "config", label: "Entidade" },
@@ -235,6 +283,7 @@ export default function SiconfiSiopPage() {
     { key: "siop", label: "SIOP" },
     { key: "exportar", label: "Exportar" },
     { key: "historico", label: "Histórico" },
+    { key: "xml", label: "XML / Onda 19" },
   ] as const;
 
   return (
@@ -662,6 +711,171 @@ export default function SiconfiSiopPage() {
                 <button disabled={histPage <= 1} onClick={() => setHistPage(histPage - 1)} className="btn btn-secondary btn-sm">‹</button>
                 <span>Pág {histPage} de {Math.max(1, Math.ceil(historico.total / 20))}</span>
                 <button disabled={histPage >= Math.ceil(historico.total / 20)} onClick={() => setHistPage(histPage + 1)} className="btn btn-secondary btn-sm">›</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── XML / ONDA 19 ──────────────────────────────────────────────────── */}
+      {tab === "xml" && (
+        <div>
+          <div style={{ background: "var(--color-surface-raised)", padding: "0.75rem 1rem", borderRadius: 6, marginBottom: "1rem", fontSize: "0.82rem" }}>
+            <strong>Onda 19 — Fase 1:</strong> Geração de XML estruturado + validação local contra XSD inline.
+            O XML gerado pode ser baixado e revisado antes do envio real ao Tesouro Nacional (Fase 2).
+          </div>
+
+          {/* Geração */}
+          <form onSubmit={gerarXml} className="form-card" style={{ marginBottom: "1.5rem" }}>
+            <h3 className="form-title">Gerar e Validar XML</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Tipo *</label>
+                <select className="form-select" value={xmlTipo} onChange={(e) => setXmlTipo(e.target.value)}>
+                  <option value="finbra">FINBRA — Balanço Orçamentário Anual</option>
+                  <option value="rreo">RREO — Relatório Bimestral</option>
+                  <option value="rgf">RGF — Relatório Quadrimestral</option>
+                </select>
+              </div>
+              {xmlTipo === "rreo" && (
+                <div className="form-group">
+                  <label>Bimestre</label>
+                  <select className="form-select" value={xmlBimestre} onChange={(e) => setXmlBimestre(e.target.value)}>
+                    {[1,2,3,4,5,6].map(b => <option key={b}>{b}</option>)}
+                  </select>
+                </div>
+              )}
+              {xmlTipo === "rgf" && (
+                <div className="form-group">
+                  <label>Quadrimestre</label>
+                  <select className="form-select" value={xmlQuad} onChange={(e) => setXmlQuad(e.target.value)}>
+                    {[1,2,3].map(q => <option key={q}>{q}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary" disabled={xmlLoading}>
+                {xmlLoading ? "Gerando..." : "Gerar XML"}
+              </button>
+              {xmlResult && (
+                <button type="button" className="btn btn-secondary" onClick={() => downloadXml(xmlTipo)}>
+                  ⬇ Download XML
+                </button>
+              )}
+            </div>
+
+            {xmlResult && (
+              <div style={{ marginTop: "1rem" }}>
+                <div className="stats-grid">
+                  <div className={`stat-card ${xmlResult.valido ? "success" : "warning"}`}>
+                    <div className="stat-label">Status XSD</div>
+                    <div className="stat-value">{xmlResult.valido ? "✓ Válido" : "✗ Inválido"}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Erros XSD</div>
+                    <div className="stat-value">{xmlResult.erros_xsd?.length ?? 0}</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">Tamanho</div>
+                    <div className="stat-value">{(xmlResult.xml_tamanho_bytes / 1024).toFixed(1)} KB</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-label">ID Validação</div>
+                    <div className="stat-value">#{xmlResult.validacao_id}</div>
+                  </div>
+                </div>
+
+                {(xmlResult.erros_xsd?.length ?? 0) > 0 && (
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <h4>Erros XSD</h4>
+                    <ul style={{ fontSize: "0.8rem", color: "var(--color-danger)" }}>
+                      {xmlResult.erros_xsd.map((e: string, i: number) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {(xmlResult.avisos?.length ?? 0) > 0 && (
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <h4>Avisos</h4>
+                    <ul style={{ fontSize: "0.8rem", color: "var(--color-warning)" }}>
+                      {xmlResult.avisos.map((a: string, i: number) => <li key={i}>{a}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                <details style={{ marginTop: "0.75rem" }}>
+                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>Preview XML</summary>
+                  <pre style={{ fontSize: "0.68rem", background: "var(--color-surface-raised)", padding: "0.75rem", borderRadius: 6, overflow: "auto", maxHeight: 300 }}>
+                    {xmlResult.xml_preview}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </form>
+
+          {/* Fase 2 info box */}
+          <div style={{ background: "var(--color-surface-raised)", border: "1px solid var(--color-border)", borderRadius: 8, padding: "1rem", marginBottom: "1.5rem" }}>
+            <h4 style={{ marginBottom: "0.5rem" }}>Fase 2 — Envio Real (não implementado)</h4>
+            <p style={{ fontSize: "0.82rem", marginBottom: "0.5rem" }}>
+              O endpoint <code>POST /siconfi/envio</code> retorna <strong>501 Not Implemented</strong>.
+              Para habilitá-lo é necessário:
+            </p>
+            <ul style={{ fontSize: "0.82rem", paddingLeft: "1.2rem" }}>
+              <li>Credenciais gov.br (usuário SICONFI)</li>
+              <li>Certificado ICP-Brasil A1/A3 do gestor responsável</li>
+              <li>WSDL do webservice SICONFI (Tesouro Nacional)</li>
+              <li>Biblioteca de assinatura XML WS-Security (signxml)</li>
+              <li>Mapeamento JSON → XSD validado pelo Tesouro Nacional</li>
+            </ul>
+          </div>
+
+          {/* Histórico de validações */}
+          <h3 className="section-title">Histórico de Validações XML</h3>
+          <div className="toolbar">
+            <div className="action-row">
+              <select className="form-select" value={xmlHistFiltro} onChange={(e) => { setXmlHistFiltro(e.target.value); setXmlHistPage(1); }}>
+                <option value="">Todos os tipos</option>
+                <option value="finbra">FINBRA</option>
+                <option value="rreo">RREO</option>
+                <option value="rgf">RGF</option>
+              </select>
+              <select className="form-select" value={xmlHistValido} onChange={(e) => { setXmlHistValido(e.target.value); setXmlHistPage(1); }}>
+                <option value="">Todos</option>
+                <option value="true">Válidos</option>
+                <option value="false">Com erros</option>
+              </select>
+              <button className="btn btn-secondary" onClick={loadXmlHistorico}>↻ Atualizar</button>
+            </div>
+          </div>
+          {xmlHistorico && (
+            <>
+              <div className="table-meta">{xmlHistorico.total} validação(ões)</div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead><tr><th>ID</th><th>Tipo</th><th>Exercício</th><th>Período</th><th>Status XSD</th><th>Erros</th><th>Fonte XSD</th><th>Gerado em</th></tr></thead>
+                  <tbody>
+                    {xmlHistorico.items.map((v) => (
+                      <tr key={v.id}>
+                        <td>{v.id}</td>
+                        <td><span className="status-chip ativo">{v.tipo}</span></td>
+                        <td>{v.exercicio}</td>
+                        <td>{v.periodo ?? "ANUAL"}</td>
+                        <td><span className={`status-chip ${v.valido ? "pago" : "cancelado"}`}>{v.valido ? "válido" : "inválido"}</span></td>
+                        <td style={{ color: (v.erros_xsd?.length ?? 0) > 0 ? "var(--color-danger)" : undefined }}>
+                          {v.erros_xsd?.length ?? 0}
+                        </td>
+                        <td><code>{v.xsd_fonte}</code></td>
+                        <td>{new Date(v.created_at).toLocaleString("pt-BR")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="pagination">
+                <button disabled={xmlHistPage <= 1} onClick={() => setXmlHistPage(xmlHistPage - 1)} className="btn btn-secondary btn-sm">‹</button>
+                <span>Pág {xmlHistPage} de {Math.max(1, Math.ceil(xmlHistorico.total / 20))}</span>
+                <button disabled={xmlHistPage >= Math.ceil(xmlHistorico.total / 20)} onClick={() => setXmlHistPage(xmlHistPage + 1)} className="btn btn-secondary btn-sm">›</button>
               </div>
             </>
           )}

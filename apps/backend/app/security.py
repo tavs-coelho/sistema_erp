@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import bcrypt
 from jose import jwt
 from passlib.context import CryptContext
 
@@ -8,6 +9,11 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if hashed_password.startswith("$2"):
+        try:
+            return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        except ValueError:
+            return False
     return pwd_context.verify(plain_password, hashed_password)
 
 

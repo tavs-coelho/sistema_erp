@@ -1382,3 +1382,52 @@ class RecalcularPayslipOut(BaseModel):
     total_atualizados: int
     total_erros: int
     resultados: list[RecalcularPayslipItemOut]
+
+
+# ── SICONFI / SIOP ────────────────────────────────────────────────────────────
+
+class ConfiguracaoEntidadeCreate(BaseModel):
+    nome_entidade: str
+    cnpj: str
+    codigo_ibge: str
+    uf: str
+    esfera: str = "Municipal"
+    poder: str = "Executivo"
+    tipo_entidade: str = "Prefeitura Municipal"
+    responsavel_nome: str = ""
+    responsavel_cargo: str = ""
+    responsavel_cpf: str = ""
+
+
+class ConfiguracaoEntidadeOut(ConfiguracaoEntidadeCreate):
+    id: int
+    ativo: bool
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ExportacaoRequest(BaseModel):
+    tipo: str                     # finbra | rreo | rgf | siop_programas
+    exercicio: int
+    periodo: str | None = None    # ex: "bimestre_3" | "quad_2"
+
+
+class ExportacaoOut(BaseModel):
+    id: int
+    tipo: str
+    exercicio: int
+    periodo: str | None
+    status: str
+    inconsistencias: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InconsistenciaItem(BaseModel):
+    severidade: str    # ERRO | AVISO
+    codigo: str
+    mensagem: str
+    valor_encontrado: str | None = None
+    valor_esperado: str | None = None

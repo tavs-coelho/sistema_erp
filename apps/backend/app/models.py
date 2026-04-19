@@ -370,6 +370,49 @@ class RecalcularPayslipLog(Base):
     employee = relationship("Employee")
 
 
+# ── SICONFI / SIOP ────────────────────────────────────────────────────────────
+
+class ConfiguracaoEntidade(Base):
+    """Dados cadastrais da entidade pública (município/entidade).
+
+    Utilizado para cabeçalho das exportações SICONFI/FINBRA e SIOP.
+    Há tipicamente um único registro ativo por instalação.
+    """
+    __tablename__ = "configuracoes_entidade"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome_entidade: Mapped[str] = mapped_column(String(200))
+    cnpj: Mapped[str] = mapped_column(String(18))               # formato XX.XXX.XXX/XXXX-XX
+    codigo_ibge: Mapped[str] = mapped_column(String(7))         # código IBGE 7 dígitos
+    uf: Mapped[str] = mapped_column(String(2))                  # sigla UF
+    esfera: Mapped[str] = mapped_column(String(20), default="Municipal")  # Municipal / Estadual / Federal
+    poder: Mapped[str] = mapped_column(String(20), default="Executivo")   # Executivo / Legislativo / Judiciário
+    tipo_entidade: Mapped[str] = mapped_column(String(40), default="Prefeitura Municipal")
+    responsavel_nome: Mapped[str] = mapped_column(String(120), default="")
+    responsavel_cargo: Mapped[str] = mapped_column(String(80), default="")
+    responsavel_cpf: Mapped[str] = mapped_column(String(14), default="")
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ExportacaoSiconfi(Base):
+    """Rastreio de cada exportação gerada para SICONFI/FINBRA/SIOP.
+
+    Permite auditoria e reenviamento idempotente.
+    status: rascunho → validado → exportado
+    """
+    __tablename__ = "exportacoes_siconfi"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(40), index=True)     # finbra | rreo | rgf | siop_programas
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)
+    periodo: Mapped[str | None] = mapped_column(String(20), nullable=True)  # ex: "bimestre_3" ou "quad_2"
+    status: Mapped[str] = mapped_column(String(20), default="rascunho")
+    inconsistencias: Mapped[int] = mapped_column(Integer, default=0)
+    payload_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # snapshot dos dados
+    gerado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    gerado_por = relationship("User")
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)

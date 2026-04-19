@@ -9,6 +9,7 @@ from .models import (
     BudgetAllocation,
     Commitment,
     ConfiguracaoDepreciacao,
+    ConfiguracaoEntidade,
     ConfiguracaoIntegracaoPonto,
     ContaBancaria,
     Contract,
@@ -50,6 +51,20 @@ def seed_data(db: Session):
         return
 
     db.add(Municipality(name="Município de Vila Esperança"))
+
+    db.add(ConfiguracaoEntidade(
+        nome_entidade="Prefeitura Municipal de Vila Esperança",
+        cnpj="12.345.678/0001-90",
+        codigo_ibge="1234567",
+        uf="SP",
+        esfera="Municipal",
+        poder="Executivo",
+        tipo_entidade="Prefeitura Municipal",
+        responsavel_nome="João da Silva",
+        responsavel_cargo="Prefeito",
+        responsavel_cpf="000.000.000-01",
+        ativo=True,
+    ))
 
     departments = [
         Department(name="Saúde"),

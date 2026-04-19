@@ -29,6 +29,7 @@ const QUICK_LINKS = [
   { href: "/patrimonio", label: "10) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
   { href: "/almoxarifado", label: "11) Almoxarifado", roles: ["admin", "procurement", "read_only"] },
   { href: "/auditoria", label: "11) Auditoria", roles: ["admin", "read_only"] },
+  { href: "/siconfi-siop", label: "12) SICONFI / SIOP", roles: ["admin", "accountant", "read_only"] },
 ];
 
 export default function Home() {

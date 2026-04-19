@@ -225,9 +225,12 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ **Depreciação Patrimonial** — implementada na onda 15 (NBCASP/IPSAS 17, linear e saldo decrescente, lançamentos idempotentes, dashboard, CSV)
 - ✅ **Integração Ponto → Folha** — implementada na onda 16 (descontos faltas/atrasos + crédito HE, idempotente, preview dry-run, logs, CSV, dashboard)
 - ✅ **Recálculo Automático do Payslip** — implementado na onda 17 (ciclo frequência → eventos → holerite, flag recalcular_payslip, logs auditáveis, taxa configurável, 24 testes)
+- ✅ **Camada preparatória SICONFI/SIOP** — implementada na onda 18 (FINBRA, RREO, RGF, SIOP-programas, validação interna, log de exportações, 36 testes)
 
 O ciclo interno de RH está **completo**: frequência apurada → `PayrollEvents` (desconto/provento) → `Payslip` (gross/deductions/net) → PDF do holerite.
 
-**Próximo passo ideal:** integração **SICONFI/SIOP** — prestação de contas ao governo federal (FINBRA/RREO/RGF via SICONFI e programas orçamentários via SIOP). Com todos os módulos operacionais de RH fechados, o ERP está maduro para atacar a obrigação legal de prestação de contas federais.
+A camada preparatória de prestação de contas federal está **completa para geração local**: dados mapeados, validações internas, payloads estruturados, log auditável.
+
+**Próximo passo ideal:** integração **SICONFI real** — conversão JSON→XSD, envio via webservice do Tesouro Nacional com certificado digital (Onda 19).
 
 

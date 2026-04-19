@@ -89,6 +89,20 @@ class VendorOut(VendorCreate):
         from_attributes = True
 
 
+class BudgetAllocationCreate(BaseModel):
+    code: str
+    description: str
+    amount: float
+    fiscal_year_id: int
+
+
+class BudgetAllocationOut(BudgetAllocationCreate):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
 class CommitmentCreate(BaseModel):
     number: str
     description: str

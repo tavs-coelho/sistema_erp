@@ -26,53 +26,34 @@ Fluxos:
 - Rotas protegidas por papel
 - Fluxo de reset de senha para demo (`/auth/request-password-reset` + `/auth/reset-password`)
 
-## Módulos implementados
+## Escopo atual (vertical slices)
 
-### Núcleo compartilhado
+### ✅ Fase 1 implementada
 - Usuários
 - Departamentos
 - Exercício fiscal
 - Anexos
 - Log de auditoria para C/U/D
-- Dashboard inicial
+- Login e rotas protegidas no frontend
+- JWT com refresh token
+- RBAC com papéis: `admin`, `accountant`, `hr`, `procurement`, `patrimony`, `employee`, `read_only`
 
-### Contábil
-- Fornecedores/credores
-- Empenhos, liquidação, pagamentos
-- Lançamento de receita
-- Relatório de empenhos com exportação CSV
-- Dashboard de totais
+### ✅ Fase 2 implementada (workflow demonstrável ponta a ponta)
+- Login admin
+- Criar departamento
+- Criar fornecedor
+- Criar dotação orçamentária
+- Criar empenho
+- Liquidar empenho
+- Registrar pagamento
+- Listas internas com busca/filtros/paginação
+- Exportação CSV em listagem-chave
+- Publicação em portal de transparência público
+- Auditoria de operações C/U/D nas ações do fluxo
 
-### Compras e contratos
-- Processos licitatórios
-- Homologação simplificada
-- Contratos e aditivos
-- Consulta de contratos a vencer
-
-### Transparência pública
-- Endpoints sem login
-- Listagens paginadas de empenhos, pagamentos, contratos e fornecedores
-- Busca/filtro básico
-- Exportação CSV
-
-### RH/Folha
-- Cadastro de servidores
-- Cálculo simplificado da folha mensal
-- Holerite em PDF
-- Relatório por departamento
-
-### Portal do servidor
-- Perfil
-- Consulta de holerites
-- Informe de rendimentos demo
-- Alteração de senha
-
-### Patrimônio
-- Cadastro de bens
-- Transferência entre departamentos
-- Baixa
-- Inventário
-- Histórico de movimentações
+### ⏳ Não incluído neste recorte de entrega
+- Fase 3 completa (RH/folha e portal do servidor em fluxo fim a fim de demo)
+- Fase 4 completa (patrimônio em fluxo fim a fim de demo)
 
 ## Seed demo (automático no startup)
 
@@ -123,15 +104,25 @@ Backend:
 Frontend:
 - `cd apps/frontend && npm ci && npm run lint && npm run build`
 
-## Walkthrough sugerido da demo
+## Passo a passo exato da demo (Fase 2)
 
-1. Login como `admin1`
-2. Visualizar dashboard inicial
-3. Abrir transparência pública e exportar CSV de empenhos
-4. Validar rota de contratos/compras via OpenAPI
-5. Executar cálculo de folha e gerar PDF de holerite
-6. Consultar inventário e movimentação patrimonial
-7. Visualizar auditoria de alterações C/U/D
+1. Suba a stack com `docker compose up --build`
+2. Acesse `http://localhost/login`
+3. Faça login com `admin1 / demo123`
+4. Abra `http://localhost/fase-2`
+5. Execute os formulários nesta ordem:
+   - Criar departamento
+   - Criar fornecedor
+   - Criar dotação orçamentária
+   - Criar empenho
+   - Liquidar empenho (botão na lista interna)
+   - Registrar pagamento
+6. Valide as listas internas:
+   - Fornecedores com busca/paginação
+   - Empenhos com filtro por status + paginação + CSV
+   - Pagamentos com paginação
+7. Acesse `http://localhost/public` e confirme o empenho/pagamento exposto no portal público
+8. Acesse `http://localhost/api/docs` e consulte `GET /core/audit-logs` para validar os registros de auditoria
 
 ## Screenshots (placeholder)
 
@@ -143,5 +134,5 @@ Frontend:
 
 ## Lacunas conhecidas (MVP)
 
-- UI ainda focada em demonstração (fluxos principais) e não em cobertura completa de formulários de todos os módulos.
-- Relatórios avançados e regras profundas de domínio foram simplificados para priorizar fluxo fim a fim demonstrável.
+- O recorte desta entrega prioriza Fase 1 + Fase 2.
+- Fases 3 e 4 permanecem fora do escopo de demonstração principal desta rodada.

@@ -45,6 +45,7 @@ export default function Home() {
         Perfil logado: <strong>{role || "desconhecido"}</strong>
       </p>
       <nav style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <a href="/fase-2">Fluxo Fase 2 (Admin)</a>
         <a href="/public">Portal da Transparência</a>
         <button onClick={logout}>Sair</button>
       </nav>

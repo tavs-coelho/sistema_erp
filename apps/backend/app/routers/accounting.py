@@ -1,6 +1,6 @@
+import csv
 from datetime import date
 from io import StringIO
-import csv
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import func

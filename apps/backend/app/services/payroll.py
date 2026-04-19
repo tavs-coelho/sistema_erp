@@ -1,6 +1,21 @@
+MAX_PDF_CONTENT_LENGTH = 3500
+PDF_FONT_SIZE = 12
+PDF_TEXT_X = 50
+PDF_TEXT_Y = 770
+PDF_LINE_STEP = -20
+
+
+def _escape_pdf_text(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
 def build_simple_pdf(title: str, lines: list[str]) -> bytes:
     content = "\n".join(lines)
-    text = f"BT /F1 12 Tf 50 770 Td ({title}) Tj 0 -20 Td ({content[:3500].replace('(', '[').replace(')', ']')}) Tj ET"
+    text = (
+        f"BT /F1 {PDF_FONT_SIZE} Tf {PDF_TEXT_X} {PDF_TEXT_Y} Td "
+        f"({_escape_pdf_text(title)}) Tj 0 {PDF_LINE_STEP} Td "
+        f"({_escape_pdf_text(content[:MAX_PDF_CONTENT_LENGTH])}) Tj ET"
+    )
     stream = text.encode("latin-1", errors="ignore")
     pdf = b"%PDF-1.4\n"
     objects = [

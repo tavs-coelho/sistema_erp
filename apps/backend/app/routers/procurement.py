@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -65,5 +65,5 @@ def add_addendum(contract_id: int, description: str, amount_delta: float, db: Se
 
 @router.get("/contracts/expiring")
 def expiring_contracts(days: int = 60, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    limit = date.today().toordinal() + days
-    return [c for c in db.query(Contract).all() if c.end_date.toordinal() <= limit]
+    limit_date = date.today() + timedelta(days=days)
+    return db.query(Contract).filter(Contract.end_date <= limit_date).all()

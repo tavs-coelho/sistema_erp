@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const DEFAULT_AUTHENTICATED_ROUTE = "/";
+
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("access_token")?.value;
-  const isPublic = request.nextUrl.pathname.startsWith("/public") || request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/_next");
+  const publicPrefixes = ["/public", "/login", "/_next"];
+  const isPublic = publicPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
 
   if (!token && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (token && request.nextUrl.pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL(DEFAULT_AUTHENTICATED_ROUTE, request.url));
   }
 
   return NextResponse.next();

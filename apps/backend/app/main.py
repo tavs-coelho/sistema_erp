@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .config import settings
 from .db import SessionLocal
 from .routers import accounting, auth, core, employee_portal, hr, patrimony, procurement, public
 from .seed import seed_data
@@ -9,7 +10,7 @@ app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

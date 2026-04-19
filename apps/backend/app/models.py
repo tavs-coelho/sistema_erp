@@ -1,10 +1,14 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 
 from sqlalchemy import JSON, Boolean, Date, DateTime, Enum as SqlEnum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
+
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 
 class RoleEnum(str, Enum):
@@ -100,7 +104,7 @@ class Liquidation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     commitment_id: Mapped[int] = mapped_column(ForeignKey("commitments.id"))
     amount: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class Payment(Base):
@@ -167,7 +171,7 @@ class AssetMovement(Base):
     from_department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
     to_department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
     movement_type: Mapped[str] = mapped_column(String(40))
-    moved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    moved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class PayrollEvent(Base):
@@ -208,7 +212,7 @@ class AuditLog(Base):
     entity_id: Mapped[str] = mapped_column(String(40))
     before_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     after_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
 class PasswordResetToken(Base):

@@ -1,5 +1,5 @@
-from io import StringIO
 import csv
+from io import StringIO
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
@@ -23,7 +23,9 @@ def commitments(search: str | None = None, page: int = Query(1, ge=1), size: int
         q = q.filter(Commitment.description.ilike(f"%{search}%"))
     items = q.order_by(Commitment.id.desc())
     if export == "csv":
-        buf = StringIO(); w = csv.writer(buf); w.writerow(["numero", "descricao", "valor", "status"])
+        buf = StringIO()
+        w = csv.writer(buf)
+        w.writerow(["numero", "descricao", "valor", "status"])
         for row in items.all():
             w.writerow([row.number, row.description, row.amount, row.status])
         return Response(content=buf.getvalue(), media_type="text/csv")

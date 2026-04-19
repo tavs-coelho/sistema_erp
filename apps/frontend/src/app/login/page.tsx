@@ -21,8 +21,9 @@ export default function LoginPage() {
       setMessage(data.detail || "Falha no login");
       return;
     }
-    document.cookie = `access_token=${data.access_token}; path=/`;
-    document.cookie = `role=${data.role}; path=/`;
+    const cookieFlags = `path=/; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`;
+    document.cookie = `access_token=${encodeURIComponent(data.access_token)}; ${cookieFlags}`;
+    document.cookie = `role=${encodeURIComponent(data.role)}; ${cookieFlags}`;
     setMessage("Login realizado com sucesso");
     window.location.href = "/";
   };

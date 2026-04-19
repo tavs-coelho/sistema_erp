@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from jose import JWTError, jwt
@@ -58,7 +58,7 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     if not user:
         return {"message": "Se usuário existir, o reset foi gerado"}
     token = secrets.token_urlsafe(24)
-    reset = PasswordResetToken(user_id=user.id, token=token, expires_at=datetime.utcnow() + timedelta(minutes=30))
+    reset = PasswordResetToken(user_id=user.id, token=token, expires_at=datetime.now(timezone.utc) + timedelta(minutes=30))
     db.add(reset)
     write_audit(db, user_id=user.id, action="create", entity="password_reset", entity_id=str(user.id), after_data={"token": token})
     db.commit()
@@ -68,7 +68,7 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
 @router.post("/reset-password")
 def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db)):
     reset = db.query(PasswordResetToken).filter(PasswordResetToken.token == payload.token).first()
-    if not reset or reset.expires_at < datetime.utcnow():
+    if not reset or reset.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token inválido/expirado")
     user = db.get(User, reset.user_id)
     user.hashed_password = hash_password(payload.new_password)

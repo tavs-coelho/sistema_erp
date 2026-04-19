@@ -12,7 +12,9 @@ type Dashboard = {
 
 function readCookie(name: string): string {
   if (typeof document === "undefined") return "";
-  return document.cookie.split(";").find((item) => item.trim().startsWith(`${name}=`))?.split("=")[1] || "";
+  const entry = document.cookie.split(";").find((item) => item.trim().startsWith(`${name}=`));
+  if (!entry) return "";
+  return decodeURIComponent(entry.trim().slice(name.length + 1));
 }
 
 export default function Home() {
@@ -20,7 +22,6 @@ export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [token] = useState(() => readCookie("access_token"));
   const [role] = useState(() => readCookie("role"));
-
 
   useEffect(() => {
     if (!token) return;

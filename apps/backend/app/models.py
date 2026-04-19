@@ -348,6 +348,28 @@ class IntegracaoPontoFolhaLog(Base):
     employee = relationship("Employee")
 
 
+class RecalcularPayslipLog(Base):
+    """Rastreia cada execução do recálculo de holerite para um servidor/período.
+
+    Idempotência: não é restritiva por si só (recalcular é sempre seguro), mas
+    o log permite auditoria e comparação antes/depois.
+    """
+    __tablename__ = "recalcular_payslip_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)   # YYYY-MM
+    gross_amount_anterior: Mapped[float | None] = mapped_column(Float, nullable=True)
+    gross_amount_novo: Mapped[float] = mapped_column(Float)
+    deductions_anterior: Mapped[float | None] = mapped_column(Float, nullable=True)
+    deductions_novo: Mapped[float] = mapped_column(Float)
+    net_amount_anterior: Mapped[float | None] = mapped_column(Float, nullable=True)
+    net_amount_novo: Mapped[float] = mapped_column(Float)
+    origem: Mapped[str] = mapped_column(String(40), default="manual")  # manual | integracao_ponto
+    executado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    employee = relationship("Employee")
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)

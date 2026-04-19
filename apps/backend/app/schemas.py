@@ -1335,6 +1335,8 @@ class IntegrarPontoFolhaRequest(BaseModel):
     periodo: str                   # YYYY-MM
     employee_id: int | None = None # None = todos com configuração ativa
     force: bool = False            # re-processa mesmo se já integrado
+    recalcular_payslip: bool = False   # recalcula holerite automaticamente após integração
+    taxa_deducao: float = 11.0     # taxa de dedução (%) usada se recalcular_payslip=True
 
 
 class IntegracaoLogOut(BaseModel):
@@ -1351,3 +1353,32 @@ class IntegracaoLogOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Recálculo Payslip ─────────────────────────────────────────────────────────
+
+class RecalcularPayslipRequest(BaseModel):
+    periodo: str                    # YYYY-MM
+    employee_id: int | None = None  # None = todos os servidores do período
+    taxa_deducao: float = 11.0      # % de dedução sobre gross (padrão INSS simplificado)
+
+
+class RecalcularPayslipItemOut(BaseModel):
+    employee_id: int
+    employee_name: str
+    periodo: str
+    gross_amount: float
+    deductions: float
+    net_amount: float
+    status: str   # criado | atualizado | erro
+    variacao_net: float   # net_novo - net_anterior (0 se criado)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecalcularPayslipOut(BaseModel):
+    periodo: str
+    total_criados: int
+    total_atualizados: int
+    total_erros: int
+    resultados: list[RecalcularPayslipItemOut]

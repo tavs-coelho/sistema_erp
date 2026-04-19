@@ -104,7 +104,7 @@ const fmt = (v: number) =>
 export default function IntegracaoPontoFolhaPage() {
   const [msg, setMsg] = useState("");
   const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
-  const [tab, setTab] = useState<"dashboard" | "config" | "integrar" | "logs">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "config" | "integrar" | "logs" | "holerite">("dashboard");
 
   const [periodo, setPeriodo] = useState(periodoAtual);
   const [dashData, setDashData] = useState<DashData | null>(null);
@@ -121,10 +121,20 @@ export default function IntegracaoPontoFolhaPage() {
   const [integrarPeriodo, setIntegrarPeriodo] = useState(periodoAtual);
   const [integrarEmpId, setIntegrarEmpId] = useState("");
   const [integrarForce, setIntegrarForce] = useState(false);
+  const [integrarRecalcular, setIntegrarRecalcular] = useState(true);
+  const [integrarTaxaDeducao, setIntegrarTaxaDeducao] = useState("11");
   const [integrarResult, setIntegrarResult] = useState<IntegrarResult | null>(null);
   const [previewResult, setPreviewResult] = useState<{ periodo: string; resultados: PreviewResultado[] } | null>(null);
   const [previewPeriodo, setPreviewPeriodo] = useState(periodoAtual);
   const [previewEmpId, setPreviewEmpId] = useState("");
+
+  // Holerite state
+  const [holPeriodo, setHolPeriodo] = useState(periodoAtual);
+  const [holEmpId, setHolEmpId] = useState("");
+  const [holTaxa, setHolTaxa] = useState("11");
+  const [holResult, setHolResult] = useState<{ periodo: string; total_criados: number; total_atualizados: number; total_erros: number; resultados: { employee_id: number; employee_name: string; gross_amount: number; deductions: number; net_amount: number; status: string; variacao_net: number }[] } | null>(null);
+  const [holLogs, setHolLogs] = useState<Paged<{ id: number; employee_id: number; periodo: string; gross_amount_novo: number; deductions_novo: number; net_amount_novo: number; gross_amount_anterior: number | null; net_amount_anterior: number | null; origem: string; created_at: string }> | null>(null);
+  const [holLogPage, setHolLogPage] = useState(1);
 
   const [logs, setLogs] = useState<Paged<Log> | null>(null);
   const [logPage, setLogPage] = useState(1);
@@ -175,6 +185,19 @@ export default function IntegracaoPontoFolhaPage() {
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
   useEffect(() => { if (tab === "config") loadConfigs(); }, [tab, configPage]);
   useEffect(() => { if (tab === "logs") loadLogs(); }, [tab, logPage, logFilterPeriodo, logFilterEmp]);
+  useEffect(() => {
+    if (tab === "holerite" && holLogs === null) loadHolLogs();
+  }, [tab]);
+  useEffect(() => { if (tab === "holerite") loadHolLogs(); }, [holLogPage]);
+
+  async function loadHolLogs() {
+    try {
+      const d = await authJson(`/hr/payslips/recalcular/logs?page=${holLogPage}&size=30`);
+      setHolLogs(d);
+    } catch (e) {
+      setMsg("Erro: " + messageFrom(e));
+    }
+  }
 
   // ── Criar Config ───────────────────────────────────────────────────────────
 
@@ -225,22 +248,49 @@ export default function IntegracaoPontoFolhaPage() {
     setMsg("");
     setIntegrarResult(null);
     try {
-      const body: Record<string, unknown> = { periodo: integrarPeriodo, force: integrarForce };
+      const body: Record<string, unknown> = {
+        periodo: integrarPeriodo,
+        force: integrarForce,
+        recalcular_payslip: integrarRecalcular,
+        taxa_deducao: parseFloat(integrarTaxaDeducao) || 11.0,
+      };
       if (integrarEmpId) body.employee_id = Number(integrarEmpId);
       const d = await authJson("/integracao-ponto-folha/integrar", {
         method: "POST",
         body: JSON.stringify(body),
       });
       setIntegrarResult(d);
-      setMsg(`Integração concluída: ${d.total_ok} OK, ${d.total_pulados} pulados, ${d.total_erros} erros`);
+      const nPS = d.payslips_recalculados?.length ?? 0;
+      setMsg(`Integração concluída: ${d.total_ok} OK, ${d.total_pulados} pulados, ${d.total_erros} erros${nPS > 0 ? ` · ${nPS} holerite(s) recalculado(s)` : ""}`);
       if (tab === "logs") loadLogs();
     } catch (e) {
       setMsg("Erro: " + messageFrom(e));
     }
   }
 
-  function exportCsv() {
-    if (!logFilterPeriodo) {
+  async function submitHolerite(e: FormEvent) {
+    e.preventDefault();
+    setMsg("");
+    setHolResult(null);
+    try {
+      const body: Record<string, unknown> = {
+        periodo: holPeriodo,
+        taxa_deducao: parseFloat(holTaxa) || 11.0,
+      };
+      if (holEmpId) body.employee_id = Number(holEmpId);
+      const d = await authJson("/hr/payslips/recalcular", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setHolResult(d);
+      setMsg(`Recálculo: ${d.total_criados} criado(s), ${d.total_atualizados} atualizado(s), ${d.total_erros} erro(s)`);
+      loadHolLogs();
+    } catch (e) {
+      setMsg("Erro: " + messageFrom(e));
+    }
+  }
+
+  function exportCsv() {    if (!logFilterPeriodo) {
       setMsg("Erro: informe um período para exportar CSV");
       return;
     }
@@ -262,11 +312,12 @@ export default function IntegracaoPontoFolhaPage() {
       )}
 
       <div className="tabs">
-        {(["dashboard", "config", "integrar", "logs"] as const).map((t) => (
+        {(["dashboard", "config", "integrar", "logs", "holerite"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={tab === t ? "tab active" : "tab"}>
             {t === "dashboard" ? "Dashboard" :
              t === "config" ? "Configuração" :
-             t === "integrar" ? "Integrar" : "Logs"}
+             t === "integrar" ? "Integrar" :
+             t === "holerite" ? "Holerite" : "Logs"}
           </button>
         ))}
       </div>
@@ -549,6 +600,22 @@ export default function IntegracaoPontoFolhaPage() {
                   <span><strong>Forçar</strong> (re-processa já integrados)</span>
                 </label>
               </div>
+              <div className="form-group" style={{ alignSelf: "end" }}>
+                <label style={{ display: "flex", gap: "0.5rem", alignItems: "center", cursor: "pointer" }}>
+                  <input type="checkbox" checked={integrarRecalcular}
+                    onChange={(e) => setIntegrarRecalcular(e.target.checked)} />
+                  <span>Recalcular holerite automaticamente</span>
+                </label>
+              </div>
+              {integrarRecalcular && (
+                <div className="form-group">
+                  <label>Taxa de Dedução (%)</label>
+                  <input type="number" step="0.01" min="0" max="100"
+                    value={integrarTaxaDeducao}
+                    onChange={(e) => setIntegrarTaxaDeducao(e.target.value)}
+                    className="form-input" placeholder="11 = INSS simplificado" />
+                </div>
+              )}
             </div>
             <div className="form-actions">
               <button type="submit" className="btn btn-primary">Integrar</button>
@@ -666,6 +733,141 @@ export default function IntegracaoPontoFolhaPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+      {/* ── HOLERITE ────────────────────────────────────────────────────────── */}
+      {tab === "holerite" && (
+        <div>
+          <form onSubmit={submitHolerite} className="form-card" style={{ marginBottom: "1.5rem" }}>
+            <h3 className="form-title">Recalcular Holerites</h3>
+            <p style={{ fontSize: "0.85rem", color: "var(--color-text-secondary)", marginBottom: "0.5rem" }}>
+              Atualiza <code>gross_amount</code>, <code>deductions</code> e <code>net_amount</code>
+              nos holerites do período a partir dos <strong>PayrollEvents</strong> registrados.
+            </p>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Período *</label>
+                <input type="month" value={holPeriodo} onChange={(e) => setHolPeriodo(e.target.value)} required className="form-input" />
+              </div>
+              <div className="form-group">
+                <label>Servidor (opcional)</label>
+                <select value={holEmpId} onChange={(e) => setHolEmpId(e.target.value)} className="form-select">
+                  <option value="">Todos os servidores</option>
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Taxa de Dedução (%)</label>
+                <input type="number" step="0.01" min="0" max="100"
+                  value={holTaxa} onChange={(e) => setHolTaxa(e.target.value)}
+                  className="form-input" placeholder="11 = INSS simplificado" />
+              </div>
+            </div>
+            <div className="form-actions">
+              <button type="submit" className="btn btn-primary">Recalcular</button>
+            </div>
+
+            {holResult && (
+              <div style={{ marginTop: "1rem" }}>
+                <div className="table-meta">
+                  {holResult.total_criados} criado(s) · {holResult.total_atualizados} atualizado(s) · {holResult.total_erros} erro(s)
+                </div>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Servidor</th>
+                        <th>Bruto</th>
+                        <th>Deduções</th>
+                        <th>Líquido</th>
+                        <th>Variação Líq.</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holResult.resultados.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.employee_name}</td>
+                          <td>R$ {fmt(r.gross_amount)}</td>
+                          <td>R$ {fmt(r.deductions)}</td>
+                          <td>R$ {fmt(r.net_amount)}</td>
+                          <td>
+                            <span style={{ color: r.variacao_net > 0 ? "var(--color-success)" : r.variacao_net < 0 ? "var(--color-danger)" : "inherit" }}>
+                              {r.variacao_net >= 0 ? "+" : ""}{fmt(r.variacao_net)}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`status-chip ${r.status === "criado" ? "rascunho" : r.status === "atualizado" ? "pago" : "cancelado"}`}>
+                              {r.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </form>
+
+          {/* Log de recálculos */}
+          <div>
+            <h3 className="section-title">Histórico de Recálculos</h3>
+            <div className="toolbar">
+              <div className="action-row">
+                <button className="btn btn-secondary" onClick={loadHolLogs}>↻ Atualizar</button>
+              </div>
+            </div>
+            {holLogs && (
+              <>
+                <div className="table-meta">{holLogs.total} registro(s)</div>
+                <div className="table-responsive">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Servidor</th>
+                        <th>Período</th>
+                        <th>Bruto Anterior</th>
+                        <th>Bruto Novo</th>
+                        <th>Líq. Anterior</th>
+                        <th>Líq. Novo</th>
+                        <th>Origem</th>
+                        <th>Data</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holLogs.items.map((l) => {
+                        const emp = employees.find((x) => x.id === l.employee_id);
+                        return (
+                          <tr key={l.id}>
+                            <td>{emp ? emp.name : l.employee_id}</td>
+                            <td>{l.periodo}</td>
+                            <td>{l.gross_amount_anterior != null ? `R$ ${fmt(l.gross_amount_anterior)}` : "—"}</td>
+                            <td>R$ {fmt(l.gross_amount_novo)}</td>
+                            <td>{l.net_amount_anterior != null ? `R$ ${fmt(l.net_amount_anterior)}` : "—"}</td>
+                            <td>R$ {fmt(l.net_amount_novo)}</td>
+                            <td>
+                              <span className={`status-chip ${l.origem === "integracao_ponto" ? "ativo" : "rascunho"}`}>
+                                {l.origem}
+                              </span>
+                            </td>
+                            <td>{new Date(l.created_at).toLocaleDateString("pt-BR")}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="pagination">
+                  <button disabled={holLogPage <= 1} onClick={() => setHolLogPage(holLogPage - 1)} className="btn btn-secondary btn-sm">‹</button>
+                  <span>Pág {holLogPage} de {Math.max(1, Math.ceil(holLogs.total / 30))}</span>
+                  <button disabled={holLogPage >= Math.ceil(holLogs.total / 30)} onClick={() => setHolLogPage(holLogPage + 1)} className="btn btn-secondary btn-sm">›</button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </main>

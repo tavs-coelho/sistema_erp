@@ -64,6 +64,7 @@ from ..models import (
     RoleEnum,
     User,
 )
+from ..routers.hr import recalcular_payslip_servidor
 from ..routers.ponto import _calcular_folha
 from ..schemas import (
     ConfiguracaoIntegracaoPontoCreate,
@@ -411,19 +412,37 @@ def integrar(
     total_pulados = sum(1 for r in resultados if r.get("status") == "pulado")
     total_erros = sum(1 for r in resultados if r.get("status") == "erro")
 
+    # Recálculo automático do Payslip (se solicitado)
+    payslip_resultados = []
+    if payload.recalcular_payslip:
+        taxa = payload.taxa_deducao if 0 <= payload.taxa_deducao <= 100 else 11.0
+        for r in resultados:
+            if r.get("status") in ("ok",):
+                ps = recalcular_payslip_servidor(
+                    db, r["employee_id"], payload.periodo,
+                    taxa_deducao=taxa,
+                    origem="integracao_ponto",
+                    executado_por_id=current.id,
+                )
+                payslip_resultados.append(ps)
+
     write_audit(db, user_id=current.id, action="create",
                 entity="integracao_ponto_folha_logs", entity_id=payload.periodo,
                 after_data={"periodo": payload.periodo, "total_ok": total_ok,
-                            "total_pulados": total_pulados, "total_erros": total_erros})
+                            "total_pulados": total_pulados, "total_erros": total_erros,
+                            "payslips_recalculados": len(payslip_resultados)})
     db.commit()
 
-    return {
+    resp = {
         "periodo": payload.periodo,
         "total_ok": total_ok,
         "total_pulados": total_pulados,
         "total_erros": total_erros,
         "resultados": resultados,
     }
+    if payload.recalcular_payslip:
+        resp["payslips_recalculados"] = payslip_resultados
+    return resp
 
 
 # ── Logs ──────────────────────────────────────────────────────────────────────

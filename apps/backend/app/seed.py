@@ -31,6 +31,7 @@ from .models import (
     Payslip,
     ProcurementProcess,
     Liquidation,
+    RecalcularPayslipLog,
     RegistroPonto,
     RevenueEntry,
     RoleEnum,

@@ -178,3 +178,39 @@ def list_addenda(contract_id: int, db: Session = Depends(get_db), _: User = Depe
     if not contract:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
     return db.query(ContractAddendum).filter(ContractAddendum.contract_id == contract_id).all()
+
+
+# ── Integração com Almoxarifado ───────────────────────────────────────────────
+
+@router.get("/processes/{process_id}/recebimentos")
+def list_process_recebimentos(
+    process_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista todos os recebimentos de material vinculados a um processo de compra."""
+    from ..models import RecebimentoMaterial
+    process = db.get(ProcurementProcess, process_id)
+    if not process:
+        raise HTTPException(status_code=404, detail="Processo não encontrado")
+    recs = db.query(RecebimentoMaterial).filter(
+        RecebimentoMaterial.processo_id == process_id
+    ).order_by(RecebimentoMaterial.id.desc()).all()
+    return recs
+
+
+@router.get("/contracts/{contract_id}/recebimentos")
+def list_contract_recebimentos(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista todos os recebimentos vinculados a um contrato."""
+    from ..models import RecebimentoMaterial
+    contract = db.get(Contract, contract_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado")
+    recs = db.query(RecebimentoMaterial).filter(
+        RecebimentoMaterial.contrato_id == contract_id
+    ).order_by(RecebimentoMaterial.id.desc()).all()
+    return recs

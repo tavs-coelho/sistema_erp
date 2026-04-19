@@ -18,6 +18,7 @@ type Movimentacao = {
   valor_unitario: number; valor_total: number; data_movimentacao: string;
   departamento_id: number | null; responsavel_id: number | null;
   documento_ref: string; saldo_pos: number;
+  processo_id: number | null; contrato_id: number | null; recebimento_id: number | null;
 };
 
 type Saldo = {
@@ -29,6 +30,18 @@ type Saldo = {
 type Dashboard = {
   total_itens_ativos: number; itens_abaixo_minimo: number;
   valor_total_estoque: number; entradas_no_mes: number; saidas_no_mes: number;
+};
+
+type ItemRec = {
+  id: number; item_almoxarifado_id: number; quantidade_recebida: number;
+  valor_unitario: number; valor_total: number; movimentacao_id: number | null;
+};
+
+type Recebimento = {
+  id: number; processo_id: number; contrato_id: number | null; vendor_id: number | null;
+  commitment_id: number | null; nota_fiscal: string; data_recebimento: string;
+  status: string; observacoes: string; responsavel_id: number | null;
+  created_at: string; itens: ItemRec[];
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -47,7 +60,7 @@ export default function AlmoxarifadoPage() {
   const [role] = useState(() => readCookie("role"));
   const [msg, setMsg] = useState("");
   const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
-  const [tab, setTab] = useState<"dashboard" | "itens" | "movimentacoes" | "historico">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "itens" | "movimentacoes" | "historico" | "recebimentos">("dashboard");
 
   const canWrite = role === "admin" || role === "procurement";
 
@@ -55,6 +68,7 @@ export default function AlmoxarifadoPage() {
     { key: "dashboard", label: "Dashboard" },
     { key: "itens", label: "Itens / Materiais" },
     { key: "movimentacoes", label: "Entrada / Saída" },
+    { key: "recebimentos", label: "Recebimentos de Compras" },
     { key: "historico", label: "Histórico" },
   ] as const;
 
@@ -77,6 +91,7 @@ export default function AlmoxarifadoPage() {
       {tab === "dashboard" && <DashboardTab />}
       {tab === "itens" && <ItensTab setMsg={setMsg} canWrite={canWrite} />}
       {tab === "movimentacoes" && <MovimentacaoTab setMsg={setMsg} canWrite={canWrite} />}
+      {tab === "recebimentos" && <RecebimentosTab setMsg={setMsg} canWrite={canWrite} />}
       {tab === "historico" && <HistoricoTab setMsg={setMsg} />}
     </main>
   );
@@ -453,6 +468,212 @@ function HistoricoTab({ setMsg }: { setMsg: (m: string) => void }) {
         <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
         <span>Pág {page} · Total: {movs?.total || 0}</span>
         <button className="btn" disabled={(movs?.items?.length || 0) < 20} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+      </div>
+    </section>
+  );
+}
+
+
+// ── Recebimentos de Compras ───────────────────────────────────────────────────
+
+const STATUS_CHIP: Record<string, string> = {
+  pendente: "pendente",
+  conferido: "pago",
+  recusado: "baixado",
+};
+
+function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+  const [recs, setRecs] = useState<Paged<Recebimento> | null>(null);
+  const [fProcesso, setFProcesso] = useState("");
+  const [fContrato, setFContrato] = useState("");
+  const [fStatus, setFStatus] = useState("");
+  const [fInicio, setFInicio] = useState("");
+  const [fFim, setFFim] = useState("");
+  const [page, setPage] = useState(1);
+  const [creating, setCreating] = useState(false);
+
+  // Formulário de criação
+  const [fProcId, setFProcId] = useState("");
+  const [fContratoId, setFContratoId] = useState("");
+  const [fVendorId, setFVendorId] = useState("");
+  const [fCommitmentId, setFCommitmentId] = useState("");
+  const [fNF, setFNF] = useState("");
+  const [fData, setFData] = useState(new Date().toISOString().slice(0, 10));
+  const [fObs, setFObs] = useState("");
+  const [fItens, setFItens] = useState<{ item_almoxarifado_id: string; quantidade_recebida: string; valor_unitario: string }[]>([
+    { item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" },
+  ]);
+
+  const buildQS = () => {
+    const p = new URLSearchParams({ page: String(page), size: "20" });
+    if (fProcesso) p.set("processo_id", fProcesso);
+    if (fContrato) p.set("contrato_id", fContrato);
+    if (fStatus) p.set("status", fStatus);
+    if (fInicio) p.set("data_inicio", fInicio);
+    if (fFim) p.set("data_fim", fFim);
+    return p.toString();
+  };
+
+  const load = async () => {
+    try {
+      setRecs(await authJson(`/almoxarifado/recebimentos?${buildQS()}`));
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  useEffect(() => { load(); }, [page]);
+
+  const addLinha = () => setFItens((prev) => [...prev, { item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" }]);
+  const removeLinha = (i: number) => setFItens((prev) => prev.filter((_, idx) => idx !== i));
+
+  const handleCreate = async (ev: FormEvent) => {
+    ev.preventDefault();
+    try {
+      await authJson("/almoxarifado/recebimentos", {
+        method: "POST",
+        body: JSON.stringify({
+          processo_id: +fProcId,
+          contrato_id: fContratoId ? +fContratoId : null,
+          vendor_id: fVendorId ? +fVendorId : null,
+          commitment_id: fCommitmentId ? +fCommitmentId : null,
+          nota_fiscal: fNF,
+          data_recebimento: fData,
+          observacoes: fObs,
+          itens: fItens.map((it) => ({
+            item_almoxarifado_id: +it.item_almoxarifado_id,
+            quantidade_recebida: +it.quantidade_recebida,
+            valor_unitario: +it.valor_unitario,
+          })),
+        }),
+      });
+      setMsg("Recebimento registrado (pendente de confirmação).");
+      setCreating(false);
+      setFProcId(""); setFContratoId(""); setFNF(""); setFObs("");
+      setFItens([{ item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" }]);
+      load();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleConfirmar = async (id: number) => {
+    if (!confirm(`Confirmar recebimento #${id}?\nIsso criará entradas de estoque para cada item.`)) return;
+    try {
+      await authJson(`/almoxarifado/recebimentos/${id}/confirmar`, { method: "POST" });
+      setMsg(`Recebimento #${id} confirmado — estoques atualizados.`);
+      load();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleRecusar = async (id: number) => {
+    const motivo = prompt("Motivo da recusa:");
+    if (motivo === null) return;
+    try {
+      await authJson(`/almoxarifado/recebimentos/${id}/recusar?motivo=${encodeURIComponent(motivo)}`, { method: "POST" });
+      setMsg(`Recebimento #${id} recusado.`);
+      load();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  return (
+    <section className="section-stack">
+      <h2>Recebimentos de Material — Integração Compras ↔ Almoxarifado</h2>
+      <p className="muted">
+        Registre o recebimento físico de materiais vinculados a processos/contratos de compras.
+        Ao confirmar, as entradas de estoque são criadas automaticamente com rastreabilidade completa.
+      </p>
+
+      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8 }}>
+        <input placeholder="ID Processo" value={fProcesso} onChange={(e) => setFProcesso(e.target.value)} style={{ width: 110 }} />
+        <input placeholder="ID Contrato" value={fContrato} onChange={(e) => setFContrato(e.target.value)} style={{ width: 110 }} />
+        <select value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+          <option value="">Todos status</option>
+          <option value="pendente">Pendente</option>
+          <option value="conferido">Conferido</option>
+          <option value="recusado">Recusado</option>
+        </select>
+        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>De: <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)} /></label>
+        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>Até: <input type="date" value={fFim} onChange={(e) => setFFim(e.target.value)} /></label>
+        <button className="btn" onClick={() => { setPage(1); load(); }}>Filtrar</button>
+        {canWrite && <button className="btn" style={{ background: "#17a2b8", color: "white" }} onClick={() => setCreating(!creating)}>
+          {creating ? "Cancelar" : "+ Novo Recebimento"}
+        </button>}
+      </div>
+
+      {creating && canWrite && (
+        <div style={{ background: "#f0f8ff", border: "1px solid #bee5eb", borderRadius: 8, padding: 16, marginBottom: 12 }}>
+          <h3>Registrar Recebimento</h3>
+          <form className="form-grid" onSubmit={handleCreate}>
+            <label>ID do Processo *<input value={fProcId} onChange={(e) => setFProcId(e.target.value)} required /></label>
+            <label>ID do Contrato<input value={fContratoId} onChange={(e) => setFContratoId(e.target.value)} placeholder="opcional" /></label>
+            <label>ID do Fornecedor<input value={fVendorId} onChange={(e) => setFVendorId(e.target.value)} placeholder="opcional" /></label>
+            <label>ID do Empenho<input value={fCommitmentId} onChange={(e) => setFCommitmentId(e.target.value)} placeholder="opcional" /></label>
+            <label>Nota Fiscal<input value={fNF} onChange={(e) => setFNF(e.target.value)} /></label>
+            <label>Data do Recebimento<input type="date" value={fData} onChange={(e) => setFData(e.target.value)} required /></label>
+            <label style={{ gridColumn: "1/-1" }}>Observações<input value={fObs} onChange={(e) => setFObs(e.target.value)} /></label>
+
+            <div style={{ gridColumn: "1/-1" }}>
+              <h4 style={{ margin: "8px 0 4px" }}>Itens do Recebimento</h4>
+              {fItens.map((it, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center", flexWrap: "wrap" }}>
+                  <input placeholder="ID item" value={it.item_almoxarifado_id} style={{ width: 90 }}
+                    onChange={(e) => setFItens((prev) => prev.map((r, idx) => idx === i ? { ...r, item_almoxarifado_id: e.target.value } : r))} required />
+                  <input placeholder="Qtd" type="number" step="0.001" min="0.001" value={it.quantidade_recebida} style={{ width: 90 }}
+                    onChange={(e) => setFItens((prev) => prev.map((r, idx) => idx === i ? { ...r, quantidade_recebida: e.target.value } : r))} required />
+                  <input placeholder="Valor unit. R$" type="number" step="0.01" min="0" value={it.valor_unitario} style={{ width: 110 }}
+                    onChange={(e) => setFItens((prev) => prev.map((r, idx) => idx === i ? { ...r, valor_unitario: e.target.value } : r))} />
+                  {fItens.length > 1 && <button type="button" className="btn" onClick={() => removeLinha(i)}>×</button>}
+                </div>
+              ))}
+              <button type="button" className="btn" onClick={addLinha} style={{ marginTop: 4 }}>+ Item</button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, gridColumn: "1/-1" }}>
+              <button className="btn" type="submit" style={{ background: "#17a2b8", color: "white" }}>Registrar (Pendente)</button>
+              <button className="btn" type="button" onClick={() => setCreating(false)}>Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Processo</th><th>Contrato</th><th>Fornecedor</th>
+            <th>NF</th><th>Data</th><th>Itens</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {recs?.items.length ? recs.items.map((rec) => (
+            <tr key={rec.id}>
+              <td>{rec.id}</td>
+              <td>{rec.processo_id}</td>
+              <td>{rec.contrato_id || "—"}</td>
+              <td>{rec.vendor_id || "—"}</td>
+              <td>{rec.nota_fiscal || "—"}</td>
+              <td>{rec.data_recebimento}</td>
+              <td>{rec.itens?.length ?? "—"}</td>
+              <td><span className={`chip ${STATUS_CHIP[rec.status] || "pendente"}`}>{rec.status}</span></td>
+              <td style={{ display: "flex", gap: 4 }}>
+                {rec.status === "pendente" && canWrite && (
+                  <>
+                    <button className="btn" style={{ background: "#28a745", color: "white" }} onClick={() => handleConfirmar(rec.id)}>
+                      ✓ Confirmar
+                    </button>
+                    <button className="btn" style={{ background: "#dc3545", color: "white" }} onClick={() => handleRecusar(rec.id)}>
+                      ✗ Recusar
+                    </button>
+                  </>
+                )}
+                {rec.status !== "pendente" && (
+                  <span className="muted" style={{ fontSize: 12 }}>—</span>
+                )}
+              </td>
+            </tr>
+          )) : <tr><td colSpan={9} className="empty-state">Nenhum recebimento encontrado.</td></tr>}
+        </tbody>
+      </table>
+      <div className="pagination">
+        <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+        <span>Pág {page} · Total: {recs?.total || 0}</span>
+        <button className="btn" disabled={(recs?.items?.length || 0) < 20} onClick={() => setPage((p) => p + 1)}>Próxima</button>
       </div>
     </section>
   );

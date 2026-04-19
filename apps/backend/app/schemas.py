@@ -797,6 +797,57 @@ class MovimentacaoOut(BaseModel):
     documento_ref: str
     observacoes: str
     saldo_pos: float
+    processo_id: int | None = None
+    contrato_id: int | None = None
+    recebimento_id: int | None = None
     created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Integração Compras ↔ Almoxarifado ─────────────────────────────────────────
+
+class ItemRecebimentoCreate(BaseModel):
+    item_almoxarifado_id: int
+    quantidade_recebida: float
+    valor_unitario: float = 0.0
+
+
+class ItemRecebimentoOut(BaseModel):
+    id: int
+    recebimento_id: int
+    item_almoxarifado_id: int
+    quantidade_recebida: float
+    valor_unitario: float
+    valor_total: float
+    movimentacao_id: int | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecebimentoCreate(BaseModel):
+    processo_id: int
+    contrato_id: int | None = None
+    vendor_id: int | None = None
+    commitment_id: int | None = None
+    nota_fiscal: str = ""
+    data_recebimento: date
+    observacoes: str = ""
+    itens: list[ItemRecebimentoCreate]
+
+
+class RecebimentoOut(BaseModel):
+    id: int
+    processo_id: int
+    contrato_id: int | None
+    vendor_id: int | None
+    commitment_id: int | None
+    nota_fiscal: str
+    data_recebimento: date
+    status: str
+    observacoes: str
+    responsavel_id: int | None
+    created_at: datetime
+    itens: list[ItemRecebimentoOut] = []
 
     model_config = ConfigDict(from_attributes=True)

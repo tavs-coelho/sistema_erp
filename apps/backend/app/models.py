@@ -558,7 +558,48 @@ class MovimentacaoEstoque(Base):
     documento_ref: Mapped[str] = mapped_column(String(80), default="")        # NF, requisição, etc.
     observacoes: Mapped[str] = mapped_column(Text, default="")
     saldo_pos: Mapped[float] = mapped_column(Float, default=0.0)              # saldo após a movimentação
+    # Rastreabilidade de integração com Compras
+    processo_id: Mapped[int | None] = mapped_column(ForeignKey("procurement_processes.id"), nullable=True, index=True)
+    contrato_id: Mapped[int | None] = mapped_column(ForeignKey("contracts.id"), nullable=True, index=True)
+    recebimento_id: Mapped[int | None] = mapped_column(ForeignKey("recebimentos_material.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     item = relationship("ItemAlmoxarifado", back_populates="movimentacoes")
     departamento = relationship("Department", foreign_keys=[departamento_id])
     responsavel = relationship("User", foreign_keys=[responsavel_id])
+    processo = relationship("ProcurementProcess", foreign_keys=[processo_id])
+    contrato = relationship("Contract", foreign_keys=[contrato_id])
+
+
+class RecebimentoMaterial(Base):
+    """Recebimento físico de material vinculado a processo/contrato de compras."""
+    __tablename__ = "recebimentos_material"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    processo_id: Mapped[int] = mapped_column(ForeignKey("procurement_processes.id"), index=True)
+    contrato_id: Mapped[int | None] = mapped_column(ForeignKey("contracts.id"), nullable=True)
+    vendor_id: Mapped[int | None] = mapped_column(ForeignKey("vendors.id"), nullable=True)
+    commitment_id: Mapped[int | None] = mapped_column(ForeignKey("commitments.id"), nullable=True)
+    nota_fiscal: Mapped[str] = mapped_column(String(60), default="")
+    data_recebimento: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="pendente")       # pendente, conferido, recusado
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    responsavel_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    itens = relationship("ItemRecebimento", back_populates="recebimento", cascade="all, delete-orphan")
+    processo = relationship("ProcurementProcess", foreign_keys=[processo_id])
+    contrato = relationship("Contract", foreign_keys=[contrato_id])
+    vendor = relationship("Vendor", foreign_keys=[vendor_id])
+    responsavel = relationship("User", foreign_keys=[responsavel_id])
+
+
+class ItemRecebimento(Base):
+    """Linha de item em um recebimento de material."""
+    __tablename__ = "itens_recebimento"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recebimento_id: Mapped[int] = mapped_column(ForeignKey("recebimentos_material.id"), index=True)
+    item_almoxarifado_id: Mapped[int] = mapped_column(ForeignKey("itens_almoxarifado.id"))
+    quantidade_recebida: Mapped[float] = mapped_column(Float)
+    valor_unitario: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_total: Mapped[float] = mapped_column(Float, default=0.0)
+    movimentacao_id: Mapped[int | None] = mapped_column(ForeignKey("movimentacoes_estoque.id"), nullable=True)
+    recebimento = relationship("RecebimentoMaterial", back_populates="itens")
+    item_almoxarifado = relationship("ItemAlmoxarifado", foreign_keys=[item_almoxarifado_id])

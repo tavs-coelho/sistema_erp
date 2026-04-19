@@ -6,6 +6,7 @@ Cobre:
   - Saídas / requisições por departamento
   - Saldo atual por item
   - Histórico de movimentações com filtros e exportação CSV
+  - Recebimento de material vinculado a processo/contrato de compras
 """
 
 import csv
@@ -18,13 +19,27 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import Department, ItemAlmoxarifado, MovimentacaoEstoque, RoleEnum, User
+from ..models import (
+    Commitment,
+    Contract,
+    Department,
+    ItemAlmoxarifado,
+    ItemRecebimento,
+    MovimentacaoEstoque,
+    ProcurementProcess,
+    RecebimentoMaterial,
+    RoleEnum,
+    User,
+    Vendor,
+)
 from ..schemas import (
     ItemAlmoxarifadoCreate,
     ItemAlmoxarifadoOut,
     ItemAlmoxarifadoUpdate,
     MovimentacaoCreate,
     MovimentacaoOut,
+    RecebimentoCreate,
+    RecebimentoOut,
 )
 
 router = APIRouter(prefix="/almoxarifado", tags=["almoxarifado"])
@@ -316,3 +331,206 @@ def dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_user)
         "entradas_no_mes": entradas_mes,
         "saidas_no_mes": saidas_mes,
     }
+
+
+# ── Recebimentos de Material (Integração Compras ↔ Almoxarifado) ──────────────
+
+@router.post("/recebimentos", response_model=RecebimentoOut, status_code=201)
+def criar_recebimento(
+    data: RecebimentoCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Registra recebimento físico de material vinculado a processo/contrato.
+
+    O recebimento fica com status='pendente' até ser confirmado.
+    Apenas ao confirmar (`POST /recebimentos/{id}/confirmar`) o estoque é atualizado.
+    """
+    if not db.get(ProcurementProcess, data.processo_id):
+        raise HTTPException(404, "Processo de compra não encontrado.")
+    if data.contrato_id and not db.get(Contract, data.contrato_id):
+        raise HTTPException(404, "Contrato não encontrado.")
+    if data.vendor_id and not db.get(Vendor, data.vendor_id):
+        raise HTTPException(404, "Fornecedor não encontrado.")
+    if data.commitment_id and not db.get(Commitment, data.commitment_id):
+        raise HTTPException(404, "Empenho não encontrado.")
+    if not data.itens:
+        raise HTTPException(422, "O recebimento deve ter ao menos um item.")
+
+    for i, it in enumerate(data.itens):
+        item_alm = db.get(ItemAlmoxarifado, it.item_almoxarifado_id)
+        if not item_alm:
+            raise HTTPException(404, f"Item almoxarifado id={it.item_almoxarifado_id} não encontrado.")
+        if not item_alm.ativo:
+            raise HTTPException(422, f"Item '{item_alm.codigo}' está inativo.")
+        if it.quantidade_recebida <= 0:
+            raise HTTPException(422, f"Quantidade do item #{i+1} deve ser positiva.")
+
+    rec = RecebimentoMaterial(
+        processo_id=data.processo_id,
+        contrato_id=data.contrato_id,
+        vendor_id=data.vendor_id,
+        commitment_id=data.commitment_id,
+        nota_fiscal=data.nota_fiscal,
+        data_recebimento=data.data_recebimento,
+        status="pendente",
+        observacoes=data.observacoes,
+        responsavel_id=current_user.id,
+    )
+    db.add(rec)
+    db.flush()
+
+    for it in data.itens:
+        vt = round(it.quantidade_recebida * it.valor_unitario, 2)
+        ir = ItemRecebimento(
+            recebimento_id=rec.id,
+            item_almoxarifado_id=it.item_almoxarifado_id,
+            quantidade_recebida=it.quantidade_recebida,
+            valor_unitario=it.valor_unitario,
+            valor_total=vt,
+        )
+        db.add(ir)
+
+    db.flush()
+    write_audit(db, user_id=current_user.id, entity="recebimentos_material", entity_id=str(rec.id),
+                action="create", after_data={
+                    "processo_id": data.processo_id, "nota_fiscal": data.nota_fiscal,
+                    "data_recebimento": str(data.data_recebimento), "status": "pendente",
+                    "n_itens": len(data.itens),
+                })
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+@router.post("/recebimentos/{rec_id}/confirmar", response_model=RecebimentoOut)
+def confirmar_recebimento(
+    rec_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Confirma o recebimento, gerando automaticamente entradas de estoque para cada item.
+
+    Regras:
+    - Status deve ser 'pendente'.
+    - Para cada ItemRecebimento cria um MovimentacaoEstoque (entrada).
+    - Atualiza estoque_atual e valor_unitario (custo médio ponderado) do ItemAlmoxarifado.
+    - Registra processo_id, contrato_id e recebimento_id na movimentação para rastreabilidade.
+    """
+    rec = db.get(RecebimentoMaterial, rec_id)
+    if not rec:
+        raise HTTPException(404, "Recebimento não encontrado.")
+    if rec.status != "pendente":
+        raise HTTPException(422, f"Recebimento já está '{rec.status}' — não pode ser confirmado novamente.")
+
+    processo = db.get(ProcurementProcess, rec.processo_id)
+    obs_base = f"Recebimento #{rec.id} — Processo {processo.number if processo else rec.processo_id}"
+    if rec.nota_fiscal:
+        obs_base += f" — NF {rec.nota_fiscal}"
+
+    for ir in rec.itens:
+        item = db.get(ItemAlmoxarifado, ir.item_almoxarifado_id)
+        if not item:
+            raise HTTPException(404, f"Item almoxarifado id={ir.item_almoxarifado_id} não encontrado.")
+        if not item.ativo:
+            raise HTTPException(422, f"Item '{item.codigo}' foi inativado — confirme após reativar.")
+
+        valor_total = round(ir.quantidade_recebida * ir.valor_unitario, 2)
+
+        # Atualiza estoque e custo médio ponderado
+        novo_saldo = round(item.estoque_atual + ir.quantidade_recebida, 4)
+        if ir.valor_unitario > 0:
+            total_custo = (item.estoque_atual * item.valor_unitario) + valor_total
+            item.valor_unitario = round(total_custo / novo_saldo, 4)
+        item.estoque_atual = novo_saldo
+
+        mov = MovimentacaoEstoque(
+            item_id=item.id,
+            tipo="entrada",
+            quantidade=ir.quantidade_recebida,
+            valor_unitario=ir.valor_unitario,
+            valor_total=valor_total,
+            data_movimentacao=rec.data_recebimento,
+            responsavel_id=current_user.id,
+            documento_ref=rec.nota_fiscal or f"REC-{rec.id}",
+            observacoes=obs_base,
+            saldo_pos=novo_saldo,
+            processo_id=rec.processo_id,
+            contrato_id=rec.contrato_id,
+            recebimento_id=rec.id,
+        )
+        db.add(mov)
+        db.flush()
+        ir.movimentacao_id = mov.id
+        ir.valor_total = valor_total
+
+    rec.status = "conferido"
+    db.flush()
+    write_audit(db, user_id=current_user.id, entity="recebimentos_material", entity_id=str(rec.id),
+                action="confirmar", after_data={"status": "conferido", "n_itens": len(rec.itens)})
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+@router.post("/recebimentos/{rec_id}/recusar", response_model=RecebimentoOut)
+def recusar_recebimento(
+    rec_id: int,
+    motivo: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Marca o recebimento como recusado (material devolvido ao fornecedor)."""
+    rec = db.get(RecebimentoMaterial, rec_id)
+    if not rec:
+        raise HTTPException(404, "Recebimento não encontrado.")
+    if rec.status != "pendente":
+        raise HTTPException(422, f"Recebimento já está '{rec.status}'.")
+    rec.status = "recusado"
+    if motivo:
+        rec.observacoes = (rec.observacoes + f"\n[Recusa] {motivo}").strip()
+    db.flush()
+    write_audit(db, user_id=current_user.id, entity="recebimentos_material", entity_id=str(rec.id),
+                action="recusar", after_data={"status": "recusado", "motivo": motivo})
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+@router.get("/recebimentos", response_model=None)
+def list_recebimentos(
+    processo_id: int | None = None,
+    contrato_id: int | None = None,
+    vendor_id: int | None = None,
+    status: str | None = None,
+    data_inicio: date | None = None,
+    data_fim: date | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista recebimentos com filtros e paginação."""
+    q = db.query(RecebimentoMaterial)
+    if processo_id:
+        q = q.filter(RecebimentoMaterial.processo_id == processo_id)
+    if contrato_id:
+        q = q.filter(RecebimentoMaterial.contrato_id == contrato_id)
+    if vendor_id:
+        q = q.filter(RecebimentoMaterial.vendor_id == vendor_id)
+    if status:
+        q = q.filter(RecebimentoMaterial.status == status)
+    if data_inicio:
+        q = q.filter(RecebimentoMaterial.data_recebimento >= data_inicio)
+    if data_fim:
+        q = q.filter(RecebimentoMaterial.data_recebimento <= data_fim)
+    q = q.order_by(RecebimentoMaterial.id.desc())
+    return _paginate(q, page, size)
+
+
+@router.get("/recebimentos/{rec_id}", response_model=RecebimentoOut)
+def get_recebimento(rec_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    rec = db.get(RecebimentoMaterial, rec_id)
+    if not rec:
+        raise HTTPException(404, "Recebimento não encontrado.")
+    return rec

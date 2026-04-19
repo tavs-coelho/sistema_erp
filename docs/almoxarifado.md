@@ -127,3 +127,102 @@ curl "/almoxarifado/movimentacoes?item_id=1&export=csv" -H "Authorization: Beare
 | Lote e validade (para medicamentos) | Média | Campo de lote e data de validade nas entradas |
 | Integração com Compras (ProcurementProcess) | Alta | Entrada automática ao empenhar/pagar fornecedor |
 | Transferência entre almoxarifados | Baixa | Para municípios com múltiplos depósitos |
+
+---
+
+## Integração Almoxarifado ↔ Compras
+
+### Modelos Adicionais
+
+**`RecebimentoMaterial`** — representa o ato físico de recepção de materiais:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `processo_id` | FK | Processo licitatório de origem |
+| `contrato_id` | FK | Contrato vinculado (opcional) |
+| `vendor_id` | FK | Fornecedor (opcional, pode estar no contrato) |
+| `commitment_id` | FK | Empenho vinculado (opcional) |
+| `nota_fiscal` | String(60) | Número da nota fiscal do fornecedor |
+| `data_recebimento` | Date | Data da entrega física |
+| `status` | String(20) | `pendente`, `conferido`, `recusado` |
+| `responsavel_id` | FK | Usuário que registrou o recebimento |
+
+**`ItemRecebimento`** — linha de item no recebimento:
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `recebimento_id` | FK | Recebimento pai |
+| `item_almoxarifado_id` | FK | Item do almoxarifado correspondente |
+| `quantidade_recebida` | Float | Quantidade entregue fisicamente |
+| `valor_unitario` | Float | Preço unitário da nota fiscal |
+| `movimentacao_id` | FK | `MovimentacaoEstoque` gerada ao confirmar |
+
+**Campos adicionados a `MovimentacaoEstoque`:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `processo_id` | FK | Rastreabilidade: processo de origem |
+| `contrato_id` | FK | Rastreabilidade: contrato de origem |
+| `recebimento_id` | FK | Rastreabilidade: recebimento que gerou a entrada |
+
+### Fluxo Ponta a Ponta
+
+```
+Processo Licitatório  →  Contrato  →  Empenho
+          ↓
+   Recebimento de Material (status=pendente)
+          ↓
+   Conferência física / CONFIRMAR
+          ↓
+   MovimentacaoEstoque (entrada) gerada automaticamente
+   ↗ processo_id, contrato_id, recebimento_id preenchidos
+          ↓
+   ItemAlmoxarifado.estoque_atual atualizado
+   ItemAlmoxarifado.valor_unitario (custo médio) atualizado
+```
+
+### Novos Endpoints
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| POST | `/almoxarifado/recebimentos` | Cria recebimento (status=pendente) |
+| POST | `/almoxarifado/recebimentos/{id}/confirmar` | Confirma → gera entradas de estoque |
+| POST | `/almoxarifado/recebimentos/{id}/recusar` | Recusa (material devolvido) |
+| GET | `/almoxarifado/recebimentos` | Lista com filtros |
+| GET | `/almoxarifado/recebimentos/{id}` | Detalhe + itens |
+| GET | `/procurement/processes/{id}/recebimentos` | Recebimentos de um processo |
+| GET | `/procurement/contracts/{id}/recebimentos` | Recebimentos de um contrato |
+
+### Regras de Negócio da Integração
+
+1. **Recebimento pendente**: registra a intenção de entrada sem modificar o estoque.
+2. **Confirmação**: cria um `MovimentacaoEstoque` por item, atualiza `estoque_atual` e recalcula custo médio ponderado.
+3. **Recusa**: não altera estoque; registra motivo em `observacoes`; fluxo de devolução ao fornecedor fica fora do sistema por ora.
+4. **Idempotência**: confirmar um recebimento já `conferido` retorna HTTP 422.
+5. **Rastreabilidade**: toda entrada via recebimento carrega `processo_id`, `contrato_id` e `recebimento_id` na movimentação — permite auditoria e consulta bidirecional.
+
+### Exemplo de uso via API
+
+```bash
+# 1. Criar recebimento (após entrega física)
+curl -X POST /almoxarifado/recebimentos \
+  -d '{
+    "processo_id": 3, "contrato_id": 2, "vendor_id": 1,
+    "nota_fiscal": "NF-45678", "data_recebimento": "2026-04-19",
+    "itens": [
+      {"item_almoxarifado_id": 5, "quantidade_recebida": 100, "valor_unitario": 25.90},
+      {"item_almoxarifado_id": 8, "quantidade_recebida": 20,  "valor_unitario": 12.50}
+    ]
+  }'
+
+# 2. Conferir e confirmar (altera estoque)
+curl -X POST /almoxarifado/recebimentos/7/confirmar
+
+# 3. Verificar saldo e rastreabilidade
+curl /almoxarifado/saldo/5
+curl "/almoxarifado/movimentacoes?item_id=5"
+# → movimentação retorna processo_id=3, contrato_id=2, recebimento_id=7
+
+# 4. Consultar todos recebimentos de um processo
+curl /procurement/processes/3/recebimentos
+```

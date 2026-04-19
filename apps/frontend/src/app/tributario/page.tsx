@@ -39,7 +39,7 @@ const CHIP_GUIA: Record<string, string> = { emitida: "empenhado", paga: "pago", 
 export default function TributarioPage() {
   const [msg, setMsg] = useState("");
   const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
-  const [tab, setTab] = useState<"dashboard" | "contribuintes" | "imoveis" | "lancamentos" | "guias" | "divida">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "contribuintes" | "imoveis" | "lancamentos" | "guias" | "divida" | "aliquotas" | "parcelamentos" | "relatorio">("dashboard");
 
   // Dashboard
   const [dash, setDash] = useState<Dashboard | null>(null);
@@ -252,6 +252,9 @@ export default function TributarioPage() {
     { key: "lancamentos", label: "Lançamentos" },
     { key: "guias", label: "Guias" },
     { key: "divida", label: "Dívida Ativa" },
+    { key: "aliquotas", label: "Alíquotas IPTU" },
+    { key: "parcelamentos", label: "Parcelamentos" },
+    { key: "relatorio", label: "Relatório Arrecadação" },
   ] as const;
 
   return (
@@ -581,6 +584,325 @@ export default function TributarioPage() {
           </section>
         </div>
       )}
+
+      {/* ── Alíquotas IPTU ──────────────────────────────────────────────── */}
+      {tab === "aliquotas" && <AliquotasTab msg={msg} setMsg={setMsg} />}
+
+      {/* ── Parcelamentos ───────────────────────────────────────────────── */}
+      {tab === "parcelamentos" && <ParcelamentosTab msg={msg} setMsg={setMsg} />}
+
+      {/* ── Relatório de Arrecadação ─────────────────────────────────────── */}
+      {tab === "relatorio" && <RelatorioArrecadacaoTab />}
+
     </main>
   );
 }
+
+// ── Alíquotas IPTU Tab ────────────────────────────────────────────────────────
+
+type Aliquota = { id: number; exercicio: number; uso: string; aliquota: number; descricao: string };
+
+function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+  const [exercicio, setExercicio] = useState(new Date().getFullYear());
+  const [gerarExercicio, setGerarExercicio] = useState(new Date().getFullYear());
+  const [gerarVenc, setGerarVenc] = useState(`${new Date().getFullYear()}-03-31`);
+  const [aliquotas, setAliquotas] = useState<Aliquota[]>([]);
+  const [uso, setUso] = useState("residencial");
+  const [aliquota, setAliquota] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+
+  const load = async () => {
+    try {
+      const d = await authJson(`/tributario/aliquotas-iptu?exercicio=${exercicio}`);
+      setAliquotas(d);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  useEffect(() => { load(); }, [exercicio]);
+
+  const handleCreate = async (ev: FormEvent) => {
+    ev.preventDefault();
+    try {
+      await authJson("/tributario/aliquotas-iptu", {
+        method: "POST", body: JSON.stringify({ exercicio, uso, aliquota: parseFloat(aliquota), descricao }),
+      });
+      setMsg("Alíquota cadastrada."); setAliquota(""); setDescricao(""); load();
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Excluir alíquota?")) return;
+    try {
+      await authJson(`/tributario/aliquotas-iptu/${id}`, { method: "DELETE" });
+      setMsg("Alíquota removida."); load();
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const handleGerarIPTU = async (ev: FormEvent) => {
+    ev.preventDefault();
+    try {
+      const r = await authJson(`/tributario/lancamentos/gerar-iptu?exercicio=${gerarExercicio}&vencimento=${gerarVenc}`, { method: "POST" });
+      setMsg(`IPTU gerado: ${r.gerados} lançamentos criados. Ignorados: já existia=${r.ignorados_ja_existia}, sem alíquota=${r.ignorados_sem_aliquota}, valor zero=${r.ignorados_valor_zero}.`);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  return (
+    <section className="section-stack" style={{ marginTop: 12 }}>
+      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+      <h2>Alíquotas IPTU por Uso</h2>
+      <div className="toolbar">
+        <label>Exercício:</label>
+        <input type="number" value={exercicio} onChange={(e) => setExercicio(+e.target.value)} style={{ width: 100 }} />
+      </div>
+      <table>
+        <thead><tr><th>Exercício</th><th>Uso</th><th>Alíquota (%)</th><th>Descrição</th><th>Ação</th></tr></thead>
+        <tbody>
+          {aliquotas.length > 0 ? aliquotas.map((a) => (
+            <tr key={a.id}>
+              <td>{a.exercicio}</td>
+              <td>{a.uso}</td>
+              <td>{(a.aliquota * 100).toFixed(3)}%</td>
+              <td>{a.descricao}</td>
+              <td><button className="btn" onClick={() => handleDelete(a.id)}>Excluir</button></td>
+            </tr>
+          )) : <tr><td colSpan={5} className="empty-state">Nenhuma alíquota cadastrada para este exercício.</td></tr>}
+        </tbody>
+      </table>
+      <details open>
+        <summary style={{ cursor: "pointer", marginBottom: 8 }}>Cadastrar nova alíquota</summary>
+        <form className="form-grid" onSubmit={handleCreate}>
+          <label>Uso
+            <select value={uso} onChange={(e) => setUso(e.target.value)}>
+              {["residencial", "comercial", "industrial", "rural"].map((u) => <option key={u}>{u}</option>)}
+            </select>
+          </label>
+          <label>Alíquota (ex: 0.005 = 0.5%)
+            <input type="number" step="0.0001" value={aliquota} onChange={(e) => setAliquota(e.target.value)} required />
+          </label>
+          <label>Descrição
+            <input value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+          </label>
+          <button className="btn" type="submit">Cadastrar</button>
+        </form>
+      </details>
+
+      <hr />
+      <h2>Gerar IPTU em Lote</h2>
+      <p className="muted">Gera lançamentos de IPTU para todos os imóveis ativos com alíquota configurada para o exercício.</p>
+      <form className="form-grid" onSubmit={handleGerarIPTU}>
+        <label>Exercício
+          <input type="number" value={gerarExercicio} onChange={(e) => setGerarExercicio(+e.target.value)} style={{ width: 100 }} />
+        </label>
+        <label>Vencimento
+          <input type="date" value={gerarVenc} onChange={(e) => setGerarVenc(e.target.value)} required />
+        </label>
+        <button className="btn" type="submit">Gerar IPTU</button>
+      </form>
+    </section>
+  );
+}
+
+// ── Parcelamentos Tab ─────────────────────────────────────────────────────────
+
+type Parcelamento = { id: number; divida_id: number; numero_parcelas: number; valor_total: number; data_acordo: string; status: string; parcelas: Parcela[] };
+type Parcela = { id: number; numero_parcela: number; valor: number; vencimento: string; status: string; data_pagamento: string | null };
+
+function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+  const [dividaId, setDividaId] = useState("");
+  const [parcelamentos, setParcelamentos] = useState<Paged<Parcelamento> | null>(null);
+  const [selected, setSelected] = useState<Parcelamento | null>(null);
+  const [numParcelas, setNumParcelas] = useState("6");
+  const [valorTotal, setValorTotal] = useState("");
+  const [dataAcordo, setDataAcordo] = useState(new Date().toISOString().slice(0, 10));
+  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+
+  const load = async () => {
+    try {
+      const qs = dividaId ? `?divida_id=${dividaId}` : "?page=1&size=20";
+      const d = await authJson(`/tributario/parcelamentos${qs}`);
+      setParcelamentos(d);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const loadDetail = async (id: number) => {
+    try {
+      const d = await authJson(`/tributario/parcelamentos/${id}`);
+      setSelected(d);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const handleCreate = async (ev: FormEvent) => {
+    ev.preventDefault();
+    if (!dividaId) { setMsg("Informe o ID da dívida ativa."); return; }
+    try {
+      await authJson("/tributario/parcelamentos", {
+        method: "POST",
+        body: JSON.stringify({ divida_id: +dividaId, numero_parcelas: +numParcelas, valor_total: +valorTotal, data_acordo: dataAcordo }),
+      });
+      setMsg("Parcelamento criado."); load();
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const handlePagar = async (pid: number, parcId: number) => {
+    const dataPag = prompt("Data de pagamento (YYYY-MM-DD):", new Date().toISOString().slice(0, 10));
+    if (!dataPag) return;
+    try {
+      const r = await authJson(`/tributario/parcelamentos/${pid}/parcelas/${parcId}/pagar`, {
+        method: "POST", body: JSON.stringify({ data_pagamento: dataPag }),
+      });
+      setMsg(r.parcelamento_quitado ? "Parcelamento quitado! Dívida encerrada." : "Parcela registrada.");
+      loadDetail(pid);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <section className="section-stack" style={{ marginTop: 12 }}>
+      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+      <h2>Parcelamentos de Dívida Ativa</h2>
+      <div className="toolbar">
+        <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} style={{ width: 200 }} />
+        <button className="btn" onClick={load}>Buscar</button>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Dívida ID</th><th>Parcelas</th><th>Valor total</th><th>Data acordo</th><th>Status</th><th>Detalhe</th></tr></thead>
+        <tbody>
+          {(parcelamentos?.items || []).length > 0 ? parcelamentos!.items.map((p) => (
+            <tr key={p.id}>
+              <td>{p.id}</td>
+              <td>{p.divida_id}</td>
+              <td>{p.numero_parcelas}</td>
+              <td>{fmtBRL(p.valor_total)}</td>
+              <td>{p.data_acordo}</td>
+              <td><span className={`chip ${p.status === "quitado" ? "pago" : p.status === "ativo" ? "empenhado" : "pendente"}`}>{p.status}</span></td>
+              <td><button className="btn" onClick={() => loadDetail(p.id)}>Ver parcelas</button></td>
+            </tr>
+          )) : <tr><td colSpan={7} className="empty-state">Nenhum parcelamento encontrado.</td></tr>}
+        </tbody>
+      </table>
+
+      {selected && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Parcelas do Parcelamento #{selected.id}</h3>
+          <table>
+            <thead><tr><th>#</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Pagamento</th><th>Ação</th></tr></thead>
+            <tbody>
+              {selected.parcelas.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.numero_parcela}</td>
+                  <td>{fmtBRL(p.valor)}</td>
+                  <td>{p.vencimento}</td>
+                  <td><span className={`chip ${p.status === "paga" ? "pago" : "pendente"}`}>{p.status}</span></td>
+                  <td>{p.data_pagamento || "—"}</td>
+                  <td>{p.status !== "paga" && <button className="btn" onClick={() => handlePagar(selected.id, p.id)}>Pagar</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <details>
+        <summary style={{ cursor: "pointer", marginTop: 16 }}>Criar novo parcelamento</summary>
+        <form className="form-grid" onSubmit={handleCreate} style={{ marginTop: 8 }}>
+          <label>ID da Dívida Ativa *
+            <input value={dividaId} onChange={(e) => setDividaId(e.target.value)} required />
+          </label>
+          <label>Nº de parcelas
+            <input type="number" min={1} value={numParcelas} onChange={(e) => setNumParcelas(e.target.value)} required />
+          </label>
+          <label>Valor total (R$)
+            <input type="number" step="0.01" value={valorTotal} onChange={(e) => setValorTotal(e.target.value)} required />
+          </label>
+          <label>Data do acordo
+            <input type="date" value={dataAcordo} onChange={(e) => setDataAcordo(e.target.value)} required />
+          </label>
+          <button className="btn" type="submit">Criar Parcelamento</button>
+        </form>
+      </details>
+    </section>
+  );
+}
+
+// ── Relatório de Arrecadação Tab ──────────────────────────────────────────────
+
+function RelatorioArrecadacaoTab() {
+  const [tributo, setTributo] = useState("");
+  const [exercicio, setExercicio] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [data, setData] = useState<{ total_arrecadado: number; registros: { tributo: string; exercicio: number; competencia: string; qtd_lancamentos: number; valor_total: number }[] } | null>(null);
+  const [msg, setMsg] = useState("");
+  const isError = msg.toLowerCase().includes("erro");
+
+  const buildQS = () => {
+    const p = new URLSearchParams();
+    if (tributo) p.set("tributo", tributo);
+    if (exercicio) p.set("exercicio", exercicio);
+    if (dataInicio) p.set("data_inicio", dataInicio);
+    if (dataFim) p.set("data_fim", dataFim);
+    return p.toString();
+  };
+
+  const load = async () => {
+    try {
+      const d = await authJson(`/tributario/relatorio/arrecadacao?${buildQS()}`);
+      setData(d);
+    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+  };
+
+  const csvHref = () => {
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const p = new URLSearchParams({ export: "csv" });
+    if (tributo) p.set("tributo", tributo);
+    if (exercicio) p.set("exercicio", exercicio);
+    if (dataInicio) p.set("data_inicio", dataInicio);
+    if (dataFim) p.set("data_fim", dataFim);
+    return `${API}/tributario/relatorio/arrecadacao?${p.toString()}`;
+  };
+
+  const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <section className="section-stack" style={{ marginTop: 12 }}>
+      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+      <h2>Relatório Consolidado de Arrecadação</h2>
+      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8 }}>
+        <select value={tributo} onChange={(e) => setTributo(e.target.value)}>
+          <option value="">Todos os tributos</option>
+          {["IPTU","ISS","ITBI","TAXA_LIXO","TAXA_ILUMINACAO","TAXA_OBRAS"].map((t) => <option key={t}>{t}</option>)}
+        </select>
+        <input type="number" placeholder="Exercício" value={exercicio} onChange={(e) => setExercicio(e.target.value)} style={{ width: 110 }} />
+        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
+        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
+        <button className="btn" onClick={load}>Filtrar</button>
+        <a className="btn" href={csvHref()} target="_blank" rel="noreferrer">Exportar CSV</a>
+      </div>
+
+      {data && (
+        <>
+          <div style={{ margin: "12px 0", fontWeight: 600 }}>
+            Total arrecadado: {fmtBRL(data.total_arrecadado)}
+          </div>
+          <table>
+            <thead><tr><th>Tributo</th><th>Exercício</th><th>Competência</th><th>Qtd lançamentos</th><th>Valor total</th></tr></thead>
+            <tbody>
+              {data.registros.length > 0 ? data.registros.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.tributo}</td>
+                  <td>{r.exercicio}</td>
+                  <td>{r.competencia}</td>
+                  <td>{r.qtd_lancamentos}</td>
+                  <td>{fmtBRL(r.valor_total)}</td>
+                </tr>
+              )) : <tr><td colSpan={5} className="empty-state">Nenhum registro encontrado.</td></tr>}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
+  );
+}
+

@@ -80,9 +80,16 @@ curl -sf https://erp.prefeitura.gov.br/api/health | jq .
 
 ### 5.2 Lançamento em massa de IPTU
 
-1. Conferir valor venal de todos os imóveis (atualização conforme Planta Genérica de Valores)
-2. Executar lançamento em lote via API ou script `POST /tributario/lancamentos` por contribuinte
-3. Emitir guias para envio postal (futura integração DETRAN/Correios)
+1. Conferir valor venal de todos os imóveis (atualização conforme Planta Genérica de Valores) — editar imóveis em `Módulo Tributário → Imóveis`.
+2. Verificar/cadastrar alíquotas em `Módulo Tributário → Alíquotas IPTU` para o exercício do ano.
+   - Alíquotas configuráveis por uso (residencial, comercial, industrial, rural).
+   - Exemplo: residencial 0.5%, comercial 1.2%, industrial 1.5%.
+3. Na aba **Alíquotas IPTU**, clicar em **Gerar IPTU** informando exercício e data de vencimento.
+   - O sistema calcula automaticamente: `valor_principal = valor_venal × alíquota`.
+   - Imóveis com `valor_venal = 0`, sem alíquota configurada ou já com lançamento para o exercício são ignorados automaticamente.
+   - O endpoint é **idempotente**: pode ser chamado novamente sem duplicar lançamentos.
+4. Conferir o resumo retornado: `gerados`, `ignorados_ja_existia`, `ignorados_sem_aliquota`, `ignorados_valor_zero`.
+5. Via API: `POST /tributario/lancamentos/gerar-iptu?exercicio=YYYY&vencimento=YYYY-MM-DD` (requer perfil admin ou accountant).
 
 ### 5.3 Revisão de dívida ativa
 

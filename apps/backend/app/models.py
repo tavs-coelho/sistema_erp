@@ -403,6 +403,47 @@ class DividaAtiva(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     lancamento = relationship("LancamentoTributario")
     contribuinte = relationship("Contribuinte")
+    parcelas = relationship("ParcelaDivida", back_populates="divida", cascade="all, delete-orphan", order_by="ParcelaDivida.numero_parcela")
+
+
+class ParcelamentoDivida(Base):
+    """Acordo de parcelamento de dívida ativa."""
+    __tablename__ = "parcelamentos_divida"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    divida_id: Mapped[int] = mapped_column(ForeignKey("divida_ativa.id"))
+    numero_parcelas: Mapped[int] = mapped_column(Integer)
+    valor_total: Mapped[float] = mapped_column(Float)       # valor acordado total (pode incluir desconto de mora)
+    data_acordo: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="ativo")    # ativo, quitado, cancelado, inadimplente
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    divida = relationship("DividaAtiva", foreign_keys=[divida_id])
+    parcelas = relationship("ParcelaDivida", back_populates="parcelamento", cascade="all, delete-orphan", order_by="ParcelaDivida.numero_parcela")
+
+
+class ParcelaDivida(Base):
+    """Parcela individual de um parcelamento de dívida ativa."""
+    __tablename__ = "parcelas_divida"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    parcelamento_id: Mapped[int] = mapped_column(ForeignKey("parcelamentos_divida.id"))
+    divida_id: Mapped[int] = mapped_column(ForeignKey("divida_ativa.id"))
+    numero_parcela: Mapped[int] = mapped_column(Integer)
+    valor: Mapped[float] = mapped_column(Float)
+    vencimento: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="aberta")   # aberta, paga, vencida, cancelada
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    parcelamento = relationship("ParcelamentoDivida", back_populates="parcelas")
+    divida = relationship("DividaAtiva", foreign_keys=[divida_id], back_populates="parcelas")
+
+
+class AliquotaIPTU(Base):
+    """Tabela de alíquotas de IPTU por uso do imóvel e exercício fiscal."""
+    __tablename__ = "aliquotas_iptu"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    exercicio: Mapped[int] = mapped_column(Integer, index=True)         # ano de vigência
+    uso: Mapped[str] = mapped_column(String(30))                        # residencial, comercial, industrial, rural
+    aliquota: Mapped[float] = mapped_column(Float)                      # ex: 0.005 = 0.5%
+    descricao: Mapped[str] = mapped_column(String(120), default="")
 
 
 # ── Módulo orçamentário: PPA / LDO / LOA ─────────────────────────────────────

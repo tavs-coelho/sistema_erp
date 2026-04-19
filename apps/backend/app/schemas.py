@@ -662,3 +662,73 @@ class DividaAtivaOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Alíquotas IPTU ────────────────────────────────────────────────────────────
+
+class AliquotaIPTUCreate(BaseModel):
+    exercicio: int
+    uso: str
+    aliquota: float
+    descricao: str = ""
+
+
+class AliquotaIPTUUpdate(BaseModel):
+    aliquota: float | None = None
+    descricao: str | None = None
+
+
+class AliquotaIPTUOut(BaseModel):
+    id: int
+    exercicio: int
+    uso: str
+    aliquota: float
+    descricao: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Parcelamento de dívida ativa ──────────────────────────────────────────────
+
+class ParcelamentoDividaCreate(BaseModel):
+    divida_id: int
+    numero_parcelas: int
+    valor_total: float
+    data_acordo: date
+    observacoes: str = ""
+
+
+class ParcelamentoDividaUpdate(BaseModel):
+    status: str | None = None
+    observacoes: str | None = None
+
+
+class ParcelaDividaOut(BaseModel):
+    id: int
+    parcelamento_id: int
+    divida_id: int
+    numero_parcela: int
+    valor: float
+    vencimento: date
+    status: str
+    data_pagamento: date | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ParcelaDividaBaixa(BaseModel):
+    data_pagamento: date
+
+
+class ParcelamentoDividaOut(BaseModel):
+    id: int
+    divida_id: int
+    numero_parcelas: int
+    valor_total: float
+    data_acordo: date
+    status: str
+    observacoes: str
+    created_at: datetime
+    parcelas: list["ParcelaDividaOut"] = []
+
+    model_config = ConfigDict(from_attributes=True)

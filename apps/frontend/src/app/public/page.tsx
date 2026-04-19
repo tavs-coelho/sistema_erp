@@ -24,6 +24,11 @@ type Tab = "inicio" | "empenhos" | "contratos" | "licitacoes" | "convenios" | "a
 
 function fmt(v: number) { return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
+function csvUrl(base: string, params: Record<string, string>): string {
+  const qs = new URLSearchParams({ ...params, export: "csv" });
+  return `${API_URL}${base}?${qs.toString()}`;
+}
+
 async function publicFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -132,7 +137,6 @@ export default function PublicPage() {
   useEffect(() => { const t = setTimeout(() => loadArrecadacao(), 0); return () => clearTimeout(t); }, [arPage]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const t = setTimeout(() => loadDividas(), 0); return () => clearTimeout(t); }, [dvPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const csvUrl = (path: string) => `${API_URL}${path}&export=csv`;
 
   return (
     <main className="module-page" style={{ padding: 16 }}>
@@ -187,7 +191,7 @@ export default function PublicPage() {
           <div className="toolbar">
             <input placeholder="Buscar descrição ou número" value={empSearch} onChange={(e) => { setEmpSearch(e.target.value); setEmpPage(1); }} style={{ flex: 1 }} />
             <button className="btn" onClick={() => { setEmpPage(1); loadEmpenhos(); }}>Buscar</button>
-            <a className="btn" href={csvUrl(`/public/commitments?search=${encodeURIComponent(empSearch)}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/commitments", { search: empSearch })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th></tr></thead>
@@ -217,7 +221,7 @@ export default function PublicPage() {
               <option value="rescindido">Rescindido</option>
             </select>
             <button className="btn" onClick={() => { setCtPage(1); loadContratos(); }}>Filtrar</button>
-            <a className="btn" href={csvUrl(`/public/contracts?search=${encodeURIComponent(ctSearch)}&status=${ctStatus}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/contracts", { search: ctSearch, status: ctStatus })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Número</th><th>Início</th><th>Fim</th><th>Valor</th><th>Status</th></tr></thead>
@@ -247,7 +251,7 @@ export default function PublicPage() {
               <option value="cancelado">Cancelado</option>
             </select>
             <button className="btn" onClick={() => { setLcPage(1); loadLicitacoes(); }}>Filtrar</button>
-            <a className="btn" href={csvUrl(`/public/licitacoes?search=${encodeURIComponent(lcSearch)}&status=${lcStatus}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/licitacoes", { search: lcSearch, status: lcStatus })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Número</th><th>Objeto</th><th>Status</th></tr></thead>
@@ -276,7 +280,7 @@ export default function PublicPage() {
               <option value="repasse">Repasse</option>
             </select>
             <button className="btn" onClick={() => { setCvPage(1); loadConvenios(); }}>Filtrar</button>
-            <a className="btn" href={csvUrl(`/public/convenios?search=${encodeURIComponent(cvSearch)}&tipo=${cvTipo}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/convenios", { search: cvSearch, tipo: cvTipo })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Número</th><th>Objeto</th><th>Concedente</th><th>Tipo</th><th>Valor total</th><th>Assinatura</th><th>Status</th></tr></thead>
@@ -311,7 +315,7 @@ export default function PublicPage() {
               {["IPTU","ISS","ITBI","TAXA_LIXO","TAXA_ILUMINACAO","TAXA_OBRAS"].map((t) => <option key={t}>{t}</option>)}
             </select>
             <button className="btn" onClick={() => { setArPage(1); loadArrecadacao(); }}>Filtrar</button>
-            <a className="btn" href={csvUrl(`/public/arrecadacao?tributo=${arTributo}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/arrecadacao", { tributo: arTributo })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Tributo</th><th>Competência</th><th>Exercício</th><th>Valor</th><th>Data pagamento</th></tr></thead>
@@ -345,7 +349,7 @@ export default function PublicPage() {
               {["IPTU","ISS","ITBI","TAXA_LIXO","TAXA_ILUMINACAO","TAXA_OBRAS"].map((t) => <option key={t}>{t}</option>)}
             </select>
             <button className="btn" onClick={() => { setDvPage(1); loadDividas(); }}>Filtrar</button>
-            <a className="btn" href={csvUrl(`/public/divida-ativa?tributo=${dvTributo}`)} target="_blank" rel="noreferrer">Exportar CSV</a>
+            <a className="btn" href={csvUrl("/public/divida-ativa", { tributo: dvTributo })} target="_blank" rel="noreferrer">Exportar CSV</a>
           </div>
           <table>
             <thead><tr><th>Inscrição</th><th>Tributo</th><th>Exercício</th><th>Valor original</th><th>Valor atualizado</th><th>Data inscrição</th><th>Status</th></tr></thead>

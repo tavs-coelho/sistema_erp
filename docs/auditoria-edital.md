@@ -150,7 +150,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | Receitas | ✅ Atende | `RevenueEntry` com arrecadação |
 | Exercício fiscal | ✅ Atende | `FiscalYear` com abertura/encerramento |
 | Plano de Contas (PCASP) | ⚠️ Atende Parcialmente | Estrutura presente mas sem validação do PCASP formal |
-| Balancetes e Demonstrações (RREO/RGF) | ❌ Pendente Crítico | Não implementados; exigidos pela LRF |
+| Balancetes e Demonstrações (RREO/RGF) | ✅ Atende | RREO e RGF implementados via `/lrf/rreo` e `/lrf/rgf` com CSV |
 | Conciliação bancária | ❌ Pendente Crítico | Não implementada |
 | SICONFI / SIOP (integração federal) | ❌ Pendente Crítico | Não implementada |
 
@@ -200,7 +200,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 
 | Prioridade | Item | Impacto |
 |---|---|---|
-| 🔴 Alta | RREO / RGF / Demonstrações contábeis | Exigência LRF — sem isso o sistema não é legalmente aderente |
+| ~~🔴 Alta~~ ✅ | ~~RREO / RGF / Demonstrações contábeis~~ **Implementado** | RREO e RGF disponíveis em `/lrf/rreo` e `/lrf/rgf` |
 | 🔴 Alta | Conciliação bancária | Exigência básica de contabilidade pública |
 | 🔴 Alta | NFS-e / ITBI | Receitas municipais relevantes |
 | 🔴 Alta | Ponto / frequência de servidores | Vinculado a folha; impacta legalidade da remuneração |
@@ -211,14 +211,16 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 
 ---
 
-## 5. Conclusão
+## 5. Conclusão (atualizado após onda 11)
 
 O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
 - ✅ Compras, Licitações e Almoxarifado (praticamente completos)
 - ✅ Frota (completo e integrado)
 - ✅ Orçamento (PPA/LDO/LOA)
 - ✅ RH, Protocolo e Convênios (funcionais)
+- ✅ **Demonstrativos LRF (RREO e RGF)** — implementados na onda 11
 
-**Não pode ser defendido como integralmente aderente** sem os módulos de contabilidade legal (RREO/RGF), tributação complementar (ITBI, NFS-e) e ponto de servidores, que são exigências legais para operação de um ERP municipal compliant.
+**Ainda não pode ser defendido como integralmente aderente** sem conciliação bancária, tributação complementar (ITBI, NFS-e) e ponto de servidores.
 
-**Recomendação para o próximo ciclo:** focar nos demonstrativos contábeis (RREO e RGF) e na conciliação bancária, pois são os itens de maior peso legal e com maior probabilidade de serem avaliados numa defesa técnica de edital.
+**Próximo passo ideal:** conciliação bancária — fecha o ciclo financeiro da contabilidade pública e é examinada em auditorias do TCE. Alternativa prioritária: ponto/frequência, que impacta a legalidade da folha de pagamento.
+

@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/almoxarifado", label: "Almoxarifado", roles: ["admin", "procurement", "read_only"] },
   { href: "/frota", label: "Frota", roles: ["admin", "procurement", "read_only"] },
   { href: "/relatorios", label: "Relatórios", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/lrf", label: "LRF", roles: ["admin", "accountant", "read_only"] },
   { href: "/auditoria", label: "Auditoria", roles: ["admin", "read_only"] },
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];

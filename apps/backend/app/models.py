@@ -638,3 +638,91 @@ class RequisicaoCompra(Base):
     alerta = relationship("AlertaEstoqueMinimo", foreign_keys=[alerta_id])
     processo = relationship("ProcurementProcess", foreign_keys=[processo_id])
     solicitante = relationship("User", foreign_keys=[solicitante_id])
+
+
+# ── Frota ──────────────────────────────────────────────────────────────────────
+
+class Veiculo(Base):
+    """Veículo da frota municipal."""
+    __tablename__ = "veiculos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    placa: Mapped[str] = mapped_column(String(10), unique=True)
+    descricao: Mapped[str] = mapped_column(String(200))                # ex: "Caminhonete Ford Ranger 2022"
+    tipo: Mapped[str] = mapped_column(String(40), default="leve")      # leve, pesado, onibus, maquina, moto
+    marca: Mapped[str] = mapped_column(String(60), default="")
+    modelo: Mapped[str] = mapped_column(String(80), default="")
+    ano_fabricacao: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    combustivel: Mapped[str] = mapped_column(String(20), default="flex")  # flex, gasolina, diesel, etanol, eletrico, gnv
+    odometro_atual: Mapped[float] = mapped_column(Float, default=0.0)  # km
+    departamento_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="ativo")   # ativo, manutencao, inativo
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    departamento = relationship("Department", foreign_keys=[departamento_id])
+    abastecimentos = relationship("Abastecimento", back_populates="veiculo", cascade="all, delete-orphan")
+    manutencoes = relationship("ManutencaoVeiculo", back_populates="veiculo", cascade="all, delete-orphan")
+
+
+class Abastecimento(Base):
+    """Registro de abastecimento de veículo."""
+    __tablename__ = "abastecimentos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    veiculo_id: Mapped[int] = mapped_column(ForeignKey("veiculos.id"), index=True)
+    data_abastecimento: Mapped[date] = mapped_column(Date)
+    combustivel: Mapped[str] = mapped_column(String(20))               # mesmo enum do veículo
+    litros: Mapped[float] = mapped_column(Float)
+    valor_litro: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_total: Mapped[float] = mapped_column(Float, default=0.0)
+    odometro: Mapped[float] = mapped_column(Float, default=0.0)        # km no momento do abastecimento
+    posto: Mapped[str] = mapped_column(String(120), default="")
+    nota_fiscal: Mapped[str] = mapped_column(String(60), default="")
+    departamento_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    motorista_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # Integração almoxarifado: quando abastecimento sai do almoxarifado (tanque interno)
+    movimentacao_id: Mapped[int | None] = mapped_column(ForeignKey("movimentacoes_estoque.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    veiculo = relationship("Veiculo", back_populates="abastecimentos")
+    departamento = relationship("Department", foreign_keys=[departamento_id])
+    motorista = relationship("User", foreign_keys=[motorista_id])
+    movimentacao = relationship("MovimentacaoEstoque", foreign_keys=[movimentacao_id])
+
+
+class ManutencaoVeiculo(Base):
+    """Ordem de manutenção / serviço de veículo."""
+    __tablename__ = "manutencoes_veiculo"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    veiculo_id: Mapped[int] = mapped_column(ForeignKey("veiculos.id"), index=True)
+    tipo: Mapped[str] = mapped_column(String(30), default="preventiva")  # preventiva, corretiva, revisao
+    descricao: Mapped[str] = mapped_column(Text)
+    data_abertura: Mapped[date] = mapped_column(Date)
+    data_conclusao: Mapped[date | None] = mapped_column(Date, nullable=True)
+    odometro: Mapped[float] = mapped_column(Float, default=0.0)
+    oficina: Mapped[str] = mapped_column(String(120), default="")
+    valor_servico: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(20), default="aberta")  # aberta, em_andamento, concluida, cancelada
+    departamento_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    responsavel_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    veiculo = relationship("Veiculo", back_populates="manutencoes")
+    departamento = relationship("Department", foreign_keys=[departamento_id])
+    responsavel = relationship("User", foreign_keys=[responsavel_id])
+    itens = relationship("ItemManutencao", back_populates="manutencao", cascade="all, delete-orphan")
+
+
+class ItemManutencao(Base):
+    """Peça/insumo usado em uma manutenção — opcionalmente rastreado via almoxarifado."""
+    __tablename__ = "itens_manutencao"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    manutencao_id: Mapped[int] = mapped_column(ForeignKey("manutencoes_veiculo.id"), index=True)
+    descricao: Mapped[str] = mapped_column(String(200))
+    quantidade: Mapped[float] = mapped_column(Float, default=1.0)
+    valor_unitario: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_total: Mapped[float] = mapped_column(Float, default=0.0)
+    # Integração almoxarifado: saída automática ao adicionar item de estoque
+    item_almoxarifado_id: Mapped[int | None] = mapped_column(ForeignKey("itens_almoxarifado.id"), nullable=True)
+    movimentacao_id: Mapped[int | None] = mapped_column(ForeignKey("movimentacoes_estoque.id"), nullable=True)
+    manutencao = relationship("ManutencaoVeiculo", back_populates="itens")
+    item_almoxarifado = relationship("ItemAlmoxarifado", foreign_keys=[item_almoxarifado_id])
+    movimentacao = relationship("MovimentacaoEstoque", foreign_keys=[movimentacao_id])

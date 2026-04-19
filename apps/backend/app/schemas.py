@@ -893,3 +893,144 @@ class RequisicaoCompraOut(BaseModel):
     criado_em: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Frota ──────────────────────────────────────────────────────────────────────
+
+class VeiculoCreate(BaseModel):
+    placa: str
+    descricao: str
+    tipo: str = "leve"
+    marca: str = ""
+    modelo: str = ""
+    ano_fabricacao: int | None = None
+    combustivel: str = "flex"
+    odometro_atual: float = 0.0
+    departamento_id: int | None = None
+    status: str = "ativo"
+    observacoes: str = ""
+
+
+class VeiculoUpdate(BaseModel):
+    descricao: str | None = None
+    tipo: str | None = None
+    marca: str | None = None
+    modelo: str | None = None
+    ano_fabricacao: int | None = None
+    combustivel: str | None = None
+    odometro_atual: float | None = None
+    departamento_id: int | None = None
+    status: str | None = None
+    observacoes: str | None = None
+
+
+class VeiculoOut(BaseModel):
+    id: int
+    placa: str
+    descricao: str
+    tipo: str
+    marca: str
+    modelo: str
+    ano_fabricacao: int | None
+    combustivel: str
+    odometro_atual: float
+    departamento_id: int | None
+    status: str
+    observacoes: str
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AbastecimentoCreate(BaseModel):
+    veiculo_id: int
+    data_abastecimento: date
+    combustivel: str
+    litros: float
+    valor_litro: float = 0.0
+    odometro: float = 0.0
+    posto: str = ""
+    nota_fiscal: str = ""
+    departamento_id: int | None = None
+    motorista_id: int | None = None
+    movimentacao_id: int | None = None
+    observacoes: str = ""
+
+
+class AbastecimentoOut(BaseModel):
+    id: int
+    veiculo_id: int
+    data_abastecimento: date
+    combustivel: str
+    litros: float
+    valor_litro: float
+    valor_total: float
+    odometro: float
+    posto: str
+    nota_fiscal: str
+    departamento_id: int | None
+    motorista_id: int | None
+    movimentacao_id: int | None
+    observacoes: str
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ItemManutencaoCreate(BaseModel):
+    descricao: str
+    quantidade: float = 1.0
+    valor_unitario: float = 0.0
+    item_almoxarifado_id: int | None = None
+
+
+class ItemManutencaoOut(BaseModel):
+    id: int
+    manutencao_id: int
+    descricao: str
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+    item_almoxarifado_id: int | None
+    movimentacao_id: int | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ManutencaoCreate(BaseModel):
+    veiculo_id: int
+    tipo: str = "preventiva"
+    descricao: str
+    data_abertura: date
+    odometro: float = 0.0
+    oficina: str = ""
+    departamento_id: int | None = None
+    observacoes: str = ""
+    itens: list[ItemManutencaoCreate] = []
+
+
+class ManutencaoConcluir(BaseModel):
+    data_conclusao: date
+    valor_servico: float = 0.0
+    oficina: str = ""
+    observacoes: str = ""
+
+
+class ManutencaoOut(BaseModel):
+    id: int
+    veiculo_id: int
+    tipo: str
+    descricao: str
+    data_abertura: date
+    data_conclusao: date | None
+    odometro: float
+    oficina: str
+    valor_servico: float
+    status: str
+    departamento_id: int | None
+    responsavel_id: int | None
+    observacoes: str
+    criado_em: datetime
+    itens: list[ItemManutencaoOut] = []
+
+    model_config = ConfigDict(from_attributes=True)

@@ -19,6 +19,8 @@ const NAV_ITEMS = [
   { href: "/rh", label: "RH", roles: ["admin", "hr", "read_only"] },
   { href: "/portal-servidor", label: "Portal Servidor", roles: ["admin", "hr", "employee", "read_only"] },
   { href: "/patrimonio", label: "Patrimônio", roles: ["admin", "patrimony", "read_only"] },
+  { href: "/almoxarifado", label: "Almoxarifado", roles: ["admin", "procurement", "read_only"] },
+  { href: "/frota", label: "Frota", roles: ["admin", "procurement", "read_only"] },
   { href: "/auditoria", label: "Auditoria", roles: ["admin", "read_only"] },
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];

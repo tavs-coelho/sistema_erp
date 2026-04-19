@@ -1034,3 +1034,88 @@ class ManutencaoOut(BaseModel):
     itens: list[ItemManutencaoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── NFS-e ─────────────────────────────────────────────────────────────────────
+
+class NFSeCreate(BaseModel):
+    prestador_id: int
+    tomador_id: int | None = None
+    descricao_servico: str
+    codigo_servico: str = ""
+    competencia: str           # YYYY-MM
+    data_emissao: date
+    valor_servico: float
+    valor_deducoes: float = 0.0
+    aliquota_iss: float        # percentual, ex: 2.5
+    retencao_fonte: bool = False
+    observacoes: str = ""
+
+
+class NFSeUpdate(BaseModel):
+    observacoes: str | None = None
+
+
+class NFSeOut(BaseModel):
+    id: int
+    numero: str
+    prestador_id: int
+    tomador_id: int | None
+    descricao_servico: str
+    codigo_servico: str
+    competencia: str
+    data_emissao: date
+    valor_servico: float
+    valor_deducoes: float
+    aliquota_iss: float
+    valor_iss: float
+    retencao_fonte: bool
+    status: str
+    nota_substituta_id: int | None
+    lancamento_id: int | None
+    observacoes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── ITBI ──────────────────────────────────────────────────────────────────────
+
+class ITBICreate(BaseModel):
+    transmitente_id: int
+    adquirente_id: int
+    imovel_id: int
+    natureza_operacao: str = "compra_venda"
+    data_operacao: date
+    valor_declarado: float
+    valor_venal_referencia: float = 0.0
+    aliquota_itbi: float       # percentual, ex: 2.0
+    observacoes: str = ""
+
+
+class ITBIUpdate(BaseModel):
+    valor_declarado: float | None = None
+    valor_venal_referencia: float | None = None
+    aliquota_itbi: float | None = None
+    observacoes: str | None = None
+
+
+class ITBIOut(BaseModel):
+    id: int
+    numero: str
+    transmitente_id: int
+    adquirente_id: int
+    imovel_id: int
+    natureza_operacao: str
+    data_operacao: date
+    valor_declarado: float
+    valor_venal_referencia: float
+    base_calculo: float
+    aliquota_itbi: float
+    valor_devido: float
+    status: str
+    lancamento_id: int | None
+    observacoes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

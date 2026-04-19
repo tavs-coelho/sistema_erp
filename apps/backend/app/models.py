@@ -730,6 +730,67 @@ class ItemManutencao(Base):
 
 # ── Conciliação Bancária ───────────────────────────────────────────────────────
 
+class NotaFiscalServico(Base):
+    """NFS-e — Nota Fiscal de Serviços Eletrônica simplificada.
+
+    Ao ser emitida, gera automaticamente um LancamentoTributario com tributo='ISS'.
+    Status: emitida | cancelada | substituida
+    """
+    __tablename__ = "notas_fiscais_servico"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String(20), unique=True, index=True)     # ex: NFS/2026-001
+    prestador_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"), index=True)
+    tomador_id: Mapped[int | None] = mapped_column(ForeignKey("contribuintes.id"), nullable=True)
+    descricao_servico: Mapped[str] = mapped_column(Text)
+    codigo_servico: Mapped[str] = mapped_column(String(20), default="")          # item LC 116/2003
+    competencia: Mapped[str] = mapped_column(String(7))                          # YYYY-MM
+    data_emissao: Mapped[date] = mapped_column(Date, index=True)
+    valor_servico: Mapped[float] = mapped_column(Float)
+    valor_deducoes: Mapped[float] = mapped_column(Float, default=0.0)            # deduções da base ISS
+    aliquota_iss: Mapped[float] = mapped_column(Float)                           # % ex: 2.5
+    valor_iss: Mapped[float] = mapped_column(Float)                              # calculado: (valor_servico - deducoes) * aliquota / 100
+    retencao_fonte: Mapped[bool] = mapped_column(Boolean, default=False)         # ISS retido na fonte pelo tomador
+    status: Mapped[str] = mapped_column(String(20), default="emitida", index=True)
+    nota_substituta_id: Mapped[int | None] = mapped_column(ForeignKey("notas_fiscais_servico.id"), nullable=True)
+    lancamento_id: Mapped[int | None] = mapped_column(ForeignKey("lancamentos_tributarios.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    prestador = relationship("Contribuinte", foreign_keys=[prestador_id])
+    tomador = relationship("Contribuinte", foreign_keys=[tomador_id])
+    lancamento = relationship("LancamentoTributario", foreign_keys=[lancamento_id])
+
+
+class OperacaoITBI(Base):
+    """ITBI — Registro de operação de transmissão de bem imóvel inter vivos.
+
+    Ao ser registrada, gera automaticamente um LancamentoTributario com tributo='ITBI'.
+    A base de cálculo é o maior valor entre o declarado e o valor venal de referência.
+    Status: aberto | pago | cancelado
+    """
+    __tablename__ = "operacoes_itbi"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String(20), unique=True, index=True)     # ex: ITBI/2026-001
+    transmitente_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"), index=True)
+    adquirente_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"), index=True)
+    imovel_id: Mapped[int] = mapped_column(ForeignKey("imoveis_cadastrais.id"), index=True)
+    natureza_operacao: Mapped[str] = mapped_column(String(40), default="compra_venda")
+    # compra_venda | doacao | permuta | heranca | adjudicacao | integralizacao_capital
+    data_operacao: Mapped[date] = mapped_column(Date, index=True)
+    valor_declarado: Mapped[float] = mapped_column(Float)                        # valor informado pelo contribuinte
+    valor_venal_referencia: Mapped[float] = mapped_column(Float, default=0.0)    # valor venal municipal de referência
+    base_calculo: Mapped[float] = mapped_column(Float)                           # max(declarado, venal_referencia)
+    aliquota_itbi: Mapped[float] = mapped_column(Float)                          # % ex: 2.0
+    valor_devido: Mapped[float] = mapped_column(Float)                           # calculado: base_calculo * aliquota / 100
+    status: Mapped[str] = mapped_column(String(20), default="aberto", index=True)
+    lancamento_id: Mapped[int | None] = mapped_column(ForeignKey("lancamentos_tributarios.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    transmitente = relationship("Contribuinte", foreign_keys=[transmitente_id])
+    adquirente = relationship("Contribuinte", foreign_keys=[adquirente_id])
+    imovel = relationship("ImovelCadastral", foreign_keys=[imovel_id])
+    lancamento = relationship("LancamentoTributario", foreign_keys=[lancamento_id])
+
+
 class ContaBancaria(Base):
     """Conta bancária da entidade municipal."""
     __tablename__ = "contas_bancarias"

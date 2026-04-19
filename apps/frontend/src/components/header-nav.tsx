@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/protocolo", label: "Protocolo", roles: ["admin", "accountant", "procurement", "read_only"] },
   { href: "/convenios", label: "Convênios", roles: ["admin", "accountant", "read_only"] },
   { href: "/tributario", label: "Tributário", roles: ["admin", "accountant", "read_only"] },
+  { href: "/nfse-itbi", label: "NFS-e/ITBI", roles: ["admin", "accountant", "read_only"] },
   { href: "/rh", label: "RH", roles: ["admin", "hr", "read_only"] },
   { href: "/portal-servidor", label: "Portal Servidor", roles: ["admin", "hr", "employee", "read_only"] },
   { href: "/patrimonio", label: "Patrimônio", roles: ["admin", "patrimony", "read_only"] },

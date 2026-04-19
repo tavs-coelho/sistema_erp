@@ -135,9 +135,9 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 |---|---|---|
 | IPTU (cadastro de imóveis, alíquotas) | ✅ Atende | `Imovel`, `LancamentoTributario`, `AliquotaIPTU` |
 | Parcelamento de dívida ativa | ✅ Atende | `ParcelamentoDivida` com parcelas e controle de inadimplência |
-| ISS / ISSQN | ⚠️ Atende Parcialmente | `LancamentoTributario` genérico; módulo ISS dedicado ausente |
-| ITBI | ❌ Pendente Crítico | Não implementado |
-| Nota Fiscal de Serviços Eletrônica (NFS-e) | ❌ Pendente Crítico | Não implementado |
+| ISS / ISSQN | ✅ Atende | `NotaFiscalServico` com emissão, cancelamento, cálculo ISS automático e `LancamentoTributario` gerado |
+| ITBI | ✅ Atende | `OperacaoITBI` com base de cálculo (max declarado/venal), alíquota configurável, `LancamentoTributario` gerado |
+| Nota Fiscal de Serviços Eletrônica (NFS-e) | ✅ Atende (simplificado) | NFS-e interna com emissão, cancelamento, ISS calculado, dashboard, CSV; sem integração SEFAZ |
 | Dívida ativa — ajuizamento | ⚠️ Atende Parcialmente | Campo `status=ajuizada` existe; integração PGM ausente |
 
 ---
@@ -202,7 +202,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 |---|---|---|
 | ~~🔴 Alta~~ ✅ | ~~RREO / RGF / Demonstrações contábeis~~ **Implementado** | RREO e RGF disponíveis em `/lrf/rreo` e `/lrf/rgf` |
 | ~~🔴 Alta~~ ✅ | ~~Conciliação bancária~~ **Implementado** | Contas, lançamentos, conciliação auto/manual, dashboard, CSV |
-| 🔴 Alta | NFS-e / ITBI | Receitas municipais relevantes |
+| ~~🔴 Alta~~ ✅ | ~~NFS-e / ITBI~~ **Implementado** | NFS-e simplificada, ITBI com base de cálculo, dashboard, CSV, integração tributária |
 | 🔴 Alta | Ponto / frequência de servidores | Vinculado a folha; impacta legalidade da remuneração |
 | 🟡 Média | Depreciação patrimonial (NBCASP) | Exigência IPSAS/NBCASP — impacta balanço patrimonial |
 | 🟡 Média | L/100km e alertas preventivos de frota | Ganho operacional; não bloqueia conformidade |
@@ -211,7 +211,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 
 ---
 
-## 5. Conclusão (atualizado após onda 11)
+## 5. Conclusão (atualizado após onda 13)
 
 O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
 - ✅ Compras, Licitações e Almoxarifado (praticamente completos)
@@ -219,8 +219,11 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ Orçamento (PPA/LDO/LOA)
 - ✅ RH, Protocolo e Convênios (funcionais)
 - ✅ **Demonstrativos LRF (RREO e RGF)** — implementados na onda 11
+- ✅ **Conciliação bancária** — implementada na onda 12
+- ✅ **NFS-e e ITBI** — implementados na onda 13 (ISS, ITBI, dashboard, CSV, integração tributária)
 
-**Ainda não pode ser defendido como integralmente aderente** sem conciliação bancária, tributação complementar (ITBI, NFS-e) e ponto de servidores.
+**Ainda não pode ser defendido como integralmente aderente** sem ponto/frequência de servidores e depreciação patrimonial (NBCASP).
 
-**Próximo passo ideal:** conciliação bancária — fecha o ciclo financeiro da contabilidade pública e é examinada em auditorias do TCE. Alternativa prioritária: ponto/frequência, que impacta a legalidade da folha de pagamento.
+**Próximo passo ideal:** ponto/frequência de servidores — vinculado à folha de pagamento e impacta diretamente a legalidade da remuneração (RBGF, instrução normativa TCE).
+Alternativa: depreciação patrimonial, que fecha a conformidade com NBCASP/IPSAS no balanço.
 

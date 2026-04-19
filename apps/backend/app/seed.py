@@ -9,12 +9,17 @@ from .models import (
     Commitment,
     ContaBancaria,
     Contract,
+    Contribuinte,
     Department,
     Employee,
     FiscalYear,
     FundingSource,
+    ImovelCadastral,
     LancamentoBancario,
+    LancamentoTributario,
     Municipality,
+    NotaFiscalServico,
+    OperacaoITBI,
     PayrollEvent,
     Payment,
     Payslip,
@@ -30,6 +35,7 @@ from .security import hash_password
 
 def seed_data(db: Session):
     if db.query(User).first():
+        _seed_nfse_itbi(db)
         return
 
     db.add(Municipality(name="Município de Vila Esperança"))
@@ -314,5 +320,190 @@ def seed_data(db: Session):
             documento_ref="DIVTST001",
             status="pendente",
         ))
+
+    db.commit()
+    _seed_nfse_itbi(db)
+
+
+def _seed_nfse_itbi(db: Session):
+    """Seed de dados demo para NFS-e e ITBI."""
+    if db.query(NotaFiscalServico).first():
+        return
+
+    year = date.today().year
+
+    # Contribuintes demo
+    prestador = Contribuinte(
+        cpf_cnpj="11.222.333/0001-44",
+        nome="Empresa de TI Ltda",
+        tipo="PJ",
+        email="ti@empresademo.local",
+        municipio="Vila Esperança",
+        uf="SP",
+        cep="01310-000",
+        logradouro="Av. Paulista",
+        numero="1000",
+        bairro="Bela Vista",
+    )
+    tomador = Contribuinte(
+        cpf_cnpj="55.666.777/0001-88",
+        nome="Órgão Público Demo",
+        tipo="PJ",
+        email="compras@orgaodemo.local",
+        municipio="Vila Esperança",
+        uf="SP",
+        cep="01310-100",
+        logradouro="Rua Boa Vista",
+        numero="200",
+        bairro="Centro",
+    )
+    pf_vendedor = Contribuinte(
+        cpf_cnpj="766.543.210-99",
+        nome="Maria Vendedora Demo",
+        tipo="PF",
+        municipio="Vila Esperança",
+        uf="SP",
+        cep="01000-000",
+        logradouro="Rua Demo",
+        numero="5",
+        bairro="Jardim Demo",
+    )
+    pf_comprador = Contribuinte(
+        cpf_cnpj="544.321.098-77",
+        nome="João Comprador Demo",
+        tipo="PF",
+        municipio="Vila Esperança",
+        uf="SP",
+        cep="01000-100",
+        logradouro="Rua Demo",
+        numero="7",
+        bairro="Jardim Demo",
+    )
+    db.add_all([prestador, tomador, pf_vendedor, pf_comprador])
+    db.flush()
+
+    # Imóvel para ITBI
+    imovel_itbi = ImovelCadastral(
+        inscricao="DEMO-ITBI-001",
+        contribuinte_id=pf_vendedor.id,
+        logradouro="Rua das Palmeiras",
+        numero="300",
+        bairro="Jardim Novo",
+        area_terreno=250.0,
+        area_construida=120.0,
+        valor_venal=280000.0,
+        uso="residencial",
+    )
+    db.add(imovel_itbi)
+    db.flush()
+
+    # NFS-e #1: serviço de consultoria — ISS 2 %
+    valor_servico_1 = 5000.0
+    aliquota_1 = 2.0
+    iss_1 = round(valor_servico_1 * aliquota_1 / 100, 2)
+    lanc_nfse_1 = LancamentoTributario(
+        contribuinte_id=prestador.id,
+        imovel_id=None,
+        tributo="ISS",
+        competencia=f"{year}-03",
+        exercicio=year,
+        valor_principal=iss_1,
+        valor_total=iss_1,
+        vencimento=date(year, 3, 20),
+        observacoes="ISS gerado automaticamente pela NFS-e (competência " + f"{year}-03)",
+    )
+    db.add(lanc_nfse_1)
+    db.flush()
+    nfse_1 = NotaFiscalServico(
+        numero=f"NFS/{year}-0001",
+        prestador_id=prestador.id,
+        tomador_id=tomador.id,
+        descricao_servico="Consultoria em tecnologia da informação e suporte de sistemas",
+        codigo_servico="1.01",
+        competencia=f"{year}-03",
+        data_emissao=date(year, 3, 15),
+        valor_servico=valor_servico_1,
+        valor_deducoes=0.0,
+        aliquota_iss=aliquota_1,
+        valor_iss=iss_1,
+        retencao_fonte=False,
+        status="emitida",
+        lancamento_id=lanc_nfse_1.id,
+        observacoes="NFS-e demo — consultoria",
+    )
+    db.add(nfse_1)
+
+    # NFS-e #2: serviço de manutenção — ISS 3 %, com retenção na fonte
+    valor_servico_2 = 3200.0
+    aliquota_2 = 3.0
+    iss_2 = round(valor_servico_2 * aliquota_2 / 100, 2)
+    lanc_nfse_2 = LancamentoTributario(
+        contribuinte_id=prestador.id,
+        imovel_id=None,
+        tributo="ISS",
+        competencia=f"{year}-04",
+        exercicio=year,
+        valor_principal=iss_2,
+        valor_total=iss_2,
+        vencimento=date(year, 4, 20),
+        observacoes="ISS gerado automaticamente pela NFS-e (competência " + f"{year}-04)",
+    )
+    db.add(lanc_nfse_2)
+    db.flush()
+    nfse_2 = NotaFiscalServico(
+        numero=f"NFS/{year}-0002",
+        prestador_id=prestador.id,
+        tomador_id=tomador.id,
+        descricao_servico="Manutenção preventiva de equipamentos de informática",
+        codigo_servico="14.01",
+        competencia=f"{year}-04",
+        data_emissao=date(year, 4, 10),
+        valor_servico=valor_servico_2,
+        valor_deducoes=0.0,
+        aliquota_iss=aliquota_2,
+        valor_iss=iss_2,
+        retencao_fonte=True,
+        status="emitida",
+        lancamento_id=lanc_nfse_2.id,
+        observacoes="NFS-e demo — manutenção, ISS retido na fonte",
+    )
+    db.add(nfse_2)
+
+    # ITBI #1: compra e venda — alíquota 2 %, valor declarado < valor venal (usa venal como base)
+    valor_declarado = 250000.0
+    valor_venal_ref = 280000.0  # imovel_itbi.valor_venal
+    base_calc = max(valor_declarado, valor_venal_ref)
+    aliquota_itbi = 2.0
+    valor_devido = round(base_calc * aliquota_itbi / 100, 2)
+    lanc_itbi = LancamentoTributario(
+        contribuinte_id=pf_comprador.id,
+        imovel_id=imovel_itbi.id,
+        tributo="ITBI",
+        competencia=f"{year}-04",
+        exercicio=year,
+        valor_principal=valor_devido,
+        valor_total=valor_devido,
+        vencimento=date(year, 4, 30),
+        observacoes="ITBI gerado automaticamente para operação compra_venda",
+    )
+    db.add(lanc_itbi)
+    db.flush()
+    itbi_1 = OperacaoITBI(
+        numero=f"ITBI/{year}-0001",
+        transmitente_id=pf_vendedor.id,
+        adquirente_id=pf_comprador.id,
+        imovel_id=imovel_itbi.id,
+        natureza_operacao="compra_venda",
+        data_operacao=date(year, 4, 5),
+        valor_declarado=valor_declarado,
+        valor_venal_referencia=valor_venal_ref,
+        base_calculo=base_calc,
+        aliquota_itbi=aliquota_itbi,
+        valor_devido=valor_devido,
+        status="aberto",
+        lancamento_id=lanc_itbi.id,
+        observacoes="ITBI demo — compra e venda residencial",
+    )
+    db.add(itbi_1)
 
     db.commit()

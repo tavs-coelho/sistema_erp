@@ -12,6 +12,13 @@ class TokenResponse(BaseModel):
     must_change_password: bool
 
 
+class AuthMeResponse(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    role: RoleEnum
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str

@@ -34,6 +34,10 @@ def test_login_and_refresh_flow():
     assert tokens["access_token"]
     refresh = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refresh.status_code == 200
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["username"] == "admin1"
+    assert me.json()["role"] == "admin"
 
 
 def test_login_failure_returns_401():

@@ -187,7 +187,7 @@ Frontend:
 | Lista de bens + filtros/paginação + CSV | Patrimônio | `/patrimonio` | `GET /patrimony/assets`, `GET /patrimony/assets?export=csv` | Patrimônio passo 5 | **Implementado** | CSV em lista principal |
 | Histórico de movimentações | Patrimônio | `/patrimonio` | `GET /patrimony/movements` | Patrimônio passo 6 | **Implementado** | Sem trilha de anexos/documentos |
 | Relatório por departamento | Patrimônio | `/patrimonio` | `GET /patrimony/reports/by-department` | Patrimônio passo 7 | **Implementado** | Retorno agregado simples |
-| Verificação de auditoria | Core | Swagger (`/api/docs`) | `GET /core/audit-logs` | Passo final | **Implementado** | Consulta via Swagger/API (sem tela dedicada) |
+| Verificação de auditoria | Core | `/auditoria` | `GET /core/audit-logs`, `GET /core/users` | Passo final | **Implementado** | Tela simples com filtros/paginação para demonstração |
 | Regras fiscais/folha/patrimônio avançadas | Domínio avançado | N/A | N/A | N/A | **Parcial** | Fora do objetivo do MVP de demonstração |
 | Módulos não priorizados (compras avançadas, contratos avançados) | Escopo amplo | N/A | N/A | N/A | **Não implementado** | Não necessários para demo procurement do MVP |
 
@@ -296,9 +296,9 @@ Frontend:
    - Relatório por departamento.
 
 ### Bloco F — Verificação de auditoria
-1. Acessar `http://localhost/api/docs`.
-2. Autenticar no Swagger com token de `admin1`.
-3. Executar `GET /core/audit-logs`.
+1. Login com **admin1 / demo123** (ou `read_only1 / demo123`).
+2. Abrir **Auditoria** (`/auditoria`).
+3. Filtrar por ação, entidade e usuário conforme necessário.
 4. Resultado esperado:
    - Registros de create/update para departamentos, fornecedores, empenhos, pagamentos, folha e patrimônio.
 
@@ -318,14 +318,44 @@ Frontend:
   - RH: `/rh`
   - Servidor: `/portal-servidor`
   - Patrimônio: `/patrimonio`
+  - Auditoria: `/auditoria`
   - Transparência: `/public`
 - **Limitações conhecidas**:
   - Regras fiscais/folha/patrimônio avançadas estão simplificadas para demo.
-  - Auditoria está validada por endpoint (sem tela dedicada no frontend).
+  - Auditoria é uma visualização operacional simples (sem trilha avançada de investigação).
+
+## Checklist final go/no-go para apresentação
+
+- [ ] Stack iniciada com `docker compose up --build` sem erros
+- [ ] Login válido para `admin1`, `hr1`, `employee1`, `patrimony1`
+- [ ] Painel mostra corretamente usuário e perfil (sem “desconhecido”)
+- [ ] Cenário seeded visível: `Secretaria Demo Integrada`, `Fornecedor Demo Integrado`, `BA-DEMO-001`, `EMP-DEMO-001`, `PAT-DEMO-001`, `Evento Demo Integrado`
+- [ ] Contábil: criação + liquidação + pagamento + listas + CSV
+- [ ] Transparência: empenho/pagamento seeded e novo registro interno visíveis
+- [ ] RH/Servidor: holerite listado e download PDF funcional
+- [ ] Patrimônio: movimentação e relatório visíveis
+- [ ] Auditoria (`/auditoria`): eventos recentes visíveis após ações-chave
+
+## Entidades seeded e usuários para demo rápida
+
+- **Entidades-chave**
+  - Departamento: `Secretaria Demo Integrada`
+  - Fornecedor: `Fornecedor Demo Integrado`
+  - Dotação: `BA-DEMO-001`
+  - Empenho: `EMP-DEMO-001` (liquidado e pago)
+  - Bem: `PAT-DEMO-001` (com movimentação)
+  - Evento folha: `Evento Demo Integrado` (mês `2026-04`)
+- **Usuários**
+  - `admin1 / demo123`
+  - `accountant1 / demo123`
+  - `hr1 / demo123`
+  - `employee1 / demo123`
+  - `patrimony1 / demo123`
+  - `read_only1 / demo123`
 
 ## Screenshot
 
-- Painel com modo demonstração (UI consolidada): https://github.com/user-attachments/assets/35711f14-8621-434e-ba1b-e948d65295b5
+- Auditoria com filtros/paginação e perfil logado (final hardening): https://github.com/user-attachments/assets/ea333c84-5bc6-407f-b672-fcf5bc148012
 
 ## Implementado vs parcial
 
@@ -333,6 +363,6 @@ Frontend:
   - Login por perfil, fluxo contábil completo, transparência pública, RH/folha, portal do servidor, patrimônio (cadastro/transferência/baixa/listas/CSV/histórico/relatório), auditoria por endpoint.
 - **Partially demo-ready**
   - Regras de negócio avançadas (fiscal, folha detalhada, patrimônio com depreciação e governança documental) simplificadas para MVP.
-  - Auditoria sem tela dedicada (consulta por API/Swagger).
+  - Painel de auditoria sem recursos avançados de investigação (foco em demonstrabilidade).
 - **Not demo-ready**
   - Módulos/rotinas avançadas fora do escopo do MVP procurement-demo (ex.: contratos e compras avançadas ponta a ponta no frontend).

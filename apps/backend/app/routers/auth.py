@@ -9,10 +9,21 @@ from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
 from ..models import PasswordResetToken, User
-from ..schemas import LoginRequest, PasswordResetConfirm, PasswordResetRequest, RefreshRequest, TokenResponse
+from ..deps import get_current_user
+from ..schemas import AuthMeResponse, LoginRequest, PasswordResetConfirm, PasswordResetRequest, RefreshRequest, TokenResponse
 from ..security import create_access_token, create_refresh_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.get("/me", response_model=AuthMeResponse)
+def me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "full_name": current_user.full_name,
+        "role": current_user.role,
+    }
 
 
 @router.post("/login", response_model=TokenResponse)

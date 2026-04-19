@@ -24,6 +24,7 @@ export default function LoginPage() {
     const cookieFlags = `path=/; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`;
     document.cookie = `access_token=${encodeURIComponent(data.access_token)}; ${cookieFlags}`;
     document.cookie = `role=${encodeURIComponent(data.role)}; ${cookieFlags}`;
+    document.cookie = `username=${encodeURIComponent(username)}; ${cookieFlags}`;
     setMessage("Login realizado com sucesso");
     window.location.href = "/";
   };
@@ -41,11 +42,11 @@ export default function LoginPage() {
           Senha
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </label>
-        <button type="submit" style={{ background: "#124e9c", color: "#fff", border: 0, borderRadius: 6, padding: "10px 14px", cursor: "pointer" }}>
+        <button type="submit" className="btn btn-primary">
           Entrar
         </button>
       </form>
-      <p>{message}</p>
+      {message ? <p className={message.toLowerCase().includes("falha") ? "notice error" : "notice"}>{message}</p> : null}
       <small className="muted">Usuário demo: admin1 / demo123</small>
     </main>
   );

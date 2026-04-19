@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { API_URL, authJson, readCookie } from "@/lib/auth";
+import { API_URL, authJson } from "@/lib/auth";
 
 type Dashboard = {
   total_empenhado: number;
@@ -12,6 +12,16 @@ type Dashboard = {
 
 type Inventory = { total: number; ativos: number };
 type PublicList = { total: number };
+type Session = { username: string; full_name: string; role: string };
+
+const QUICK_LINKS = [
+  { href: "/fase-2", label: "1) Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/public", label: "2) Transparência", roles: [] as string[] },
+  { href: "/rh", label: "3) RH e Folha", roles: ["admin", "hr", "read_only"] },
+  { href: "/portal-servidor", label: "4) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
+  { href: "/patrimonio", label: "5) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
+  { href: "/auditoria", label: "6) Auditoria", roles: ["admin", "read_only"] },
+];
 
 export default function Home() {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
@@ -19,30 +29,53 @@ export default function Home() {
   const [publicCommitments, setPublicCommitments] = useState<PublicList | null>(null);
   const [publicPayments, setPublicPayments] = useState<PublicList | null>(null);
   const [message, setMessage] = useState<string>("");
-  const [token] = useState(() => readCookie("access_token"));
-  const [role] = useState(() => readCookie("role"));
+  const [session, setSession] = useState<Session>({
+    username: "",
+    full_name: "",
+    role: "",
+  });
 
   useEffect(() => {
-    if (!token) return;
     Promise.all([
+      authJson("/auth/me"),
       authJson("/accounting/dashboard"),
       authJson("/patrimony/inventory"),
       fetch(`${API_URL}/public/commitments?page=1&size=1`).then((r) => r.json()),
       fetch(`${API_URL}/public/payments?page=1&size=1`).then((r) => r.json()),
     ])
-      .then(([d, inv, commitments, payments]) => {
+      .then(([me, d, inv, commitments, payments]) => {
+        setSession({
+          username: me.username || "",
+          full_name: me.full_name || "",
+          role: me.role || "",
+        });
         setDashboard(d);
         setInventory(inv);
         setPublicCommitments({ total: commitments.total || 0 });
         setPublicPayments({ total: payments.total || 0 });
       })
       .catch(() => setMessage("Não foi possível carregar os painéis de resumo."));
-  }, [token]);
+  }, []);
+
+  const quickLinks = useMemo(
+    () => QUICK_LINKS.filter((item) => item.roles.length === 0 || item.roles.includes(session.role)),
+    [session.role],
+  );
+
+  const copyText = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage(`Copiado: ${value}`);
+    } catch {
+      setMessage(`Não foi possível copiar ${value}.`);
+    }
+  };
 
   const logout = async () => {
     await fetch(`${API_URL}/auth/logout`, { method: "POST" });
     document.cookie = "access_token=; Max-Age=0; path=/";
     document.cookie = "role=; Max-Age=0; path=/";
+    document.cookie = "username=; Max-Age=0; path=/";
     window.location.href = "/login";
   };
 
@@ -50,17 +83,20 @@ export default function Home() {
     <main className="module-page" style={{ padding: 16, fontFamily: "Arial, sans-serif" }}>
       <h1>Painel Geral</h1>
       <p>
-        Perfil logado: <strong suppressHydrationWarning>{role || "desconhecido"}</strong>
+        Usuário logado: <strong suppressHydrationWarning>{session.username || "carregando..."}</strong> · Perfil:{" "}
+        <strong suppressHydrationWarning>{session.role || "carregando..."}</strong>
       </p>
-      <nav style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <a href="/fase-2">Contábil (Fase 2)</a>
-        <a href="/rh">RH e Folha</a>
-        <a href="/portal-servidor">Portal do Servidor</a>
-        <a href="/patrimonio">Patrimônio</a>
-        <a href="/public">Transparência</a>
-        <button onClick={logout}>Sair</button>
+      {session.full_name ? <p className="muted">Nome: {session.full_name}</p> : null}
+      <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {quickLinks.map((link) => (
+          <a key={link.href} className="btn" href={link.href}>
+            {link.label}
+          </a>
+        ))}
+        <button className="btn btn-danger" onClick={logout}>Sair</button>
       </nav>
-      {message && <p className="notice error">{message}</p>}
+      {message ? <p className={message.toLowerCase().includes("não foi possível") ? "notice error" : "notice"}>{message}</p> : null}
+
       <section style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
         <div className="card">
           <h2>Contábil</h2>
@@ -81,15 +117,15 @@ export default function Home() {
         </div>
         <div className="card">
           <h2>Modo demonstração</h2>
-          <p>Usuários demo: admin1, hr1, employee1, patrimony1 (senha: demo123).</p>
-          <p>Ordem recomendada: Contábil → Transparência → RH → Portal do Servidor → Patrimônio → Auditoria.</p>
-          <p>Cenário seeded integrado:</p>
-          <ul style={{ marginLeft: 18 }}>
-            <li>Departamento: <strong>Secretaria Demo Integrada</strong></li>
-            <li>Fornecedor: <strong>Fornecedor Demo Integrado</strong></li>
-            <li>Empenho: <strong>EMP-DEMO-001</strong></li>
-            <li>Bem: <strong>PAT-DEMO-001</strong></li>
-            <li>Evento folha: <strong>Evento Demo Integrado</strong></li>
+          <p><strong>Usuários:</strong> admin1, hr1, employee1, patrimony1 (senha: demo123)</p>
+          <p><strong>Ordem:</strong> Contábil → Transparência → RH → Portal do Servidor → Patrimônio → Auditoria</p>
+          <p><strong>Cenário seeded:</strong></p>
+          <ul style={{ marginLeft: 18, display: "grid", gap: 4 }}>
+            <li>Departamento: <code>Secretaria Demo Integrada</code> <button className="btn btn-inline" onClick={() => copyText("Secretaria Demo Integrada")}>Copiar</button></li>
+            <li>Fornecedor: <code>Fornecedor Demo Integrado</code> <button className="btn btn-inline" onClick={() => copyText("Fornecedor Demo Integrado")}>Copiar</button></li>
+            <li>Empenho: <code>EMP-DEMO-001</code> <button className="btn btn-inline" onClick={() => copyText("EMP-DEMO-001")}>Copiar</button></li>
+            <li>Bem: <code>PAT-DEMO-001</code> <button className="btn btn-inline" onClick={() => copyText("PAT-DEMO-001")}>Copiar</button></li>
+            <li>Evento folha: <code>Evento Demo Integrado</code> <button className="btn btn-inline" onClick={() => copyText("Evento Demo Integrado")}>Copiar</button></li>
           </ul>
         </div>
       </section>

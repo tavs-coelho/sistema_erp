@@ -168,22 +168,22 @@ export default function RhPage() {
   };
 
   return (
-    <main style={{ display: "grid", gap: 12 }}>
+    <main className="module-page">
       <h1>Módulo RH e Folha</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong> | <a href="/portal-servidor">Portal do servidor</a></p>
-      {status && <p><strong>{status}</strong></p>}
+      {status && <p className={status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{status}</strong></p>}
       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <section className="card">
           <h2>1) Cadastrar servidor</h2>
           <form onSubmit={createEmployee} style={{ display: "grid", gap: 8 }}>
-            <input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Nome completo" required />
-            <input value={employeeCpf} onChange={(e) => setEmployeeCpf(e.target.value)} placeholder="CPF" required />
-            <input value={employeeJobTitle} onChange={(e) => setEmployeeJobTitle(e.target.value)} placeholder="Cargo" required />
-            <input value={employeeType} onChange={(e) => setEmployeeType(e.target.value)} placeholder="Tipo vínculo" required />
-            <input type="number" value={employeeSalary} onChange={(e) => setEmployeeSalary(Number(e.target.value))} placeholder="Salário base" required />
-            <select value={employeeDepartment} onChange={(e) => setEmployeeDepartment(Number(e.target.value))}>
+            <label className="field-group">Nome completo<input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Nome completo" required /></label>
+            <label className="field-group">CPF<input value={employeeCpf} onChange={(e) => setEmployeeCpf(e.target.value)} placeholder="CPF" required /></label>
+            <label className="field-group">Cargo<input value={employeeJobTitle} onChange={(e) => setEmployeeJobTitle(e.target.value)} placeholder="Cargo" required /></label>
+            <label className="field-group">Tipo de vínculo<input value={employeeType} onChange={(e) => setEmployeeType(e.target.value)} placeholder="Tipo vínculo" required /></label>
+            <label className="field-group">Salário base<input type="number" value={employeeSalary} onChange={(e) => setEmployeeSalary(Number(e.target.value))} placeholder="Salário base" required /></label>
+            <label className="field-group">Departamento<select value={employeeDepartment} onChange={(e) => setEmployeeDepartment(Number(e.target.value))}>
               {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
-            </select>
+            </select></label>
             <button type="submit">Salvar servidor</button>
           </form>
         </section>
@@ -191,16 +191,16 @@ export default function RhPage() {
         <section className="card">
           <h2>2) Criar evento de folha</h2>
           <form onSubmit={createEvent} style={{ display: "grid", gap: 8 }}>
-            <select value={eventEmployeeId} onChange={(e) => setEventEmployeeId(Number(e.target.value))}>
+            <label className="field-group">Servidor<select value={eventEmployeeId} onChange={(e) => setEventEmployeeId(Number(e.target.value))}>
               {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-            </select>
-            <input value={eventMonth} onChange={(e) => setEventMonth(e.target.value)} placeholder="Mês (YYYY-MM)" required />
-            <select value={eventKind} onChange={(e) => setEventKind(e.target.value)}>
+            </select></label>
+            <label className="field-group">Mês de referência<input value={eventMonth} onChange={(e) => setEventMonth(e.target.value)} placeholder="Mês (YYYY-MM)" required /></label>
+            <label className="field-group">Tipo do evento<select value={eventKind} onChange={(e) => setEventKind(e.target.value)}>
               <option value="provento">Provento</option>
               <option value="desconto">Desconto</option>
-            </select>
-            <input value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} placeholder="Descrição" required />
-            <input type="number" value={eventValue} onChange={(e) => setEventValue(Number(e.target.value))} placeholder="Valor" required />
+            </select></label>
+            <label className="field-group">Descrição<input value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} placeholder="Descrição" required /></label>
+            <label className="field-group">Valor<input type="number" value={eventValue} onChange={(e) => setEventValue(Number(e.target.value))} placeholder="Valor" required /></label>
             <button type="submit">Salvar evento</button>
           </form>
           <button style={{ marginTop: 8 }} onClick={calculatePayroll}>3) Calcular folha mensal</button>
@@ -220,9 +220,13 @@ export default function RhPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>Nome</th><th>CPF</th><th>Cargo</th><th>Salário</th></tr></thead>
           <tbody>
-            {employees.map((emp) => (
-              <tr key={emp.id}><td>{emp.name}</td><td>{emp.cpf}</td><td>{emp.job_title}</td><td>R$ {emp.base_salary.toFixed(2)}</td></tr>
-            ))}
+            {employees.length > 0 ? (
+              employees.map((emp) => (
+                <tr key={emp.id}><td>{emp.name}</td><td>{emp.cpf}</td><td>{emp.job_title}</td><td>R$ {emp.base_salary.toFixed(2)}</td></tr>
+              ))
+            ) : (
+              <tr><td colSpan={4} className="empty-state">Nenhum servidor encontrado para os filtros informados.</td></tr>
+            )}
           </tbody>
         </table>
         <button disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => p - 1)}>Anterior</button>
@@ -239,11 +243,15 @@ export default function RhPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
           <tbody>
-            {(events?.items || []).map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td><td>{row.kind}</td><td>{row.description}</td><td>R$ {row.value.toFixed(2)}</td>
-              </tr>
-            ))}
+            {(events?.items || []).length > 0 ? (
+              (events?.items || []).map((row) => (
+                <tr key={row.id}>
+                  <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td><td>{row.kind}</td><td>{row.description}</td><td>R$ {row.value.toFixed(2)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={6} className="empty-state">Sem eventos de folha para o mês informado.</td></tr>
+            )}
           </tbody>
         </table>
         <button disabled={(events?.page || 1) <= 1} onClick={() => setEventPage((p) => p - 1)}>Anterior</button>
@@ -260,13 +268,17 @@ export default function RhPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Bruto</th><th>Descontos</th><th>Líquido</th><th>Ação</th></tr></thead>
           <tbody>
-            {(payslips?.items || []).map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td>
-                <td>R$ {row.gross_amount.toFixed(2)}</td><td>R$ {row.deductions.toFixed(2)}</td><td>R$ {row.net_amount.toFixed(2)}</td>
-                <td><button onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
-              </tr>
-            ))}
+            {(payslips?.items || []).length > 0 ? (
+              (payslips?.items || []).map((row) => (
+                <tr key={row.id}>
+                  <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td>
+                  <td>R$ {row.gross_amount.toFixed(2)}</td><td>R$ {row.deductions.toFixed(2)}</td><td>R$ {row.net_amount.toFixed(2)}</td>
+                  <td><button onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={7} className="empty-state">Nenhum holerite encontrado para o período selecionado.</td></tr>
+            )}
           </tbody>
         </table>
         <button disabled={(payslips?.page || 1) <= 1} onClick={() => setPayslipPage((p) => p - 1)}>Anterior</button>

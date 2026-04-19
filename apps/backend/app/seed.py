@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from .models import (
     Asset,
+    AssetMovement,
     BudgetAllocation,
     Commitment,
     Contract,
@@ -12,8 +13,11 @@ from .models import (
     FiscalYear,
     FundingSource,
     Municipality,
+    PayrollEvent,
     Payment,
+    Payslip,
     ProcurementProcess,
+    Liquidation,
     RoleEnum,
     User,
     Vendor,
@@ -154,5 +158,74 @@ def seed_data(db: Session):
             for i in range(1, 31)
         ]
     )
+
+    # Cenário demo coerente de ponta a ponta (fácil de localizar na UI)
+    demo_department = Department(name="Secretaria Demo Integrada")
+    db.add(demo_department)
+    db.flush()
+
+    demo_vendor = Vendor(name="Fornecedor Demo Integrado", document="99.888.777/0001-66")
+    db.add(demo_vendor)
+    db.flush()
+
+    db.add(
+        BudgetAllocation(
+            code="BA-DEMO-001",
+            description="Dotação Demo Integrada",
+            amount=120000,
+            fiscal_year_id=fy.id,
+        )
+    )
+
+    demo_commitment = Commitment(
+        number="EMP-DEMO-001",
+        description="Empenho Demo Integrado para demonstração",
+        amount=15000,
+        fiscal_year_id=fy.id,
+        department_id=demo_department.id,
+        vendor_id=demo_vendor.id,
+        status="pago",
+    )
+    db.add(demo_commitment)
+    db.flush()
+    db.add(Liquidation(commitment_id=demo_commitment.id, amount=demo_commitment.amount))
+    db.add(Payment(commitment_id=demo_commitment.id, amount=demo_commitment.amount, payment_date=date(2026, 4, 15)))
+
+    demo_employee = employees[0]
+    demo_payroll_event = PayrollEvent(
+        employee_id=demo_employee.id,
+        month="2026-04",
+        kind="provento",
+        description="Evento Demo Integrado",
+        value=450,
+    )
+    db.add(demo_payroll_event)
+    gross = demo_employee.base_salary + demo_payroll_event.value
+    deductions = gross * 0.11
+    db.add(Payslip(employee_id=demo_employee.id, month="2026-04", gross_amount=gross, deductions=deductions, net_amount=gross - deductions))
+
+    demo_asset = Asset(
+        tag="PAT-DEMO-001",
+        description="Bem Demo Integrado (Notebook)",
+        classification="Informática",
+        location="Sala Demo 01",
+        department_id=demo_department.id,
+        responsible_employee_id=demo_employee.id,
+        value=4200,
+        status="ativo",
+    )
+    db.add(demo_asset)
+    db.flush()
+    db.add(
+        AssetMovement(
+            asset_id=demo_asset.id,
+            from_department_id=demo_department.id,
+            to_department_id=departments[0].id,
+            movement_type="transferencia",
+        )
+    )
+    demo_asset.department_id = departments[0].id
+    demo_asset.location = "Sala Demo 02"
+    demo_asset.responsible_employee_id = employees[1].id
 
     db.commit()

@@ -84,6 +84,16 @@ a {
   padding: 16px;
 }
 
+.module-page {
+  display: grid;
+  gap: 12px;
+}
+
+.section-stack {
+  display: grid;
+  gap: 10px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -92,8 +102,64 @@ a {
   box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
 }
 
+.field-group {
+  display: grid;
+  gap: 4px;
+}
+
+.notice {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #eef4ff;
+}
+
+.notice.error {
+  border-color: #f0c2c2;
+  background: #fff1f1;
+}
+
+.empty-state {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .muted {
   color: var(--muted);
+}
+
+input,
+select,
+button {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+button {
+  background: #fff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #f3f7ff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background: #f7f9ff;
 }
 
 @media (prefers-color-scheme: dark) {

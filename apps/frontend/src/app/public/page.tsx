@@ -24,9 +24,10 @@ export default function PublicPage() {
   }, [search, page]);
 
   return (
-    <main style={{ padding: 24, fontFamily: "Arial, sans-serif", display: "grid", gap: 12 }}>
+    <main className="module-page" style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>Portal da Transparência</h1>
       <p>Consulta pública de empenhos e pagamentos sem autenticação. Registros criados internamente ficam visíveis aqui.</p>
+      <p className="muted">Dica de demo: buscar por <strong>Demo Integrado</strong> ou número <strong>EMP-DEMO-001</strong>.</p>
       <input placeholder="Buscar descrição" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
       <a href={`${API_URL}/public/commitments?search=${encodeURIComponent(search)}&export=csv`} target="_blank"> Exportar CSV</a>
       <table border={1} cellPadding={6} style={{ marginTop: 12 }}>
@@ -39,14 +40,18 @@ export default function PublicPage() {
           </tr>
         </thead>
         <tbody>
-          {items.map((item) => (
-            <tr key={item.id}>
-              <td>{item.number}</td>
-              <td>{item.description}</td>
-              <td>R$ {item.amount.toFixed(2)}</td>
-              <td>{item.status}</td>
-            </tr>
-          ))}
+          {items.length > 0 ? (
+            items.map((item) => (
+              <tr key={item.id}>
+                <td>{item.number}</td>
+                <td>{item.description}</td>
+                <td>R$ {item.amount.toFixed(2)}</td>
+                <td>{item.status}</td>
+              </tr>
+            ))
+          ) : (
+            <tr><td colSpan={4} className="empty-state">Nenhum empenho encontrado para os filtros informados.</td></tr>
+          )}
         </tbody>
       </table>
       <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
@@ -58,11 +63,15 @@ export default function PublicPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Empenho</th><th>Valor</th><th>Data</th></tr></thead>
           <tbody>
-            {payments.map((row) => (
-              <tr key={row.id}>
-                <td>{row.id}</td><td>{row.commitment_id}</td><td>R$ {row.amount.toFixed(2)}</td><td>{row.payment_date}</td>
-              </tr>
-            ))}
+            {payments.length > 0 ? (
+              payments.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.id}</td><td>{row.commitment_id}</td><td>R$ {row.amount.toFixed(2)}</td><td>{row.payment_date}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={4} className="empty-state">Nenhum pagamento público encontrado.</td></tr>
+            )}
           </tbody>
         </table>
       </section>

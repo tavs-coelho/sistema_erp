@@ -30,10 +30,10 @@ export default function PortalServidorPage() {
   }, []);
 
   return (
-    <main style={{ display: "grid", gap: 12 }}>
+    <main className="module-page">
       <h1>Portal do Servidor</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong> | <a href="/rh">Voltar ao RH</a></p>
-      {status && <p><strong>{status}</strong></p>}
+      {status && <p className={status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{status}</strong></p>}
 
       <section className="card">
         <h2>Meus dados</h2>
@@ -54,13 +54,17 @@ export default function PortalServidorPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Mês</th><th>Bruto</th><th>Descontos</th><th>Líquido</th><th>Ação</th></tr></thead>
           <tbody>
-            {slips.map((slip) => (
-              <tr key={slip.id}>
-                <td>{slip.id}</td><td>{slip.month}</td><td>R$ {slip.gross_amount.toFixed(2)}</td>
-                <td>R$ {slip.deductions.toFixed(2)}</td><td>R$ {slip.net_amount.toFixed(2)}</td>
-                <td><button onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
-              </tr>
-            ))}
+            {slips.length > 0 ? (
+              slips.map((slip) => (
+                <tr key={slip.id}>
+                  <td>{slip.id}</td><td>{slip.month}</td><td>R$ {slip.gross_amount.toFixed(2)}</td>
+                  <td>R$ {slip.deductions.toFixed(2)}</td><td>R$ {slip.net_amount.toFixed(2)}</td>
+                  <td><button onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={6} className="empty-state">Nenhum holerite disponível para o servidor logado.</td></tr>
+            )}
           </tbody>
         </table>
       </section>

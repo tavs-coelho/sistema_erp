@@ -168,11 +168,12 @@ export default function Fase2Page() {
   };
 
   return (
-    <main style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
+    <main className="module-page" style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>Fluxo demonstrável — Fase 2</h1>
       <p>Admin: departamento → fornecedor → dotação → empenho → liquidação → pagamento.</p>
+      <p className="muted">Cenário seeded para busca rápida: <strong>Fornecedor Demo Integrado</strong> e <strong>EMP-DEMO-001</strong>.</p>
       <p><Link href="/">Voltar ao painel</Link> | <Link href="/public">Transparência pública</Link> | <Link href="/rh">RH</Link> | <Link href="/patrimonio">Patrimônio</Link></p>
-      {statusMsg && <p><strong>{statusMsg}</strong></p>}
+      {statusMsg && <p className={statusMsg.toLowerCase().includes("falha") || statusMsg.toLowerCase().includes("erro") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
       <button
         onClick={() => {
           Promise.all([loadCore(), loadVendors(), loadCommitments(), loadPayments()])
@@ -245,7 +246,7 @@ export default function Fase2Page() {
           }}
         />
         <ul>
-          {(vendors?.items || []).map((v) => <li key={v.id}>{v.name} ({v.document})</li>)}
+          {(vendors?.items || []).length > 0 ? (vendors?.items || []).map((v) => <li key={v.id}>{v.name} ({v.document})</li>) : <li className="empty-state">Nenhum fornecedor encontrado.</li>}
         </ul>
       </section>
 
@@ -273,12 +274,16 @@ export default function Fase2Page() {
             <tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>
           </thead>
           <tbody>
-            {(commitments?.items || []).map((c) => (
-              <tr key={c.id}>
-                <td>{c.number}</td><td>{c.description}</td><td>R$ {c.amount.toFixed(2)}</td><td>{c.status}</td>
-                <td>{c.status === "empenhado" ? <button onClick={() => liquidateCommitment(c.id)}>Liquidar</button> : "-"}</td>
-              </tr>
-            ))}
+            {(commitments?.items || []).length > 0 ? (
+              (commitments?.items || []).map((c) => (
+                <tr key={c.id}>
+                  <td>{c.number}</td><td>{c.description}</td><td>R$ {c.amount.toFixed(2)}</td><td>{c.status}</td>
+                  <td>{c.status === "empenhado" ? <button onClick={() => liquidateCommitment(c.id)}>Liquidar</button> : "-"}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={5} className="empty-state">Nenhum empenho encontrado para o filtro atual.</td></tr>
+            )}
           </tbody>
         </table>
         <button
@@ -311,9 +316,13 @@ export default function Fase2Page() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Empenho</th><th>Valor</th><th>Data</th></tr></thead>
           <tbody>
-            {(payments?.items || []).map((p) => (
-              <tr key={p.id}><td>{p.id}</td><td>{p.commitment_id}</td><td>R$ {p.amount.toFixed(2)}</td><td>{p.payment_date}</td></tr>
-            ))}
+            {(payments?.items || []).length > 0 ? (
+              (payments?.items || []).map((p) => (
+                <tr key={p.id}><td>{p.id}</td><td>{p.commitment_id}</td><td>R$ {p.amount.toFixed(2)}</td><td>{p.payment_date}</td></tr>
+              ))
+            ) : (
+              <tr><td colSpan={4} className="empty-state">Nenhum pagamento encontrado.</td></tr>
+            )}
           </tbody>
         </table>
         <button

@@ -198,10 +198,10 @@ export default function PatrimonioPage() {
   };
 
   return (
-    <main style={{ display: "grid", gap: 12 }}>
+    <main className="module-page">
       <h1>Módulo de Patrimônio</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong></p>
-      {statusMsg && <p><strong>{statusMsg}</strong></p>}
+      {statusMsg && <p className={statusMsg.toLowerCase().includes("erro") || statusMsg.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
 
       <section style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
         <div className="card">
@@ -213,6 +213,7 @@ export default function PatrimonioPage() {
           <h2>Navegação rápida</h2>
           <p><a href="/rh">Ir para RH</a></p>
           <p><a href="/public">Ver transparência pública</a></p>
+          <p className="muted">Busca rápida de demo: descrição contém <strong>Demo Integrado</strong> ou tombamento <strong>PAT-DEMO-001</strong>.</p>
         </div>
       </section>
 
@@ -278,12 +279,16 @@ export default function PatrimonioPage() {
             <tr><th>Tombamento</th><th>Descrição</th><th>Classificação</th><th>Departamento</th><th>Status</th><th>Ações</th></tr>
           </thead>
           <tbody>
-            {(assets?.items || []).map((asset) => (
-              <tr key={asset.id}>
-                <td>{asset.tag}</td><td>{asset.description}</td><td>{asset.classification}</td><td>{asset.department_id}</td><td>{asset.status}</td>
-                <td>{asset.status !== "baixado" ? <button onClick={() => writeOffAsset(asset.id)}>Baixar bem</button> : "-"}</td>
-              </tr>
-            ))}
+            {(assets?.items || []).length > 0 ? (
+              (assets?.items || []).map((asset) => (
+                <tr key={asset.id}>
+                  <td>{asset.tag}</td><td>{asset.description}</td><td>{asset.classification}</td><td>{asset.department_id}</td><td>{asset.status}</td>
+                  <td>{asset.status !== "baixado" ? <button onClick={() => writeOffAsset(asset.id)}>Baixar bem</button> : "-"}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={6} className="empty-state">Nenhum bem encontrado para os filtros selecionados.</td></tr>
+            )}
           </tbody>
         </table>
         <button disabled={(assets?.page || 1) <= 1} onClick={() => setAssetPage((p) => p - 1)}>Anterior</button>
@@ -303,11 +308,15 @@ export default function PatrimonioPage() {
         <table border={1} cellPadding={6}>
           <thead><tr><th>ID</th><th>Bem</th><th>De</th><th>Para</th><th>Tipo</th><th>Data</th></tr></thead>
           <tbody>
-            {(movements?.items || []).map((m) => (
-              <tr key={m.id}>
-                <td>{m.id}</td><td>{m.asset_id}</td><td>{m.from_department_id ?? "-"}</td><td>{m.to_department_id ?? "-"}</td><td>{m.movement_type}</td><td>{new Date(m.moved_at).toLocaleString("pt-BR")}</td>
-              </tr>
-            ))}
+            {(movements?.items || []).length > 0 ? (
+              (movements?.items || []).map((m) => (
+                <tr key={m.id}>
+                  <td>{m.id}</td><td>{m.asset_id}</td><td>{m.from_department_id ?? "-"}</td><td>{m.to_department_id ?? "-"}</td><td>{m.movement_type}</td><td>{new Date(m.moved_at).toLocaleString("pt-BR")}</td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan={6} className="empty-state">Sem movimentações para os filtros informados.</td></tr>
+            )}
           </tbody>
         </table>
         <button disabled={(movements?.page || 1) <= 1} onClick={() => setMovementPage((p) => p - 1)}>Anterior</button>
@@ -325,9 +334,13 @@ export default function PatrimonioPage() {
           <button onClick={() => loadReport().catch((e) => setStatusMsg(messageFrom(e)))}>Gerar relatório</button>
         </div>
         <ul>
-          {Object.entries(report || {}).map(([dep, tags]) => (
-            <li key={dep}>Departamento {dep}: {tags.length} bens ({tags.join(", ")})</li>
-          ))}
+          {Object.entries(report || {}).length > 0 ? (
+            Object.entries(report || {}).map(([dep, tags]) => (
+              <li key={dep}>Departamento {dep}: {tags.length} bens ({tags.join(", ")})</li>
+            ))
+          ) : (
+            <li className="empty-state">Nenhum item para o relatório solicitado.</li>
+          )}
         </ul>
       </section>
     </main>

@@ -47,7 +47,7 @@ export default function Home() {
   };
 
   return (
-    <main style={{ padding: 16, fontFamily: "Arial, sans-serif", display: "grid", gap: 14 }}>
+    <main className="module-page" style={{ padding: 16, fontFamily: "Arial, sans-serif" }}>
       <h1>Painel Geral</h1>
       <p>
         Perfil logado: <strong suppressHydrationWarning>{role || "desconhecido"}</strong>
@@ -60,7 +60,7 @@ export default function Home() {
         <a href="/public">Transparência</a>
         <button onClick={logout}>Sair</button>
       </nav>
-      {message && <p>{message}</p>}
+      {message && <p className="notice error">{message}</p>}
       <section style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
         <div className="card">
           <h2>Contábil</h2>
@@ -78,6 +78,19 @@ export default function Home() {
           <p>Empenhos publicados: <strong>{publicCommitments?.total ?? "..."}</strong></p>
           <p>Pagamentos publicados: <strong>{publicPayments?.total ?? "..."}</strong></p>
           <p className="muted">Registros internos de empenho/pagamento aparecem automaticamente no portal.</p>
+        </div>
+        <div className="card">
+          <h2>Modo demonstração</h2>
+          <p>Usuários demo: admin1, hr1, employee1, patrimony1 (senha: demo123).</p>
+          <p>Ordem recomendada: Contábil → Transparência → RH → Portal do Servidor → Patrimônio → Auditoria.</p>
+          <p>Cenário seeded integrado:</p>
+          <ul style={{ marginLeft: 18 }}>
+            <li>Departamento: <strong>Secretaria Demo Integrada</strong></li>
+            <li>Fornecedor: <strong>Fornecedor Demo Integrado</strong></li>
+            <li>Empenho: <strong>EMP-DEMO-001</strong></li>
+            <li>Bem: <strong>PAT-DEMO-001</strong></li>
+            <li>Evento folha: <strong>Evento Demo Integrado</strong></li>
+          </ul>
         </div>
       </section>
     </main>

@@ -225,6 +225,84 @@ class PasswordResetToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime)
 
 
+# ── Protocolo / Processos Administrativos ────────────────────────────────────
+
+class Protocolo(Base):
+    """Protocolo de entrada de processo administrativo."""
+    __tablename__ = "protocolos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    tipo: Mapped[str] = mapped_column(String(60))          # requerimento, oficio, recurso, etc.
+    assunto: Mapped[str] = mapped_column(String(255))
+    interessado: Mapped[str] = mapped_column(String(160))  # nome do solicitante/interessado
+    interessado_doc: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    origem_department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    destino_department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="protocolado")   # protocolado, em_tramitacao, deferido, indeferido, arquivado
+    prioridade: Mapped[str] = mapped_column(String(20), default="normal")    # normal, urgente, sigiloso
+    data_entrada: Mapped[date] = mapped_column(Date)
+    prazo: Mapped[date | None] = mapped_column(Date, nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    tramitacoes = relationship("TramitacaoProtocolo", back_populates="protocolo", cascade="all, delete-orphan", order_by="TramitacaoProtocolo.created_at")
+    origem_department = relationship("Department", foreign_keys=[origem_department_id])
+    destino_department = relationship("Department", foreign_keys=[destino_department_id])
+
+
+class TramitacaoProtocolo(Base):
+    """Registro de movimentação/tramitação de um protocolo entre departamentos."""
+    __tablename__ = "tramitacoes_protocolo"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    protocolo_id: Mapped[int] = mapped_column(ForeignKey("protocolos.id"))
+    de_department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    para_department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
+    responsavel_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    acao: Mapped[str] = mapped_column(String(60))          # encaminhado, deferido, indeferido, arquivado, devolvido
+    despacho: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    protocolo = relationship("Protocolo", back_populates="tramitacoes")
+    para_department = relationship("Department", foreign_keys=[para_department_id])
+
+
+# ── Convênios ─────────────────────────────────────────────────────────────────
+
+class Convenio(Base):
+    """Convênio firmado com entidade concedente ou convenente."""
+    __tablename__ = "convenios"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    numero: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    objeto: Mapped[str] = mapped_column(String(255))
+    tipo: Mapped[str] = mapped_column(String(30), default="recebimento")   # recebimento, repasse
+    concedente: Mapped[str] = mapped_column(String(160))    # nome da entidade/órgão concedente
+    cnpj_concedente: Mapped[str | None] = mapped_column(String(18), nullable=True)
+    valor_total: Mapped[float] = mapped_column(Float, default=0.0)
+    contrapartida: Mapped[float] = mapped_column(Float, default=0.0)
+    data_assinatura: Mapped[date] = mapped_column(Date)
+    data_inicio: Mapped[date] = mapped_column(Date)
+    data_fim: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(30), default="vigente")     # rascunho, vigente, encerrado, suspenso, rescindido
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    loa_item_id: Mapped[int | None] = mapped_column(ForeignKey("loa_items.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    desembolsos = relationship("ConvenioDesembolso", back_populates="convenio", cascade="all, delete-orphan")
+    department = relationship("Department", foreign_keys=[department_id])
+
+
+class ConvenioDesembolso(Base):
+    """Registro de desembolso (parcela liberada) de um convênio."""
+    __tablename__ = "convenio_desembolsos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    convenio_id: Mapped[int] = mapped_column(ForeignKey("convenios.id"))
+    numero_parcela: Mapped[int] = mapped_column(Integer)
+    valor: Mapped[float] = mapped_column(Float)
+    data_prevista: Mapped[date] = mapped_column(Date)
+    data_efetiva: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="previsto")    # previsto, recebido, pendente
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    convenio = relationship("Convenio", back_populates="desembolsos")
+
+
 # ── Módulo orçamentário: PPA / LDO / LOA ─────────────────────────────────────
 
 class PPA(Base):

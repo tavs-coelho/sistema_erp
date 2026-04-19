@@ -344,3 +344,140 @@ class LOAUpdate(BaseModel):
     total_revenue: float | None = None
     total_expenditure: float | None = None
     status: str | None = None
+
+
+# ── Schemas de Protocolo ──────────────────────────────────────────────────────
+
+class ProtocoloCreate(BaseModel):
+    numero: str
+    tipo: str
+    assunto: str
+    interessado: str
+    interessado_doc: str | None = None
+    origem_department_id: int | None = None
+    destino_department_id: int | None = None
+    status: str = "protocolado"
+    prioridade: str = "normal"
+    data_entrada: date
+    prazo: date | None = None
+    observacoes: str = ""
+
+
+class ProtocoloUpdate(BaseModel):
+    assunto: str | None = None
+    destino_department_id: int | None = None
+    status: str | None = None
+    prioridade: str | None = None
+    prazo: date | None = None
+    observacoes: str | None = None
+
+
+class TramitacaoCreate(BaseModel):
+    para_department_id: int
+    acao: str
+    despacho: str = ""
+
+
+class TramitacaoOut(BaseModel):
+    id: int
+    protocolo_id: int
+    de_department_id: int | None
+    para_department_id: int
+    responsavel_id: int | None
+    acao: str
+    despacho: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProtocoloOut(BaseModel):
+    id: int
+    numero: str
+    tipo: str
+    assunto: str
+    interessado: str
+    interessado_doc: str | None
+    origem_department_id: int | None
+    destino_department_id: int | None
+    status: str
+    prioridade: str
+    data_entrada: date
+    prazo: date | None
+    observacoes: str
+    created_at: datetime
+    tramitacoes: list[TramitacaoOut] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Schemas de Convênios ──────────────────────────────────────────────────────
+
+class ConvenioCreate(BaseModel):
+    numero: str
+    objeto: str
+    tipo: str = "recebimento"
+    concedente: str
+    cnpj_concedente: str | None = None
+    valor_total: float
+    contrapartida: float = 0.0
+    data_assinatura: date
+    data_inicio: date
+    data_fim: date
+    status: str = "vigente"
+    department_id: int | None = None
+    loa_item_id: int | None = None
+    observacoes: str = ""
+
+
+class ConvenioUpdate(BaseModel):
+    objeto: str | None = None
+    valor_total: float | None = None
+    contrapartida: float | None = None
+    data_fim: date | None = None
+    status: str | None = None
+    observacoes: str | None = None
+
+
+class ConvenioDesembolsoCreate(BaseModel):
+    numero_parcela: int
+    valor: float
+    data_prevista: date
+    data_efetiva: date | None = None
+    status: str = "previsto"
+    observacoes: str = ""
+
+
+class ConvenioDesembolsoOut(BaseModel):
+    id: int
+    convenio_id: int
+    numero_parcela: int
+    valor: float
+    data_prevista: date
+    data_efetiva: date | None
+    status: str
+    observacoes: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ConvenioOut(BaseModel):
+    id: int
+    numero: str
+    objeto: str
+    tipo: str
+    concedente: str
+    cnpj_concedente: str | None
+    valor_total: float
+    contrapartida: float
+    data_assinatura: date
+    data_inicio: date
+    data_fim: date
+    status: str
+    department_id: int | None
+    loa_item_id: int | None
+    observacoes: str
+    created_at: datetime
+    desembolsos: list[ConvenioDesembolsoOut] = []
+
+    model_config = ConfigDict(from_attributes=True)

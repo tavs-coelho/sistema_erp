@@ -303,6 +303,108 @@ class ConvenioDesembolso(Base):
     convenio = relationship("Convenio", back_populates="desembolsos")
 
 
+# ── Tributário / Arrecadação Municipal ───────────────────────────────────────
+
+class Contribuinte(Base):
+    """Contribuinte municipal (pessoa física ou jurídica)."""
+    __tablename__ = "contribuintes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cpf_cnpj: Mapped[str] = mapped_column(String(18), unique=True, index=True)
+    nome: Mapped[str] = mapped_column(String(160))
+    tipo: Mapped[str] = mapped_column(String(2), default="PF")          # PF | PJ
+    email: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    telefone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    logradouro: Mapped[str] = mapped_column(String(200), default="")
+    numero: Mapped[str] = mapped_column(String(10), default="")
+    complemento: Mapped[str] = mapped_column(String(80), default="")
+    bairro: Mapped[str] = mapped_column(String(80), default="")
+    municipio: Mapped[str] = mapped_column(String(80), default="")
+    uf: Mapped[str] = mapped_column(String(2), default="")
+    cep: Mapped[str] = mapped_column(String(9), default="")
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    imoveis = relationship("ImovelCadastral", back_populates="contribuinte", cascade="all, delete-orphan")
+    lancamentos = relationship("LancamentoTributario", back_populates="contribuinte")
+
+
+class ImovelCadastral(Base):
+    """Cadastro imobiliário simplificado para fins de IPTU/ITBI."""
+    __tablename__ = "imoveis_cadastrais"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    inscricao: Mapped[str] = mapped_column(String(30), unique=True, index=True)   # inscrição cadastral
+    contribuinte_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"))
+    logradouro: Mapped[str] = mapped_column(String(200))
+    numero: Mapped[str] = mapped_column(String(10), default="")
+    complemento: Mapped[str] = mapped_column(String(80), default="")
+    bairro: Mapped[str] = mapped_column(String(80), default="")
+    area_terreno: Mapped[float] = mapped_column(Float, default=0.0)                # m²
+    area_construida: Mapped[float] = mapped_column(Float, default=0.0)             # m²
+    valor_venal: Mapped[float] = mapped_column(Float, default=0.0)                 # R$
+    uso: Mapped[str] = mapped_column(String(30), default="residencial")            # residencial, comercial, industrial, rural
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    contribuinte = relationship("Contribuinte", back_populates="imoveis")
+    lancamentos = relationship("LancamentoTributario", back_populates="imovel")
+
+
+class LancamentoTributario(Base):
+    """Lançamento de tributo (IPTU, ISS, ITBI, taxas) para um contribuinte/imóvel."""
+    __tablename__ = "lancamentos_tributarios"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    contribuinte_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"))
+    imovel_id: Mapped[int | None] = mapped_column(ForeignKey("imoveis_cadastrais.id"), nullable=True)
+    tributo: Mapped[str] = mapped_column(String(20))        # IPTU, ISS, ITBI, TAXA_LIXO, TAXA_ILUMINACAO, etc.
+    competencia: Mapped[str] = mapped_column(String(7))     # YYYY-MM  (ex: 2026-01)
+    exercicio: Mapped[int] = mapped_column(Integer)         # ano de referência
+    valor_principal: Mapped[float] = mapped_column(Float)
+    valor_juros: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_multa: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_desconto: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_total: Mapped[float] = mapped_column(Float)       # calculado ao criar/atualizar
+    vencimento: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="aberto")   # aberto, pago, cancelado, inscrito_divida
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    contribuinte = relationship("Contribuinte", back_populates="lancamentos")
+    imovel = relationship("ImovelCadastral", back_populates="lancamentos")
+    guias = relationship("GuiaPagamento", back_populates="lancamento", cascade="all, delete-orphan")
+
+
+class GuiaPagamento(Base):
+    """Guia de arrecadação gerada a partir de um lançamento tributário."""
+    __tablename__ = "guias_pagamento"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lancamento_id: Mapped[int] = mapped_column(ForeignKey("lancamentos_tributarios.id"))
+    codigo_barras: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    valor: Mapped[float] = mapped_column(Float)
+    vencimento: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="emitida")   # emitida, paga, cancelada, vencida
+    data_pagamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    banco: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    lancamento = relationship("LancamentoTributario", back_populates="guias")
+
+
+class DividaAtiva(Base):
+    """Inscrição de crédito tributário em dívida ativa municipal."""
+    __tablename__ = "divida_ativa"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lancamento_id: Mapped[int] = mapped_column(ForeignKey("lancamentos_tributarios.id"), unique=True)
+    contribuinte_id: Mapped[int] = mapped_column(ForeignKey("contribuintes.id"))
+    numero_inscricao: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    tributo: Mapped[str] = mapped_column(String(20))
+    exercicio: Mapped[int] = mapped_column(Integer)
+    valor_original: Mapped[float] = mapped_column(Float)
+    valor_atualizado: Mapped[float] = mapped_column(Float)       # com correção e juros de mora
+    data_inscricao: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="ativa")   # ativa, quitada, parcelada, ajuizada, prescrita
+    data_ajuizamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    lancamento = relationship("LancamentoTributario")
+    contribuinte = relationship("Contribuinte")
+
+
 # ── Módulo orçamentário: PPA / LDO / LOA ─────────────────────────────────────
 
 class PPA(Base):

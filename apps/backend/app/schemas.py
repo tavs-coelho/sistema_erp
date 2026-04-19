@@ -481,3 +481,184 @@ class ConvenioOut(BaseModel):
     desembolsos: list[ConvenioDesembolsoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Schemas de Tributário / Arrecadação ──────────────────────────────────────
+
+class ContribuinteCreate(BaseModel):
+    cpf_cnpj: str
+    nome: str
+    tipo: str = "PF"
+    email: str | None = None
+    telefone: str | None = None
+    logradouro: str = ""
+    numero: str = ""
+    complemento: str = ""
+    bairro: str = ""
+    municipio: str = ""
+    uf: str = ""
+    cep: str = ""
+
+
+class ContribuinteUpdate(BaseModel):
+    nome: str | None = None
+    email: str | None = None
+    telefone: str | None = None
+    logradouro: str | None = None
+    numero: str | None = None
+    bairro: str | None = None
+    municipio: str | None = None
+    uf: str | None = None
+    cep: str | None = None
+    ativo: bool | None = None
+
+
+class ContribuinteOut(BaseModel):
+    id: int
+    cpf_cnpj: str
+    nome: str
+    tipo: str
+    email: str | None
+    telefone: str | None
+    logradouro: str
+    numero: str
+    bairro: str
+    municipio: str
+    uf: str
+    cep: str
+    ativo: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ImovelCreate(BaseModel):
+    inscricao: str
+    contribuinte_id: int
+    logradouro: str
+    numero: str = ""
+    complemento: str = ""
+    bairro: str = ""
+    area_terreno: float = 0.0
+    area_construida: float = 0.0
+    valor_venal: float = 0.0
+    uso: str = "residencial"
+
+
+class ImovelUpdate(BaseModel):
+    logradouro: str | None = None
+    numero: str | None = None
+    bairro: str | None = None
+    area_terreno: float | None = None
+    area_construida: float | None = None
+    valor_venal: float | None = None
+    uso: str | None = None
+    ativo: bool | None = None
+
+
+class ImovelOut(BaseModel):
+    id: int
+    inscricao: str
+    contribuinte_id: int
+    logradouro: str
+    numero: str
+    complemento: str
+    bairro: str
+    area_terreno: float
+    area_construida: float
+    valor_venal: float
+    uso: str
+    ativo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LancamentoCreate(BaseModel):
+    contribuinte_id: int
+    imovel_id: int | None = None
+    tributo: str
+    competencia: str           # YYYY-MM
+    exercicio: int
+    valor_principal: float
+    valor_juros: float = 0.0
+    valor_multa: float = 0.0
+    valor_desconto: float = 0.0
+    vencimento: date
+    observacoes: str = ""
+
+
+class LancamentoUpdate(BaseModel):
+    valor_juros: float | None = None
+    valor_multa: float | None = None
+    valor_desconto: float | None = None
+    vencimento: date | None = None
+    status: str | None = None
+    observacoes: str | None = None
+
+
+class LancamentoOut(BaseModel):
+    id: int
+    contribuinte_id: int
+    imovel_id: int | None
+    tributo: str
+    competencia: str
+    exercicio: int
+    valor_principal: float
+    valor_juros: float
+    valor_multa: float
+    valor_desconto: float
+    valor_total: float
+    vencimento: date
+    status: str
+    data_pagamento: date | None
+    observacoes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GuiaOut(BaseModel):
+    id: int
+    lancamento_id: int
+    codigo_barras: str
+    valor: float
+    vencimento: date
+    status: str
+    data_pagamento: date | None
+    banco: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DividaAtivaCreate(BaseModel):
+    lancamento_id: int
+    numero_inscricao: str
+    data_inscricao: date
+    valor_atualizado: float
+    observacoes: str = ""
+
+
+class DividaAtivaUpdate(BaseModel):
+    valor_atualizado: float | None = None
+    status: str | None = None
+    data_ajuizamento: date | None = None
+    observacoes: str | None = None
+
+
+class DividaAtivaOut(BaseModel):
+    id: int
+    lancamento_id: int
+    contribuinte_id: int
+    numero_inscricao: str
+    tributo: str
+    exercicio: int
+    valor_original: float
+    valor_atualizado: float
+    data_inscricao: date
+    status: str
+    data_ajuizamento: date | None
+    observacoes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

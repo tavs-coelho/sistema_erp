@@ -175,7 +175,7 @@ export default function RhPage() {
       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
         <section className="card">
           <h2>1) Cadastrar servidor</h2>
-          <form onSubmit={createEmployee} style={{ display: "grid", gap: 8 }}>
+          <form onSubmit={createEmployee} className="section-stack">
             <label className="field-group">Nome completo<input value={employeeName} onChange={(e) => setEmployeeName(e.target.value)} placeholder="Nome completo" required /></label>
             <label className="field-group">CPF<input value={employeeCpf} onChange={(e) => setEmployeeCpf(e.target.value)} placeholder="CPF" required /></label>
             <label className="field-group">Cargo<input value={employeeJobTitle} onChange={(e) => setEmployeeJobTitle(e.target.value)} placeholder="Cargo" required /></label>
@@ -184,13 +184,13 @@ export default function RhPage() {
             <label className="field-group">Departamento<select value={employeeDepartment} onChange={(e) => setEmployeeDepartment(Number(e.target.value))}>
               {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
             </select></label>
-            <button type="submit">Salvar servidor</button>
+            <button className="btn btn-primary" type="submit">Salvar servidor</button>
           </form>
         </section>
 
         <section className="card">
           <h2>2) Criar evento de folha</h2>
-          <form onSubmit={createEvent} style={{ display: "grid", gap: 8 }}>
+          <form onSubmit={createEvent} className="section-stack">
             <label className="field-group">Servidor<select value={eventEmployeeId} onChange={(e) => setEventEmployeeId(Number(e.target.value))}>
               {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
             </select></label>
@@ -201,23 +201,23 @@ export default function RhPage() {
             </select></label>
             <label className="field-group">Descrição<input value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} placeholder="Descrição" required /></label>
             <label className="field-group">Valor<input type="number" value={eventValue} onChange={(e) => setEventValue(Number(e.target.value))} placeholder="Valor" required /></label>
-            <button type="submit">Salvar evento</button>
+            <button className="btn btn-primary" type="submit">Salvar evento</button>
           </form>
-          <button style={{ marginTop: 8 }} onClick={calculatePayroll}>3) Calcular folha mensal</button>
+          <button className="btn" style={{ marginTop: 8 }} onClick={calculatePayroll}>3) Calcular folha mensal</button>
         </section>
       </div>
 
       <section className="card">
         <h2>Servidores (busca e paginação)</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="toolbar">
           <input
             value={employeeSearch}
             onChange={(e) => setEmployeeSearch(e.target.value)}
             placeholder="Buscar por nome"
           />
-          <button onClick={() => { setEmployeePage(1); loadEmployees().catch((e) => setStatus(messageFrom(e))); }}>Buscar</button>
+          <button className="btn" onClick={() => { setEmployeePage(1); loadEmployees().catch((e) => setStatus(messageFrom(e))); }}>Buscar</button>
         </div>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>Nome</th><th>CPF</th><th>Cargo</th><th>Salário</th></tr></thead>
           <tbody>
             {employees.length > 0 ? (
@@ -229,24 +229,26 @@ export default function RhPage() {
             )}
           </tbody>
         </table>
-        <button disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => p - 1)}>Anterior</button>
-        <span> Página {employeePage} </span>
-        <button disabled={employees.length < 10} onClick={() => setEmployeePage((p) => p + 1)}>Próxima</button>
+        <div className="pagination">
+          <button className="btn" disabled={employeePage <= 1} onClick={() => setEmployeePage((p) => p - 1)}>Anterior</button>
+          <span> Página {employeePage} </span>
+          <button className="btn" disabled={employees.length < 10} onClick={() => setEmployeePage((p) => p + 1)}>Próxima</button>
+        </div>
       </section>
 
       <section className="card">
         <h2>Eventos de folha (filtro e paginação)</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="toolbar">
           <input value={eventFilterMonth} onChange={(e) => setEventFilterMonth(e.target.value)} placeholder="Mês (YYYY-MM)" />
-          <button onClick={() => { setEventPage(1); loadEvents().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setEventPage(1); loadEvents().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
         </div>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
           <tbody>
             {(events?.items || []).length > 0 ? (
               (events?.items || []).map((row) => (
                 <tr key={row.id}>
-                  <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td><td>{row.kind}</td><td>{row.description}</td><td>R$ {row.value.toFixed(2)}</td>
+                  <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td><td><span className={`chip ${row.kind}`}>{row.kind}</span></td><td>{row.description}</td><td>R$ {row.value.toFixed(2)}</td>
                 </tr>
               ))
             ) : (
@@ -254,18 +256,20 @@ export default function RhPage() {
             )}
           </tbody>
         </table>
-        <button disabled={(events?.page || 1) <= 1} onClick={() => setEventPage((p) => p - 1)}>Anterior</button>
-        <span> Página {events?.page || 1} </span>
-        <button disabled={(events?.items?.length || 0) < 10} onClick={() => setEventPage((p) => p + 1)}>Próxima</button>
+        <div className="pagination">
+          <button className="btn" disabled={(events?.page || 1) <= 1} onClick={() => setEventPage((p) => p - 1)}>Anterior</button>
+          <span> Página {events?.page || 1} </span>
+          <button className="btn" disabled={(events?.items?.length || 0) < 10} onClick={() => setEventPage((p) => p + 1)}>Próxima</button>
+        </div>
       </section>
 
       <section className="card">
         <h2>Resultados de folha (holerites gerados)</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="toolbar">
           <input value={payslipFilterMonth} onChange={(e) => setPayslipFilterMonth(e.target.value)} placeholder="Mês (YYYY-MM)" />
-          <button onClick={() => { setPayslipPage(1); loadPayslips().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setPayslipPage(1); loadPayslips().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
         </div>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Bruto</th><th>Descontos</th><th>Líquido</th><th>Ação</th></tr></thead>
           <tbody>
             {(payslips?.items || []).length > 0 ? (
@@ -273,7 +277,7 @@ export default function RhPage() {
                 <tr key={row.id}>
                   <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td>
                   <td>R$ {row.gross_amount.toFixed(2)}</td><td>R$ {row.deductions.toFixed(2)}</td><td>R$ {row.net_amount.toFixed(2)}</td>
-                  <td><button onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
                 </tr>
               ))
             ) : (
@@ -281,9 +285,11 @@ export default function RhPage() {
             )}
           </tbody>
         </table>
-        <button disabled={(payslips?.page || 1) <= 1} onClick={() => setPayslipPage((p) => p - 1)}>Anterior</button>
-        <span> Página {payslips?.page || 1} </span>
-        <button disabled={(payslips?.items?.length || 0) < 10} onClick={() => setPayslipPage((p) => p + 1)}>Próxima</button>
+        <div className="pagination">
+          <button className="btn" disabled={(payslips?.page || 1) <= 1} onClick={() => setPayslipPage((p) => p - 1)}>Anterior</button>
+          <span> Página {payslips?.page || 1} </span>
+          <button className="btn" disabled={(payslips?.items?.length || 0) < 10} onClick={() => setPayslipPage((p) => p + 1)}>Próxima</button>
+        </div>
       </section>
     </main>
   );

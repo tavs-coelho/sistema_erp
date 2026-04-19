@@ -162,13 +162,18 @@ export default function Fase2Page() {
   };
 
   return (
-    <main className="module-page" style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
+    <main className="module-page" style={{ padding: 16 }}>
       <h1>Fluxo demonstrável — Fase 2</h1>
       <p>Admin: departamento → fornecedor → dotação → empenho → liquidação → pagamento.</p>
       <p className="muted">Cenário seeded para busca rápida: <strong>Fornecedor Demo Integrado</strong> e <strong>EMP-DEMO-001</strong>.</p>
-      <p><Link href="/">Voltar ao painel</Link> | <Link href="/public">Transparência pública</Link> | <Link href="/rh">RH</Link> | <Link href="/patrimonio">Patrimônio</Link></p>
+      <div className="toolbar">
+        <Link className="btn" href="/">Voltar ao painel</Link>
+        <Link className="btn" href="/public">Transparência</Link>
+        <Link className="btn" href="/rh">RH</Link>
+        <Link className="btn" href="/patrimonio">Patrimônio</Link>
+      </div>
       {statusMsg && <p className={statusMsg.toLowerCase().includes("falha") || statusMsg.toLowerCase().includes("erro") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
-      <button
+      <button className="btn"
         onClick={() => {
           Promise.all([loadCore(), loadVendors(), loadCommitments(), loadPayments()])
             .catch(() => setStatusMsg("Falha ao carregar listas"));
@@ -177,57 +182,87 @@ export default function Fase2Page() {
         Carregar / atualizar listas
       </button>
 
-      <section style={{ display: "grid", gap: 8, marginBottom: 20 }}>
-        <form onSubmit={submitDepartment}>
+      <section style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+        <form onSubmit={submitDepartment} className="card section-stack">
           <h2>1) Criar departamento</h2>
-          <input value={departmentName} onChange={(e) => setDepartmentName(e.target.value)} required />
-          <button type="submit">Salvar</button>
+          <label className="field-group">Nome do departamento
+            <input value={departmentName} onChange={(e) => setDepartmentName(e.target.value)} required />
+          </label>
+          <button className="btn btn-primary" type="submit">Salvar</button>
         </form>
 
-        <form onSubmit={submitVendor}>
+        <form onSubmit={submitVendor} className="card section-stack">
           <h2>2) Criar fornecedor</h2>
-          <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} required />
-          <input value={vendorDocument} onChange={(e) => setVendorDocument(e.target.value)} required />
-          <button type="submit">Salvar</button>
+          <label className="field-group">Nome do fornecedor
+            <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} required />
+          </label>
+          <label className="field-group">Documento
+            <input value={vendorDocument} onChange={(e) => setVendorDocument(e.target.value)} required />
+          </label>
+          <button className="btn btn-primary" type="submit">Salvar</button>
         </form>
 
-        <form onSubmit={submitAllocation}>
+        <form onSubmit={submitAllocation} className="card section-stack">
           <h2>3) Criar dotação orçamentária</h2>
-          <input value={allocationCode} onChange={(e) => setAllocationCode(e.target.value)} required />
-          <input value={allocationDescription} onChange={(e) => setAllocationDescription(e.target.value)} required />
-          <input type="number" value={allocationAmount} onChange={(e) => setAllocationAmount(Number(e.target.value))} required />
-          <select value={selectedFiscalYear} onChange={(e) => setSelectedFiscalYear(Number(e.target.value))}>
-            {fiscalYears.map((fy) => <option key={fy.id} value={fy.id}>{fy.year}</option>)}
-          </select>
-          <button type="submit">Salvar</button>
+          <label className="field-group">Código
+            <input value={allocationCode} onChange={(e) => setAllocationCode(e.target.value)} required />
+          </label>
+          <label className="field-group">Descrição
+            <input value={allocationDescription} onChange={(e) => setAllocationDescription(e.target.value)} required />
+          </label>
+          <label className="field-group">Valor
+            <input type="number" value={allocationAmount} onChange={(e) => setAllocationAmount(Number(e.target.value))} required />
+          </label>
+          <label className="field-group">Exercício
+            <select value={selectedFiscalYear} onChange={(e) => setSelectedFiscalYear(Number(e.target.value))}>
+              {fiscalYears.map((fy) => <option key={fy.id} value={fy.id}>{fy.year}</option>)}
+            </select>
+          </label>
+          <button className="btn btn-primary" type="submit">Salvar</button>
         </form>
 
-        <form onSubmit={submitCommitment}>
+        <form onSubmit={submitCommitment} className="card section-stack">
           <h2>4) Criar empenho</h2>
-          <input value={commitmentNumber} onChange={(e) => setCommitmentNumber(e.target.value)} required />
-          <input value={commitmentDescription} onChange={(e) => setCommitmentDescription(e.target.value)} required />
-          <input type="number" value={commitmentAmount} onChange={(e) => setCommitmentAmount(Number(e.target.value))} required />
-          <select value={selectedDepartmentId} onChange={(e) => setSelectedDepartmentId(Number(e.target.value))}>
-            {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
-          </select>
-          <select value={selectedVendorId} onChange={(e) => setSelectedVendorId(Number(e.target.value))}>
-            {(vendors?.items || []).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
-          </select>
-          <button type="submit">Salvar</button>
+          <label className="field-group">Número
+            <input value={commitmentNumber} onChange={(e) => setCommitmentNumber(e.target.value)} required />
+          </label>
+          <label className="field-group">Descrição
+            <input value={commitmentDescription} onChange={(e) => setCommitmentDescription(e.target.value)} required />
+          </label>
+          <label className="field-group">Valor
+            <input type="number" value={commitmentAmount} onChange={(e) => setCommitmentAmount(Number(e.target.value))} required />
+          </label>
+          <label className="field-group">Departamento
+            <select value={selectedDepartmentId} onChange={(e) => setSelectedDepartmentId(Number(e.target.value))}>
+              {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
+            </select>
+          </label>
+          <label className="field-group">Fornecedor
+            <select value={selectedVendorId} onChange={(e) => setSelectedVendorId(Number(e.target.value))}>
+              {(vendors?.items || []).map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </label>
+          <button className="btn btn-primary" type="submit">Salvar</button>
         </form>
 
-        <form onSubmit={submitPayment}>
+        <form onSubmit={submitPayment} className="card section-stack">
           <h2>5) Registrar pagamento</h2>
-          <select value={paymentCommitmentId} onChange={(e) => setPaymentCommitmentId(Number(e.target.value))}>
-            {(commitments?.items || []).map((c) => <option key={c.id} value={c.id}>{c.number}</option>)}
-          </select>
-          <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(Number(e.target.value))} required />
-          <input value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required />
-          <button type="submit">Salvar</button>
+          <label className="field-group">Empenho
+            <select value={paymentCommitmentId} onChange={(e) => setPaymentCommitmentId(Number(e.target.value))}>
+              {(commitments?.items || []).map((c) => <option key={c.id} value={c.id}>{c.number}</option>)}
+            </select>
+          </label>
+          <label className="field-group">Valor
+            <input type="number" value={paymentAmount} onChange={(e) => setPaymentAmount(Number(e.target.value))} required />
+          </label>
+          <label className="field-group">Data de pagamento
+            <input value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required />
+          </label>
+          <button className="btn btn-primary" type="submit">Salvar</button>
         </form>
       </section>
 
-      <section>
+      <section className="card section-stack">
         <h2>Lista interna de fornecedores (busca + paginação)</h2>
         <input
           placeholder="Buscar fornecedor"
@@ -239,14 +274,14 @@ export default function Fase2Page() {
             }, 0);
           }}
         />
-        <ul>
+        <ul style={{ marginLeft: 18 }}>
           {(vendors?.items || []).length > 0 ? (vendors?.items || []).map((v) => <li key={v.id}>{v.name} ({v.document})</li>) : <li className="empty-state">Nenhum fornecedor encontrado.</li>}
         </ul>
       </section>
 
-      <section>
+      <section className="card section-stack">
         <h2>Lista interna de empenhos (filtro + paginação)</h2>
-        <label>Status: </label>
+        <label className="field-group">Status
         <select
           value={commitmentStatus}
           onChange={(e) => {
@@ -262,8 +297,9 @@ export default function Fase2Page() {
           <option value="liquidado">Liquidado</option>
           <option value="pago">Pago</option>
         </select>
-        <a href={`${API_URL}/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank"> Exportar CSV</a>
-        <table border={1} cellPadding={6} style={{ marginTop: 8 }}>
+        </label>
+        <a className="btn" href={`${API_URL}/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank">Exportar CSV</a>
+        <table style={{ marginTop: 8 }}>
           <thead>
             <tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>
           </thead>
@@ -271,8 +307,8 @@ export default function Fase2Page() {
             {(commitments?.items || []).length > 0 ? (
               (commitments?.items || []).map((c) => (
                 <tr key={c.id}>
-                  <td>{c.number}</td><td>{c.description}</td><td>R$ {c.amount.toFixed(2)}</td><td>{c.status}</td>
-                  <td>{c.status === "empenhado" ? <button onClick={() => liquidateCommitment(c.id)}>Liquidar</button> : "-"}</td>
+                  <td>{c.number}</td><td>{c.description}</td><td>R$ {c.amount.toFixed(2)}</td><td><span className={`chip ${c.status}`}>{c.status}</span></td>
+                  <td>{c.status === "empenhado" ? <button className="btn" onClick={() => liquidateCommitment(c.id)}>Liquidar</button> : "-"}</td>
                 </tr>
               ))
             ) : (
@@ -280,7 +316,8 @@ export default function Fase2Page() {
             )}
           </tbody>
         </table>
-        <button
+        <div className="pagination">
+        <button className="btn"
           disabled={commitmentPage <= 1}
           onClick={() => {
             setCommitmentPage((p) => p - 1);
@@ -292,7 +329,7 @@ export default function Fase2Page() {
           Anterior
         </button>
         <span> Página {commitments?.page || 1} </span>
-        <button
+        <button className="btn"
           disabled={(commitments?.items?.length || 0) < 5}
           onClick={() => {
             setCommitmentPage((p) => p + 1);
@@ -303,11 +340,12 @@ export default function Fase2Page() {
         >
           Próxima
         </button>
+        </div>
       </section>
 
-      <section>
+      <section className="card section-stack">
         <h2>Lista interna de pagamentos (paginação)</h2>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Empenho</th><th>Valor</th><th>Data</th></tr></thead>
           <tbody>
             {(payments?.items || []).length > 0 ? (
@@ -319,7 +357,8 @@ export default function Fase2Page() {
             )}
           </tbody>
         </table>
-        <button
+        <div className="pagination">
+        <button className="btn"
           disabled={paymentPage <= 1}
           onClick={() => {
             setPaymentPage((p) => p - 1);
@@ -331,7 +370,7 @@ export default function Fase2Page() {
           Anterior
         </button>
         <span> Página {payments?.page || 1} </span>
-        <button
+        <button className="btn"
           disabled={(payments?.items?.length || 0) < 5}
           onClick={() => {
             setPaymentPage((p) => p + 1);
@@ -342,6 +381,7 @@ export default function Fase2Page() {
         >
           Próxima
         </button>
+        </div>
       </section>
     </main>
   );

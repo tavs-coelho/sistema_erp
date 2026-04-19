@@ -24,6 +24,7 @@ export default function AuditoriaPage() {
   const [entityFilter, setEntityFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<{ username: string; role: string }>({
     username: "",
     role: "",
@@ -35,6 +36,7 @@ export default function AuditoriaPage() {
     let active = true;
     (async () => {
       try {
+        setLoading(true);
         const [me, audit, allUsers] = await Promise.all([
           authJson("/auth/me"),
           authJson(`/core/audit-logs?page=${page}&size=20`),
@@ -63,6 +65,8 @@ export default function AuditoriaPage() {
         if (!active) return;
         setItems([]);
         setStatus(error instanceof Error ? error.message : "Falha ao carregar auditoria");
+      } finally {
+        if (active) setLoading(false);
       }
     })();
     return () => {
@@ -75,6 +79,7 @@ export default function AuditoriaPage() {
       <h1>Auditoria</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{profile.role || "carregando..."}</strong> · Usuário: <strong suppressHydrationWarning>{profile.username || "carregando..."}</strong></p>
       {status ? <p className="notice error">{status}</p> : null}
+      {loading ? <p className="notice">Carregando eventos de auditoria...</p> : null}
 
       <section className="card section-stack">
         <h2>Filtros</h2>
@@ -122,7 +127,7 @@ export default function AuditoriaPage() {
                     <td>{user?.username || "-"}</td>
                     <td>{user?.role || "-"}</td>
                     <td>{row.entity}</td>
-                    <td>{row.action}</td>
+                    <td><span className={`chip ${row.action}`}>{row.action}</span></td>
                     <td>{row.entity_id}</td>
                   </tr>
                 );
@@ -132,7 +137,7 @@ export default function AuditoriaPage() {
             )}
           </tbody>
         </table>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="pagination">
           <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
           <span>Página {page} · Total aproximado: {total}</span>
           <button className="btn" disabled={items.length < 20} onClick={() => setPage((p) => p + 1)}>Próxima</button>

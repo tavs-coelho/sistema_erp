@@ -203,16 +203,19 @@ export default function PatrimonioPage() {
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong></p>
       {statusMsg && <p className={statusMsg.toLowerCase().includes("erro") || statusMsg.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
 
-      <section style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+      <section className="kpi-grid">
         <div className="card">
           <h2>Resumo</h2>
-          <p>Total de bens: <strong>{inventory?.total ?? 0}</strong></p>
+          <p className="kpi-value">{inventory?.total ?? 0}</p>
+          <p className="muted">Total de bens cadastrados</p>
           <p>Bens ativos: <strong>{inventory?.ativos ?? 0}</strong></p>
         </div>
         <div className="card">
           <h2>Navegação rápida</h2>
-          <p><a href="/rh">Ir para RH</a></p>
-          <p><a href="/public">Ver transparência pública</a></p>
+          <div className="toolbar">
+            <a className="btn" href="/rh">Ir para RH</a>
+            <a className="btn" href="/public">Ver transparência</a>
+          </div>
           <p className="muted">Busca rápida de demo: descrição contém <strong>Demo Integrado</strong> ou tombamento <strong>PAT-DEMO-001</strong>.</p>
         </div>
       </section>
@@ -220,39 +223,39 @@ export default function PatrimonioPage() {
       <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))" }}>
         <section className="card">
           <h2>1) Cadastrar bem</h2>
-          <form onSubmit={createAsset} style={{ display: "grid", gap: 8 }}>
-            <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tombamento" required />
-            <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descrição" required />
-            <input value={classification} onChange={(e) => setClassification(e.target.value)} placeholder="Classificação" required />
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Localização" required />
-            <select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value))}>
+          <form onSubmit={createAsset} className="section-stack">
+            <label className="field-group">Tombamento<input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tombamento" required /></label>
+            <label className="field-group">Descrição<input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descrição" required /></label>
+            <label className="field-group">Classificação<input value={classification} onChange={(e) => setClassification(e.target.value)} placeholder="Classificação" required /></label>
+            <label className="field-group">Localização<input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Localização" required /></label>
+            <label className="field-group">Departamento<select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value))}>
               {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
-            </select>
-            <select value={responsibleEmployeeId} onChange={(e) => setResponsibleEmployeeId(e.target.value ? Number(e.target.value) : "")}>
+            </select></label>
+            <label className="field-group">Responsável<select value={responsibleEmployeeId} onChange={(e) => setResponsibleEmployeeId(e.target.value ? Number(e.target.value) : "")}>
               <option value="">Sem responsável</option>
               {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-            </select>
-            <input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} placeholder="Valor" required />
-            <button type="submit">Salvar bem</button>
+            </select></label>
+            <label className="field-group">Valor<input type="number" value={value} onChange={(e) => setValue(Number(e.target.value))} placeholder="Valor" required /></label>
+            <button className="btn btn-primary" type="submit">Salvar bem</button>
           </form>
         </section>
 
         <section className="card">
           <h2>2) Transferir bem</h2>
-          <form onSubmit={transferAsset} style={{ display: "grid", gap: 8 }}>
-            <select value={transferAssetId} onChange={(e) => setTransferAssetId(e.target.value ? Number(e.target.value) : "")}>
+          <form onSubmit={transferAsset} className="section-stack">
+            <label className="field-group">Bem<select value={transferAssetId} onChange={(e) => setTransferAssetId(e.target.value ? Number(e.target.value) : "")}>
               <option value="">Selecione o bem</option>
               {(assets?.items || []).map((item) => <option key={item.id} value={item.id}>{item.tag} - {item.description}</option>)}
-            </select>
-            <select value={transferDepartmentId} onChange={(e) => setTransferDepartmentId(Number(e.target.value))}>
+            </select></label>
+            <label className="field-group">Novo departamento<select value={transferDepartmentId} onChange={(e) => setTransferDepartmentId(Number(e.target.value))}>
               {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
-            </select>
-            <input value={transferLocation} onChange={(e) => setTransferLocation(e.target.value)} placeholder="Nova localização" />
-            <select value={transferResponsibleEmployeeId} onChange={(e) => setTransferResponsibleEmployeeId(e.target.value ? Number(e.target.value) : "")}>
+            </select></label>
+            <label className="field-group">Nova localização<input value={transferLocation} onChange={(e) => setTransferLocation(e.target.value)} placeholder="Nova localização" /></label>
+            <label className="field-group">Novo responsável<select value={transferResponsibleEmployeeId} onChange={(e) => setTransferResponsibleEmployeeId(e.target.value ? Number(e.target.value) : "")}>
               <option value="">Sem responsável</option>
               {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-            </select>
-            <button type="submit">Confirmar transferência</button>
+            </select></label>
+            <button className="btn btn-primary" type="submit">Confirmar transferência</button>
           </form>
         </section>
       </div>
@@ -271,10 +274,10 @@ export default function PatrimonioPage() {
             <option value="">Todos os departamentos</option>
             {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
           </select>
-          <button onClick={() => { setAssetPage(1); loadAssets().catch((e) => setStatusMsg(messageFrom(e))); }}>Aplicar filtros</button>
-          <button onClick={exportAssetsCsv}>Exportar CSV</button>
+          <button className="btn" onClick={() => { setAssetPage(1); loadAssets().catch((e) => setStatusMsg(messageFrom(e))); }}>Aplicar filtros</button>
+          <button className="btn" onClick={exportAssetsCsv}>Exportar CSV</button>
         </div>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead>
             <tr><th>Tombamento</th><th>Descrição</th><th>Classificação</th><th>Departamento</th><th>Status</th><th>Ações</th></tr>
           </thead>
@@ -282,8 +285,8 @@ export default function PatrimonioPage() {
             {(assets?.items || []).length > 0 ? (
               (assets?.items || []).map((asset) => (
                 <tr key={asset.id}>
-                  <td>{asset.tag}</td><td>{asset.description}</td><td>{asset.classification}</td><td>{asset.department_id}</td><td>{asset.status}</td>
-                  <td>{asset.status !== "baixado" ? <button onClick={() => writeOffAsset(asset.id)}>Baixar bem</button> : "-"}</td>
+                  <td>{asset.tag}</td><td>{asset.description}</td><td>{asset.classification}</td><td>{asset.department_id}</td><td><span className={`chip ${asset.status}`}>{asset.status}</span></td>
+                  <td>{asset.status !== "baixado" ? <button className="btn" onClick={() => writeOffAsset(asset.id)}>Baixar bem</button> : "-"}</td>
                 </tr>
               ))
             ) : (
@@ -291,27 +294,29 @@ export default function PatrimonioPage() {
             )}
           </tbody>
         </table>
-        <button disabled={(assets?.page || 1) <= 1} onClick={() => setAssetPage((p) => p - 1)}>Anterior</button>
-        <span> Página {assets?.page || 1} </span>
-        <button disabled={(assets?.items?.length || 0) < 10} onClick={() => setAssetPage((p) => p + 1)}>Próxima</button>
+        <div className="pagination">
+          <button className="btn" disabled={(assets?.page || 1) <= 1} onClick={() => setAssetPage((p) => p - 1)}>Anterior</button>
+          <span> Página {assets?.page || 1} </span>
+          <button className="btn" disabled={(assets?.items?.length || 0) < 10} onClick={() => setAssetPage((p) => p + 1)}>Próxima</button>
+        </div>
       </section>
 
       <section className="card">
         <h2>Histórico de movimentações</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="toolbar">
           <select value={movementAssetId} onChange={(e) => setMovementAssetId(e.target.value ? Number(e.target.value) : "")}>
             <option value="">Todos os bens</option>
             {(assets?.items || []).map((item) => <option key={item.id} value={item.id}>{item.tag}</option>)}
           </select>
-          <button onClick={() => { setMovementPage(1); loadMovements().catch((e) => setStatusMsg(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setMovementPage(1); loadMovements().catch((e) => setStatusMsg(messageFrom(e))); }}>Filtrar</button>
         </div>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Bem</th><th>De</th><th>Para</th><th>Tipo</th><th>Data</th></tr></thead>
           <tbody>
             {(movements?.items || []).length > 0 ? (
               (movements?.items || []).map((m) => (
                 <tr key={m.id}>
-                  <td>{m.id}</td><td>{m.asset_id}</td><td>{m.from_department_id ?? "-"}</td><td>{m.to_department_id ?? "-"}</td><td>{m.movement_type}</td><td>{new Date(m.moved_at).toLocaleString("pt-BR")}</td>
+                  <td>{m.id}</td><td>{m.asset_id}</td><td>{m.from_department_id ?? "-"}</td><td>{m.to_department_id ?? "-"}</td><td><span className={`chip ${m.movement_type}`}>{m.movement_type}</span></td><td>{new Date(m.moved_at).toLocaleString("pt-BR")}</td>
                 </tr>
               ))
             ) : (
@@ -319,19 +324,21 @@ export default function PatrimonioPage() {
             )}
           </tbody>
         </table>
-        <button disabled={(movements?.page || 1) <= 1} onClick={() => setMovementPage((p) => p - 1)}>Anterior</button>
-        <span> Página {movements?.page || 1} </span>
-        <button disabled={(movements?.items?.length || 0) < 10} onClick={() => setMovementPage((p) => p + 1)}>Próxima</button>
+        <div className="pagination">
+          <button className="btn" disabled={(movements?.page || 1) <= 1} onClick={() => setMovementPage((p) => p - 1)}>Anterior</button>
+          <span> Página {movements?.page || 1} </span>
+          <button className="btn" disabled={(movements?.items?.length || 0) < 10} onClick={() => setMovementPage((p) => p + 1)}>Próxima</button>
+        </div>
       </section>
 
       <section className="card">
         <h2>Relatório por departamento</h2>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div className="toolbar">
           <select value={reportDepartmentId} onChange={(e) => setReportDepartmentId(e.target.value ? Number(e.target.value) : "")}>
             <option value="">Todos os departamentos</option>
             {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
           </select>
-          <button onClick={() => loadReport().catch((e) => setStatusMsg(messageFrom(e)))}>Gerar relatório</button>
+          <button className="btn" onClick={() => loadReport().catch((e) => setStatusMsg(messageFrom(e)))}>Gerar relatório</button>
         </div>
         <ul>
           {Object.entries(report || {}).length > 0 ? (

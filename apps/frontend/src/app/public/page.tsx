@@ -12,6 +12,7 @@ export default function PublicPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
@@ -20,17 +21,20 @@ export default function PublicPage() {
     ]).then(([commitmentsData, paymentsData]) => {
       setItems(commitmentsData.items || []);
       setPayments(paymentsData.items || []);
-    });
+    }).finally(() => setLoading(false));
   }, [search, page]);
 
   return (
-    <main className="module-page" style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
+    <main className="module-page" style={{ padding: 16 }}>
       <h1>Portal da Transparência</h1>
       <p>Consulta pública de empenhos e pagamentos sem autenticação. Registros criados internamente ficam visíveis aqui.</p>
       <p className="muted">Dica de demo: buscar por <strong>Demo Integrado</strong> ou número <strong>EMP-DEMO-001</strong>.</p>
-      <input placeholder="Buscar descrição" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
-      <a href={`${API_URL}/public/commitments?search=${encodeURIComponent(search)}&export=csv`} target="_blank"> Exportar CSV</a>
-      <table border={1} cellPadding={6} style={{ marginTop: 12 }}>
+      <div className="toolbar">
+        <input placeholder="Buscar descrição" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+        <a className="btn" href={`${API_URL}/public/commitments?search=${encodeURIComponent(search)}&export=csv`} target="_blank">Exportar CSV</a>
+      </div>
+      {loading ? <p className="notice">Carregando dados públicos...</p> : null}
+      <table style={{ marginTop: 12 }}>
         <thead>
           <tr>
             <th>Número</th>
@@ -46,7 +50,7 @@ export default function PublicPage() {
                 <td>{item.number}</td>
                 <td>{item.description}</td>
                 <td>R$ {item.amount.toFixed(2)}</td>
-                <td>{item.status}</td>
+                <td><span className={`chip ${item.status}`}>{item.status}</span></td>
               </tr>
             ))
           ) : (
@@ -54,13 +58,15 @@ export default function PublicPage() {
           )}
         </tbody>
       </table>
-      <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
-      <span> Página {page} </span>
-      <button disabled={items.length < 10} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+      <div className="pagination">
+        <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+        <span> Página {page} </span>
+        <button className="btn" disabled={items.length < 10} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+      </div>
 
       <section className="card">
         <h2>Pagamentos publicados</h2>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Empenho</th><th>Valor</th><th>Data</th></tr></thead>
           <tbody>
             {payments.length > 0 ? (

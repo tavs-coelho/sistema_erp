@@ -37,12 +37,12 @@ export default function LoginPage() {
     <main className="card" style={{ maxWidth: 460, margin: "40px auto", fontFamily: "Arial, sans-serif", display: "grid", gap: 12 }}>
       <h1>Acesso ao ERP Municipal</h1>
       <p className="muted">Entre com um usuário de demonstração para navegar pelos módulos.</p>
-      <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
-        <label>
+      <form onSubmit={submit} className="section-stack">
+        <label className="field-group">
           Usuário
           <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
         </label>
-        <label>
+        <label className="field-group">
           Senha
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </label>

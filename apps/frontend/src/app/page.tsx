@@ -13,6 +13,8 @@ type Dashboard = {
 type Inventory = { total: number; ativos: number };
 type PublicList = { total: number };
 type Session = { username: string; full_name: string; role: string };
+type RecentAuditEntry = { id: number; action: string; entity: string; created_at: string };
+type MessageKind = "success" | "error" | "info";
 
 const QUICK_LINKS = [
   { href: "/fase-2", label: "1) Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
@@ -29,6 +31,9 @@ export default function Home() {
   const [publicCommitments, setPublicCommitments] = useState<PublicList | null>(null);
   const [publicPayments, setPublicPayments] = useState<PublicList | null>(null);
   const [message, setMessage] = useState<string>("");
+  const [messageKind, setMessageKind] = useState<MessageKind>("info");
+  const [loading, setLoading] = useState(true);
+  const [recentAudit, setRecentAudit] = useState<RecentAuditEntry[]>([]);
   const [session, setSession] = useState<Session>({
     username: "",
     full_name: "",
@@ -40,10 +45,11 @@ export default function Home() {
       authJson("/auth/me"),
       authJson("/accounting/dashboard"),
       authJson("/patrimony/inventory"),
+      authJson("/core/audit-logs?page=1&size=5").catch(() => ({ items: [] })),
       fetch(`${API_URL}/public/commitments?page=1&size=1`).then((r) => r.json()),
       fetch(`${API_URL}/public/payments?page=1&size=1`).then((r) => r.json()),
     ])
-      .then(([me, d, inv, commitments, payments]) => {
+      .then(([me, d, inv, audit, commitments, payments]) => {
         setSession({
           username: me.username || "",
           full_name: me.full_name || "",
@@ -51,10 +57,15 @@ export default function Home() {
         });
         setDashboard(d);
         setInventory(inv);
+        setRecentAudit(audit?.items || []);
         setPublicCommitments({ total: commitments.total || 0 });
         setPublicPayments({ total: payments.total || 0 });
       })
-      .catch(() => setMessage("Não foi possível carregar os painéis de resumo."));
+      .catch(() => {
+        setMessage("Não foi possível carregar os painéis de resumo.");
+        setMessageKind("error");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const quickLinks = useMemo(
@@ -66,8 +77,10 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(value);
       setMessage(`Copiado: ${value}`);
+      setMessageKind("success");
     } catch {
       setMessage(`Não foi possível copiar ${value}.`);
+      setMessageKind("error");
     }
   };
 
@@ -84,14 +97,14 @@ export default function Home() {
   };
 
   return (
-    <main className="module-page" style={{ padding: 16, fontFamily: "Arial, sans-serif" }}>
+    <main className="module-page" style={{ padding: 16 }}>
       <h1>Painel Geral</h1>
       <p>
         Usuário logado: <strong suppressHydrationWarning>{session.username || "carregando..."}</strong> · Perfil:{" "}
         <strong suppressHydrationWarning>{session.role || "carregando..."}</strong>
       </p>
       {session.full_name ? <p className="muted">Nome: {session.full_name}</p> : null}
-      <nav style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <nav className="toolbar">
         {quickLinks.map((link) => (
           <a key={link.href} className="btn" href={link.href}>
             {link.label}
@@ -99,23 +112,26 @@ export default function Home() {
         ))}
         <button className="btn btn-danger" onClick={logout}>Sair</button>
       </nav>
-      {message ? <p className={message.toLowerCase().includes("não foi possível") ? "notice error" : "notice"}>{message}</p> : null}
+      {message ? <p className={messageKind === "error" ? "notice error" : messageKind === "success" ? "notice success" : "notice"}>{message}</p> : null}
 
-      <section style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-        <div className="card">
+      <section className="kpi-grid">
+        <div className="card kpi-card">
           <h2>Contábil</h2>
-          <p>Total empenhado: <strong>R$ {dashboard?.total_empenhado?.toFixed(2) ?? "..."}</strong></p>
-          <p>Total pago: <strong>R$ {dashboard?.total_pago?.toFixed(2) ?? "..."}</strong></p>
-          <p>Total receita: <strong>R$ {dashboard?.total_receita?.toFixed(2) ?? "..."}</strong></p>
+          <p className="kpi-value">R$ {loading ? "..." : (dashboard?.total_empenhado?.toFixed(2) ?? "0.00")}</p>
+          <p className="muted">Total empenhado</p>
+          <p>Pago: <strong>R$ {dashboard?.total_pago?.toFixed(2) ?? "..."}</strong></p>
+          <p>Receita: <strong>R$ {dashboard?.total_receita?.toFixed(2) ?? "..."}</strong></p>
         </div>
-        <div className="card">
+        <div className="card kpi-card">
           <h2>Patrimônio</h2>
-          <p>Total de bens: <strong>{inventory?.total ?? "..."}</strong></p>
-          <p>Bens ativos: <strong>{inventory?.ativos ?? "..."}</strong></p>
+          <p className="kpi-value">{loading ? "..." : (inventory?.total ?? 0)}</p>
+          <p className="muted">Total de bens cadastrados</p>
+          <p>Ativos: <strong>{inventory?.ativos ?? "..."}</strong></p>
         </div>
-        <div className="card">
+        <div className="card kpi-card">
           <h2>Transparência pública</h2>
-          <p>Empenhos publicados: <strong>{publicCommitments?.total ?? "..."}</strong></p>
+          <p className="kpi-value">{loading ? "..." : (publicCommitments?.total ?? 0)}</p>
+          <p className="muted">Empenhos publicados</p>
           <p>Pagamentos publicados: <strong>{publicPayments?.total ?? "..."}</strong></p>
           <p className="muted">Registros internos de empenho/pagamento aparecem automaticamente no portal.</p>
         </div>
@@ -130,6 +146,21 @@ export default function Home() {
             <li>Empenho: <code>EMP-DEMO-001</code> <button className="btn btn-inline" onClick={() => copyText("EMP-DEMO-001")}>Copiar</button></li>
             <li>Bem: <code>PAT-DEMO-001</code> <button className="btn btn-inline" onClick={() => copyText("PAT-DEMO-001")}>Copiar</button></li>
             <li>Evento folha: <code>Evento Demo Integrado</code> <button className="btn btn-inline" onClick={() => copyText("Evento Demo Integrado")}>Copiar</button></li>
+          </ul>
+        </div>
+        <div className="card">
+          <h2>Atividade recente</h2>
+          <ul style={{ marginLeft: 18, display: "grid", gap: 4 }}>
+            {(recentAudit || []).length > 0 ? (
+              recentAudit.map((row) => (
+                <li key={row.id}>
+                  <span className={`chip ${row.action}`}>{row.action}</span> <strong>{row.entity}</strong> ·{" "}
+                  {new Date(row.created_at).toLocaleString("pt-BR")}
+                </li>
+              ))
+            ) : (
+              <li className="empty-state">Sem eventos recentes visíveis para o perfil atual.</li>
+            )}
           </ul>
         </div>
       </section>

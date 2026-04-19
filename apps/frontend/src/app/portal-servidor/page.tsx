@@ -51,7 +51,7 @@ export default function PortalServidorPage() {
 
       <section className="card">
         <h2>Meus holerites</h2>
-        <table border={1} cellPadding={6}>
+        <table>
           <thead><tr><th>ID</th><th>Mês</th><th>Bruto</th><th>Descontos</th><th>Líquido</th><th>Ação</th></tr></thead>
           <tbody>
             {slips.length > 0 ? (
@@ -59,7 +59,7 @@ export default function PortalServidorPage() {
                 <tr key={slip.id}>
                   <td>{slip.id}</td><td>{slip.month}</td><td>R$ {slip.gross_amount.toFixed(2)}</td>
                   <td>R$ {slip.deductions.toFixed(2)}</td><td>R$ {slip.net_amount.toFixed(2)}</td>
-                  <td><button onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
                 </tr>
               ))
             ) : (

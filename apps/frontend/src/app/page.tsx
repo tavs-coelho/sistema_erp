@@ -16,7 +16,7 @@ type Session = { username: string; full_name: string; role: string };
 
 const QUICK_LINKS = [
   { href: "/fase-2", label: "1) Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
-  { href: "/public", label: "2) Transparência", roles: [] as string[] },
+  { href: "/public", label: "2) Transparência", roles: [] },
   { href: "/rh", label: "3) RH e Folha", roles: ["admin", "hr", "read_only"] },
   { href: "/portal-servidor", label: "4) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
   { href: "/patrimonio", label: "5) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
@@ -73,9 +73,13 @@ export default function Home() {
 
   const logout = async () => {
     await fetch(`${API_URL}/auth/logout`, { method: "POST" });
-    document.cookie = "access_token=; Max-Age=0; path=/";
-    document.cookie = "role=; Max-Age=0; path=/";
-    document.cookie = "username=; Max-Age=0; path=/";
+    window.localStorage.removeItem("access_token");
+    window.localStorage.removeItem("role");
+    window.localStorage.removeItem("username");
+    document.cookie = "session=; Max-Age=0; path=/; SameSite=Lax; Secure";
+    document.cookie = "role=; Max-Age=0; path=/; SameSite=Lax; Secure";
+    document.cookie = "username=; Max-Age=0; path=/; SameSite=Lax; Secure";
+    document.cookie = "access_token=; Max-Age=0; path=/; SameSite=Lax; Secure";
     window.location.href = "/login";
   };
 

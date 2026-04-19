@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { authToken } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -12,15 +13,8 @@ type FiscalYear = { id: number; year: number; active: boolean };
 type Commitment = { id: number; number: string; description: string; amount: number; status: string; vendor_id: number };
 type Payment = { id: number; commitment_id: number; amount: number; payment_date: string };
 
-function readCookie(name: string): string {
-  if (typeof document === "undefined") return "";
-  const entry = document.cookie.split(";").find((item) => item.trim().startsWith(`${name}=`));
-  if (!entry) return "";
-  return decodeURIComponent(entry.trim().slice(name.length + 1));
-}
-
 export default function Fase2Page() {
-  const [token] = useState(() => readCookie("access_token"));
+  const token = authToken();
   const [statusMsg, setStatusMsg] = useState("");
 
   const [departments, setDepartments] = useState<Department[]>([]);

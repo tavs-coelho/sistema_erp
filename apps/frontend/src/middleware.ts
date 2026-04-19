@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 const DEFAULT_AUTHENTICATED_ROUTE = "/";
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("access_token")?.value;
+  const token = request.cookies.get("session")?.value;
   const publicPrefixes = ["/public", "/login", "/_next"];
   const isPublic = publicPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
 

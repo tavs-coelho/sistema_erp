@@ -18,12 +18,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/me", response_model=AuthMeResponse)
 def me(current_user: User = Depends(get_current_user)):
-    return {
-        "id": current_user.id,
-        "username": current_user.username,
-        "full_name": current_user.full_name,
-        "role": current_user.role,
-    }
+    return AuthMeResponse.model_validate(current_user)
 
 
 @router.post("/login", response_model=TokenResponse)

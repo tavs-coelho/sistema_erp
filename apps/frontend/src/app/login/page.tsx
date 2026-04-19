@@ -21,8 +21,12 @@ export default function LoginPage() {
       setMessage(data.detail || "Falha no login");
       return;
     }
-    const cookieFlags = `path=/; SameSite=Lax${window.location.protocol === "https:" ? "; Secure" : ""}`;
-    document.cookie = `access_token=${encodeURIComponent(data.access_token)}; ${cookieFlags}`;
+    const cookieFlags = "path=/; SameSite=Lax; Secure";
+    window.localStorage.setItem("access_token", data.access_token);
+    window.localStorage.setItem("role", data.role);
+    window.localStorage.setItem("username", username);
+    document.cookie = "access_token=; Max-Age=0; path=/; SameSite=Lax; Secure";
+    document.cookie = `session=active; ${cookieFlags}`;
     document.cookie = `role=${encodeURIComponent(data.role)}; ${cookieFlags}`;
     document.cookie = `username=${encodeURIComponent(username)}; ${cookieFlags}`;
     setMessage("Login realizado com sucesso");

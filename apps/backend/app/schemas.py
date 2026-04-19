@@ -1,5 +1,5 @@
 from datetime import date
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from .models import RoleEnum
 
@@ -17,6 +17,7 @@ class AuthMeResponse(BaseModel):
     username: str
     full_name: str
     role: RoleEnum
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoginRequest(BaseModel):

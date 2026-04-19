@@ -9,8 +9,13 @@ export function readCookie(name: string): string {
   return decodeURIComponent(entry.trim().slice(name.length + 1));
 }
 
+function readStorage(name: string): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(name) || "";
+}
+
 export function authToken() {
-  return readCookie("access_token");
+  return readStorage("access_token") || readCookie("access_token");
 }
 
 export async function authJson(path: string, options?: RequestInit) {

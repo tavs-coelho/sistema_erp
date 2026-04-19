@@ -7,17 +7,20 @@ from .models import (
     AssetMovement,
     BudgetAllocation,
     Commitment,
+    ContaBancaria,
     Contract,
     Department,
     Employee,
     FiscalYear,
     FundingSource,
+    LancamentoBancario,
     Municipality,
     PayrollEvent,
     Payment,
     Payslip,
     ProcurementProcess,
     Liquidation,
+    RevenueEntry,
     RoleEnum,
     User,
     Vendor,
@@ -227,5 +230,89 @@ def seed_data(db: Session):
     demo_asset.department_id = departments[0].id
     demo_asset.location = "Sala Demo 02"
     demo_asset.responsible_employee_id = employees[1].id
+
+    # ── Conciliação Bancária — dados demo ──────────────────────────────────────
+    conta_movimento = ContaBancaria(
+        banco="Banco do Brasil",
+        agencia="0001-9",
+        numero_conta="12345-6",
+        descricao="Conta Movimento Geral",
+        tipo="corrente",
+        saldo_inicial=50000.0,
+        data_saldo_inicial=date(date.today().year, 1, 1),
+    )
+    db.add(conta_movimento)
+    conta_vinculada = ContaBancaria(
+        banco="Caixa Econômica Federal",
+        agencia="0050",
+        numero_conta="99887-1",
+        descricao="Conta Vinculada — Saúde",
+        tipo="corrente",
+        saldo_inicial=20000.0,
+        data_saldo_inicial=date(date.today().year, 1, 1),
+    )
+    db.add(conta_vinculada)
+    db.flush()
+
+    # Lançamentos que têm correspondência direta com Payments (débito)
+    # Reutilizar pagamentos do seed: commitments[0..9] têm payments
+    # payments foram adicionados antes do flush final — requery
+    payments_demo = db.query(Payment).limit(5).all()
+    for i, pay in enumerate(payments_demo):
+        # Lançamento bancário com valor exato e mesma data → será conciliado automaticamente
+        db.add(LancamentoBancario(
+            conta_id=conta_movimento.id,
+            data_lancamento=pay.payment_date,
+            tipo="debito",
+            valor=pay.amount,
+            descricao=f"Pagamento referente ao empenho (seed #{i+1})",
+            documento_ref=f"TED{i+1:04d}",
+            status="pendente",
+        ))
+
+    # Lançamentos de crédito com correspondência em RevenueEntry (se houver)
+    rev_entries = db.query(RevenueEntry).limit(3).all()
+    for i, rev in enumerate(rev_entries):
+        db.add(LancamentoBancario(
+            conta_id=conta_movimento.id,
+            data_lancamento=rev.entry_date,
+            tipo="credito",
+            valor=rev.amount,
+            descricao=f"Arrecadação {rev.description[:40]}",
+            documento_ref=f"REC{i+1:04d}",
+            status="pendente",
+        ))
+
+    # Lançamentos sem correspondência (tarifas, etc.) → permanecerão pendentes
+    db.add(LancamentoBancario(
+        conta_id=conta_movimento.id,
+        data_lancamento=date(date.today().year, 1, 10),
+        tipo="debito",
+        valor=45.90,
+        descricao="Tarifa de manutenção de conta",
+        documento_ref="TAR0001",
+        status="pendente",
+    ))
+    db.add(LancamentoBancario(
+        conta_id=conta_movimento.id,
+        data_lancamento=date(date.today().year, 2, 10),
+        tipo="debito",
+        valor=45.90,
+        descricao="Tarifa de manutenção de conta",
+        documento_ref="TAR0002",
+        status="pendente",
+    ))
+    # Lançamento divergente demo: valor bate mas data difere em 7 dias
+    if payments_demo:
+        pay_div = payments_demo[0]
+        db.add(LancamentoBancario(
+            conta_id=conta_vinculada.id,
+            data_lancamento=pay_div.payment_date + timedelta(days=7),
+            tipo="debito",
+            valor=pay_div.amount,
+            descricao="Pagamento com atraso de compensação bancária (demo divergência)",
+            documento_ref="DIVTST001",
+            status="pendente",
+        ))
 
     db.commit()

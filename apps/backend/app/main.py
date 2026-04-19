@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .db import SessionLocal
-from .routers import accounting, almoxarifado, auth, budget, convenios, core, employee_portal, frota, hr, patrimony, procurement, protocolo, public, relatorios, rreo_rgf, tributario
+from .routers import accounting, almoxarifado, auth, budget, conciliacao, convenios, core, employee_portal, frota, hr, patrimony, procurement, protocolo, public, relatorios, rreo_rgf, tributario
 from .seed import seed_data
 
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
@@ -28,6 +28,7 @@ app.include_router(almoxarifado.router)
 app.include_router(frota.router)
 app.include_router(relatorios.router)
 app.include_router(rreo_rgf.router)
+app.include_router(conciliacao.router)
 app.include_router(public.router)
 app.include_router(hr.router)
 app.include_router(employee_portal.router)

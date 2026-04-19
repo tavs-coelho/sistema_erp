@@ -726,3 +726,55 @@ class ItemManutencao(Base):
     manutencao = relationship("ManutencaoVeiculo", back_populates="itens")
     item_almoxarifado = relationship("ItemAlmoxarifado", foreign_keys=[item_almoxarifado_id])
     movimentacao = relationship("MovimentacaoEstoque", foreign_keys=[movimentacao_id])
+
+
+# ── Conciliação Bancária ───────────────────────────────────────────────────────
+
+class ContaBancaria(Base):
+    """Conta bancária da entidade municipal."""
+    __tablename__ = "contas_bancarias"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    banco: Mapped[str] = mapped_column(String(80))                     # ex: "Banco do Brasil"
+    agencia: Mapped[str] = mapped_column(String(20))
+    numero_conta: Mapped[str] = mapped_column(String(30), unique=True)
+    descricao: Mapped[str] = mapped_column(String(200), default="")    # ex: "Conta Movimento Geral"
+    tipo: Mapped[str] = mapped_column(String(30), default="corrente")  # corrente, poupanca, aplicacao
+    ativa: Mapped[bool] = mapped_column(Boolean, default=True)
+    saldo_inicial: Mapped[float] = mapped_column(Float, default=0.0)
+    data_saldo_inicial: Mapped[date] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    lancamentos = relationship("LancamentoBancario", back_populates="conta", cascade="all, delete-orphan")
+
+
+class LancamentoBancario(Base):
+    """Lançamento no extrato bancário, importado ou cadastrado manualmente.
+
+    Cada lançamento pode ser cruzado (conciliado) com um Payment (débito)
+    ou RevenueEntry (crédito) do sistema ERP.
+
+    Status do lançamento:
+      - pendente   : ainda não foi cruzado com nenhum registro ERP
+      - conciliado : cruzamento confirmado com payment_id ou revenue_entry_id
+      - divergente : cruzamento tentado mas valor/data não batem
+      - ignorado   : descartado manualmente (ex: tarifa bancária sem impacto)
+    """
+    __tablename__ = "lancamentos_bancarios"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conta_id: Mapped[int] = mapped_column(ForeignKey("contas_bancarias.id"), index=True)
+    data_lancamento: Mapped[date] = mapped_column(Date, index=True)
+    tipo: Mapped[str] = mapped_column(String(10))                      # credito, debito
+    valor: Mapped[float] = mapped_column(Float)
+    descricao: Mapped[str] = mapped_column(String(255), default="")
+    documento_ref: Mapped[str] = mapped_column(String(80), default="") # número cheque, TED, DOC, etc.
+    status: Mapped[str] = mapped_column(String(20), default="pendente", index=True)
+    # Vínculos de conciliação
+    payment_id: Mapped[int | None] = mapped_column(ForeignKey("payments.id"), nullable=True, index=True)
+    revenue_entry_id: Mapped[int | None] = mapped_column(ForeignKey("revenue_entries.id"), nullable=True, index=True)
+    divergencia_obs: Mapped[str | None] = mapped_column(Text, nullable=True)  # motivo da divergência
+    conciliado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    conciliado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    conta = relationship("ContaBancaria", back_populates="lancamentos")
+    payment = relationship("Payment", foreign_keys=[payment_id])
+    revenue_entry = relationship("RevenueEntry", foreign_keys=[revenue_entry_id])
+    conciliado_por = relationship("User", foreign_keys=[conciliado_por_id])

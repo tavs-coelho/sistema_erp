@@ -201,7 +201,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | Prioridade | Item | Impacto |
 |---|---|---|
 | ~~🔴 Alta~~ ✅ | ~~RREO / RGF / Demonstrações contábeis~~ **Implementado** | RREO e RGF disponíveis em `/lrf/rreo` e `/lrf/rgf` |
-| 🔴 Alta | Conciliação bancária | Exigência básica de contabilidade pública |
+| ~~🔴 Alta~~ ✅ | ~~Conciliação bancária~~ **Implementado** | Contas, lançamentos, conciliação auto/manual, dashboard, CSV |
 | 🔴 Alta | NFS-e / ITBI | Receitas municipais relevantes |
 | 🔴 Alta | Ponto / frequência de servidores | Vinculado a folha; impacta legalidade da remuneração |
 | 🟡 Média | Depreciação patrimonial (NBCASP) | Exigência IPSAS/NBCASP — impacta balanço patrimonial |

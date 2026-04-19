@@ -8,6 +8,7 @@ from .models import (
     AssetMovement,
     BudgetAllocation,
     Commitment,
+    ConfiguracaoDepreciacao,
     ContaBancaria,
     Contract,
     Contribuinte,
@@ -18,6 +19,7 @@ from .models import (
     FundingSource,
     ImovelCadastral,
     LancamentoBancario,
+    LancamentoDepreciacao,
     LancamentoTributario,
     Municipality,
     NotaFiscalServico,
@@ -40,6 +42,7 @@ def seed_data(db: Session):
     if db.query(User).first():
         _seed_nfse_itbi(db)
         _seed_ponto(db)
+        _seed_depreciacao(db)
         return
 
     db.add(Municipality(name="Município de Vila Esperança"))
@@ -328,6 +331,7 @@ def seed_data(db: Session):
     db.commit()
     _seed_nfse_itbi(db)
     _seed_ponto(db)
+    _seed_depreciacao(db)
 
 
 def _seed_nfse_itbi(db: Session):
@@ -611,5 +615,67 @@ def _seed_ponto(db: Session):
             motivo="Consulta médica — atestado apresentado",
             status="aprovado",
         ))
+
+    db.commit()
+
+
+def _seed_depreciacao(db: Session):
+    """Seed de dados demo para depreciação patrimonial."""
+    if db.query(ConfiguracaoDepreciacao).first():
+        return
+
+    assets = db.query(Asset).filter(Asset.status == "ativo").all()
+    if not assets:
+        return
+
+    # Classes NBCASP e parâmetros de referência
+    _classes = {
+        "veiculo":    {"vida_util_meses": 60,  "residual_pct": 0.10},
+        "maquina":    {"vida_util_meses": 120, "residual_pct": 0.10},
+        "movel":      {"vida_util_meses": 120, "residual_pct": 0.10},
+        "equipamento": {"vida_util_meses": 60, "residual_pct": 0.05},
+        "imovel":     {"vida_util_meses": 300, "residual_pct": 0.20},
+    }
+
+    today = date.today()
+    # Simular aquisição 24 meses atrás para ter histórico
+    from dateutil.relativedelta import relativedelta as _rd
+    data_aquisicao_24m = today - _rd(months=24)
+
+    cfgs_adicionadas = 0
+    for i, asset in enumerate(assets[:6]):   # máx 6 bens para demo
+        # Escolhe parâmetros pelo índice para variar
+        classe_key = list(_classes.keys())[i % len(_classes)]
+        params = _classes[classe_key]
+        valor_aquisicao = asset.value if asset.value and asset.value > 0 else 10000.0
+        valor_residual = round(valor_aquisicao * params["residual_pct"], 2)
+        metodo = "saldo_decrescente" if i % 2 == 1 else "linear"
+
+        cfg = ConfiguracaoDepreciacao(
+            asset_id=asset.id,
+            data_aquisicao=data_aquisicao_24m.date() if hasattr(data_aquisicao_24m, "date") else data_aquisicao_24m,
+            valor_aquisicao=valor_aquisicao,
+            vida_util_meses=params["vida_util_meses"],
+            valor_residual=valor_residual,
+            metodo=metodo,
+            ativo=True,
+        )
+        db.add(cfg)
+        cfgs_adicionadas += 1
+
+    db.flush()
+
+    # Gerar lançamentos para os últimos 12 meses (histórico)
+    from app.routers.depreciacao import _processar_bem as _proc
+    all_cfgs = db.query(ConfiguracaoDepreciacao).all()
+
+    for delta_m in range(12, 0, -1):
+        p_date = today - _rd(months=delta_m)
+        periodo = f"{p_date.year}-{p_date.month:02d}"
+        for cfg in all_cfgs:
+            try:
+                _proc(db, cfg, periodo, None)
+            except Exception:
+                pass
 
     db.commit()

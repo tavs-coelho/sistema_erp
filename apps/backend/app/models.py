@@ -176,6 +176,51 @@ class AssetMovement(Base):
     moved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
+# ── Depreciação Patrimonial (NBCASP/IPSAS) ───────────────────────────────────
+
+class ConfiguracaoDepreciacao(Base):
+    """Parâmetros de depreciação de um bem patrimonial.
+
+    Métodos suportados:
+      linear            — NBCASP padrão: quota = (valor_aquisicao - valor_residual) / vida_util_meses
+      saldo_decrescente — quota = valor_contabil_anterior * (2 / vida_util_meses)
+                          (interrompe quando valor_contabil <= valor_residual)
+
+    Prazos de referência NBCASP (art. 3º da NBC T 16.9):
+      Móveis/utensílios: 120 meses  | Equipamentos TI: 60 meses
+      Veículos: 60 meses            | Máquinas/equipamentos: 120 meses
+      Imóveis: 300 meses (25 anos)  | Obras de arte: não depreciam
+    """
+    __tablename__ = "configuracoes_depreciacao"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), unique=True, index=True)
+    data_aquisicao: Mapped[date] = mapped_column(Date)
+    valor_aquisicao: Mapped[float] = mapped_column(Float)   # custo histórico
+    vida_util_meses: Mapped[int] = mapped_column(Integer)   # ex: 60, 120, 300
+    valor_residual: Mapped[float] = mapped_column(Float, default=0.0)
+    metodo: Mapped[str] = mapped_column(String(30), default="linear")  # linear | saldo_decrescente
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)   # False = bem baixado/isento
+    asset = relationship("Asset")
+
+
+class LancamentoDepreciacao(Base):
+    """Registro mensal de depreciação de um bem patrimonial.
+
+    Um lançamento é gerado por chamada ao endpoint POST /depreciacao/calcular.
+    Idempotente por (asset_id, periodo): se já existir, o valor é recalculado.
+    """
+    __tablename__ = "lancamentos_depreciacao"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), index=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)   # YYYY-MM
+    valor_depreciado: Mapped[float] = mapped_column(Float)         # quota do mês
+    depreciacao_acumulada: Mapped[float] = mapped_column(Float)    # soma até este período
+    valor_contabil_liquido: Mapped[float] = mapped_column(Float)   # valor_aquisicao - depreciacao_acumulada
+    criado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    asset = relationship("Asset")
+
+
 class PayrollEvent(Base):
     __tablename__ = "payroll_events"
     id: Mapped[int] = mapped_column(primary_key=True)

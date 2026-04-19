@@ -71,7 +71,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | Transferência entre departamentos | ✅ Atende | `AssetMovement` com rastreabilidade |
 | Status do bem (ativo, baixado, etc.) | ✅ Atende | Campo status com transições |
 | Inventário por departamento | ⚠️ Atende Parcialmente | Lista existe; relatório de inventário formal não foi implementado |
-| Depreciação | ❌ Pendente Crítico | Não implementada; esperada em ERPs municipais para NBCASP |
+| Depreciação | ✅ Atende | `ConfiguracaoDepreciacao` + `LancamentoDepreciacao` — linear e saldo decrescente, idempotente, dashboard, CSV |
 | Reavaliação e ajuste de valor | ❌ Pendente Crítico | Não implementada |
 
 ---
@@ -204,14 +204,14 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | ~~🔴 Alta~~ ✅ | ~~Conciliação bancária~~ **Implementado** | Contas, lançamentos, conciliação auto/manual, dashboard, CSV |
 | ~~🔴 Alta~~ ✅ | ~~NFS-e / ITBI~~ **Implementado** | NFS-e simplificada, ITBI com base de cálculo, dashboard, CSV, integração tributária |
 | ~~🔴 Alta~~ ✅ | ~~Ponto / frequência de servidores~~ **Implementado** | Registro ponto, folha mensal, horas extras, abono + aprovação, dashboard, CSV |
-| 🟡 Média | Depreciação patrimonial (NBCASP) | Exigência IPSAS/NBCASP — impacta balanço patrimonial |
+| ~~🟡 Média~~ ✅ | ~~Depreciação patrimonial (NBCASP)~~ **Implementado** | `ConfiguracaoDepreciacao` + `LancamentoDepreciacao` — linear, saldo decrescente, idempotente, dashboard, CSV |
 | 🟡 Média | L/100km e alertas preventivos de frota | Ganho operacional; não bloqueia conformidade |
 | 🟡 Média | SICONFI / SIOP | Obrigação de prestação de contas ao governo federal |
 | 🟠 Baixa | Multi-tenancy | Necessário se o sistema for vendido como SaaS para múltiplos municípios |
 
 ---
 
-## 5. Conclusão (atualizado após onda 14)
+## 5. Conclusão (atualizado após onda 15)
 
 O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
 - ✅ Compras, Licitações e Almoxarifado (praticamente completos)
@@ -222,8 +222,9 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ **Conciliação bancária** — implementada na onda 12
 - ✅ **NFS-e e ITBI** — implementados na onda 13 (ISS, ITBI, dashboard, CSV, integração tributária)
 - ✅ **Ponto e Frequência** — implementados na onda 14 (escala, registro, folha mensal, horas extras, abono, dashboard, CSV)
+- ✅ **Depreciação Patrimonial** — implementada na onda 15 (NBCASP/IPSAS 17, linear e saldo decrescente, lançamentos idempotentes, dashboard, CSV)
 
-**Ainda não pode ser defendido como integralmente aderente** sem depreciação patrimonial (NBCASP) e integração SICONFI/SIOP.
+**Ainda não pode ser defendido como integralmente aderente** sem integração SICONFI/SIOP e integração ponto→folha de pagamento.
 
-**Próximo passo ideal:** depreciação patrimonial (NBCASP/IPSAS) — fecha a conformidade contábil patrimonial, examinada em TCE e auditorias de prestação de contas anuais. Alternativa: SICONFI/SIOP, que impacta a obrigação de prestação de contas ao governo federal.
+**Próximo passo ideal:** integração **ponto → folha de pagamento** — desconto automático de faltas e adicional de horas extras no cálculo da folha, fechando o ciclo de legalidade da remuneração. Alternativa: **SICONFI/SIOP** — prestação de contas ao governo federal (FINBRA/RREO/RGF via SICONFI e programas orçamentários via SIOP).
 

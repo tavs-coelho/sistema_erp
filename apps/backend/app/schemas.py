@@ -1232,3 +1232,73 @@ class FolhaFrequenciaOut(BaseModel):
     total_horas_extras: float
     total_minutos_atraso: int
     dias: list[DiaFrequenciaOut]
+
+
+# ── Depreciação Patrimonial ───────────────────────────────────────────────────
+
+class ConfiguracaoDepreciacaoCreate(BaseModel):
+    asset_id: int
+    data_aquisicao: date
+    valor_aquisicao: float
+    vida_util_meses: int
+    valor_residual: float = 0.0
+    metodo: str = "linear"      # linear | saldo_decrescente
+
+
+class ConfiguracaoDepreciacaoUpdate(BaseModel):
+    data_aquisicao: date | None = None
+    valor_aquisicao: float | None = None
+    vida_util_meses: int | None = None
+    valor_residual: float | None = None
+    metodo: str | None = None
+    ativo: bool | None = None
+
+
+class ConfiguracaoDepreciacaoOut(BaseModel):
+    id: int
+    asset_id: int
+    data_aquisicao: date
+    valor_aquisicao: float
+    vida_util_meses: int
+    valor_residual: float
+    metodo: str
+    ativo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LancamentoDepreciacaoOut(BaseModel):
+    id: int
+    asset_id: int
+    periodo: str
+    valor_depreciado: float
+    depreciacao_acumulada: float
+    valor_contabil_liquido: float
+    criado_por_id: int | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CalcularDepreciacaoRequest(BaseModel):
+    periodo: str                          # YYYY-MM
+    asset_id: int | None = None           # None = todos os bens configurados
+
+
+class ItemRelatorioDepreciacaoOut(BaseModel):
+    periodo: str
+    valor_depreciado: float
+    depreciacao_acumulada: float
+    valor_contabil_liquido: float
+
+
+class RelatorioDepreciacaoOut(BaseModel):
+    asset_id: int
+    asset_tag: str
+    asset_description: str
+    valor_aquisicao: float
+    valor_residual: float
+    vida_util_meses: int
+    metodo: str
+    data_aquisicao: date
+    lancamentos: list[ItemRelatorioDepreciacaoOut]

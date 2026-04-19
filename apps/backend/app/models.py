@@ -303,6 +303,51 @@ class AbonoFalta(Base):
     aprovado_por = relationship("User", foreign_keys=[aprovado_por_id])
 
 
+# ── Integração Ponto → Folha ──────────────────────────────────────────────────
+
+class ConfiguracaoIntegracaoPonto(Base):
+    """Regras de conversão de apuração de ponto em eventos de folha para um servidor.
+
+    - desconto_falta_diaria: valor a descontar por cada falta injustificada
+      (se None, usa base_salary / dias_uteis_mes como falta proporcional)
+    - percentual_hora_extra: percentual sobre o valor da hora normal para horas extras
+      (padrão: 50% dias úteis, 100% fins de semana/feriados — aqui simplificado em um
+       único percentual; adaptar para regimes diferenciados em evolução futura)
+    - desconto_atraso: True = desconto proporcional por minuto de atraso
+    - ativo: False = integração desabilitada para este servidor
+    """
+    __tablename__ = "configuracoes_integracao_ponto"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    desconto_falta_diaria: Mapped[float | None] = mapped_column(Float, nullable=True)  # None = proporcional ao salário
+    percentual_hora_extra: Mapped[float] = mapped_column(Float, default=50.0)   # ex: 50.0 = 50%
+    desconto_atraso: Mapped[bool] = mapped_column(Boolean, default=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    employee = relationship("Employee")
+
+
+class IntegracaoPontoFolhaLog(Base):
+    """Rastreia cada execução da integração (período + servidor).
+
+    Idempotência: não re-processa se já existe log com status='ok' para
+    (employee_id, periodo) — a menos que seja explicitamente solicitado
+    com force=True, que deleta os PayrollEvents anteriores e recria.
+    """
+    __tablename__ = "integracao_ponto_folha_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    periodo: Mapped[str] = mapped_column(String(7), index=True)   # YYYY-MM
+    faltas_descontadas: Mapped[int] = mapped_column(Integer, default=0)
+    horas_extras_creditadas: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_desconto_faltas: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_desconto_atrasos: Mapped[float] = mapped_column(Float, default=0.0)
+    valor_credito_horas_extras: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(20), default="ok")   # ok | erro
+    executado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    employee = relationship("Employee")
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)

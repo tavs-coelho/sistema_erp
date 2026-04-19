@@ -211,7 +211,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 
 ---
 
-## 5. Conclusão (atualizado após onda 15)
+## 5. Conclusão (atualizado após onda 16)
 
 O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
 - ✅ Compras, Licitações e Almoxarifado (praticamente completos)
@@ -223,8 +223,24 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ **NFS-e e ITBI** — implementados na onda 13 (ISS, ITBI, dashboard, CSV, integração tributária)
 - ✅ **Ponto e Frequência** — implementados na onda 14 (escala, registro, folha mensal, horas extras, abono, dashboard, CSV)
 - ✅ **Depreciação Patrimonial** — implementada na onda 15 (NBCASP/IPSAS 17, linear e saldo decrescente, lançamentos idempotentes, dashboard, CSV)
+- ✅ **Integração Ponto → Folha** — implementada na onda 16 (descontos faltas/atrasos + crédito HE, idempotente, preview dry-run, logs, CSV, dashboard)
+
+**Ainda não pode ser defendido como integralmente aderente** sem integração SICONFI/SIOP e sem geração automática de Payslip ao finalizar a integração.
+
+**Próximo passo ideal:** integração **SICONFI/SIOP** — prestação de contas ao governo federal (FINBRA/RREO/RGF via SICONFI e programas orçamentários via SIOP). Com depreciação, ponto/frequência e folha fechados, o ERP está maduro o suficiente para atacar a obrigação legal de prestação de contas federais. Alternativa de menor impacto técnico: geração automática do Payslip ao finalizar a integração ponto→folha.
+
+O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
+- ✅ Compras, Licitações e Almoxarifado (praticamente completos)
+- ✅ Frota (completo e integrado)
+- ✅ Orçamento (PPA/LDO/LOA)
+- ✅ RH, Protocolo e Convênios (funcionais)
+- ✅ **Demonstrativos LRF (RREO e RGF)** — implementados na onda 11
+- ✅ **Conciliação bancária** — implementada na onda 12
+- ✅ **NFS-e e ITBI** — implementados na onda 13 (ISS, ITBI, dashboard, CSV, integração tributária)
+- ✅ **Ponto e Frequência** — implementados na onda 14 (escala, registro, folha mensal, horas extras, abono, dashboard, CSV)
+- ✅ **Depreciação Patrimonial** — implementada na onda 15 (NBCASP/IPSAS 17, linear e saldo decrescente, lançamentos idempotentes, dashboard, CSV)
+- ✅ **Integração Ponto → Folha** — implementada na onda 16 (descontos faltas/atrasos + crédito HE, idempotente, preview dry-run, logs, CSV, dashboard)
 
 **Ainda não pode ser defendido como integralmente aderente** sem integração SICONFI/SIOP e integração ponto→folha de pagamento.
 
-**Próximo passo ideal:** integração **ponto → folha de pagamento** — desconto automático de faltas e adicional de horas extras no cálculo da folha, fechando o ciclo de legalidade da remuneração. Alternativa: **SICONFI/SIOP** — prestação de contas ao governo federal (FINBRA/RREO/RGF via SICONFI e programas orçamentários via SIOP).
 

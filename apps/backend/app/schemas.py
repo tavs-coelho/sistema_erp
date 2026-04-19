@@ -1302,3 +1302,52 @@ class RelatorioDepreciacaoOut(BaseModel):
     metodo: str
     data_aquisicao: date
     lancamentos: list[ItemRelatorioDepreciacaoOut]
+
+
+# ── Integração Ponto → Folha ──────────────────────────────────────────────────
+
+class ConfiguracaoIntegracaoPontoCreate(BaseModel):
+    employee_id: int
+    desconto_falta_diaria: float | None = None   # None = proporcional ao salário
+    percentual_hora_extra: float = 50.0
+    desconto_atraso: bool = True
+
+
+class ConfiguracaoIntegracaoPontoUpdate(BaseModel):
+    desconto_falta_diaria: float | None = None
+    percentual_hora_extra: float | None = None
+    desconto_atraso: bool | None = None
+    ativo: bool | None = None
+
+
+class ConfiguracaoIntegracaoPontoOut(BaseModel):
+    id: int
+    employee_id: int
+    desconto_falta_diaria: float | None
+    percentual_hora_extra: float
+    desconto_atraso: bool
+    ativo: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class IntegrarPontoFolhaRequest(BaseModel):
+    periodo: str                   # YYYY-MM
+    employee_id: int | None = None # None = todos com configuração ativa
+    force: bool = False            # re-processa mesmo se já integrado
+
+
+class IntegracaoLogOut(BaseModel):
+    id: int
+    employee_id: int
+    periodo: str
+    faltas_descontadas: int
+    horas_extras_creditadas: float
+    valor_desconto_faltas: float
+    valor_desconto_atrasos: float
+    valor_credito_horas_extras: float
+    status: str
+    executado_por_id: int | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

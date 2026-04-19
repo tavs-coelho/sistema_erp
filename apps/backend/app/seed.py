@@ -9,6 +9,7 @@ from .models import (
     BudgetAllocation,
     Commitment,
     ConfiguracaoDepreciacao,
+    ConfiguracaoIntegracaoPonto,
     ContaBancaria,
     Contract,
     Contribuinte,
@@ -18,6 +19,7 @@ from .models import (
     FiscalYear,
     FundingSource,
     ImovelCadastral,
+    IntegracaoPontoFolhaLog,
     LancamentoBancario,
     LancamentoDepreciacao,
     LancamentoTributario,
@@ -43,6 +45,7 @@ def seed_data(db: Session):
         _seed_nfse_itbi(db)
         _seed_ponto(db)
         _seed_depreciacao(db)
+        _seed_integracao_ponto_folha(db)
         return
 
     db.add(Municipality(name="Município de Vila Esperança"))
@@ -332,6 +335,7 @@ def seed_data(db: Session):
     _seed_nfse_itbi(db)
     _seed_ponto(db)
     _seed_depreciacao(db)
+    _seed_integracao_ponto_folha(db)
 
 
 def _seed_nfse_itbi(db: Session):
@@ -677,5 +681,29 @@ def _seed_depreciacao(db: Session):
                 _proc(db, cfg, periodo, None)
             except Exception:
                 pass
+
+    db.commit()
+
+
+def _seed_integracao_ponto_folha(db: Session):
+    """Seed de dados demo para integração ponto → folha."""
+    if db.query(ConfiguracaoIntegracaoPonto).first():
+        return
+
+    employees = db.query(Employee).all()
+    if not employees:
+        return
+
+    # Configura integração para todos os servidores ativos (até 4 para demo)
+    for i, emp in enumerate(employees[:4]):
+        # Varia a configuração entre servidores para demonstrar
+        cfg = ConfiguracaoIntegracaoPonto(
+            employee_id=emp.id,
+            desconto_falta_diaria=None,      # proporcional ao salário
+            percentual_hora_extra=50.0 if i % 2 == 0 else 100.0,
+            desconto_atraso=True,
+            ativo=True,
+        )
+        db.add(cfg)
 
     db.commit()

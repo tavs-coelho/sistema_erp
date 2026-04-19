@@ -196,6 +196,68 @@ class Payslip(Base):
     net_amount: Mapped[float] = mapped_column(Float)
 
 
+# ── Ponto e Frequência ────────────────────────────────────────────────────────
+
+class EscalaServidor(Base):
+    """Define a carga horária contratual diária do servidor (horas_dia) e
+    os dias de semana de trabalho ('1234567', '12345', etc.).
+    Se não houver escala cadastrada para o servidor, usa-se padrão 8h/dia, seg–sex.
+    """
+    __tablename__ = "escalas_servidores"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    horas_dia: Mapped[float] = mapped_column(Float, default=8.0)
+    dias_semana: Mapped[str] = mapped_column(String(7), default="12345")    # 1=Seg … 7=Dom
+    hora_entrada: Mapped[str] = mapped_column(String(5), default="08:00")   # HH:MM
+    hora_saida: Mapped[str] = mapped_column(String(5), default="17:00")
+    hora_inicio_intervalo: Mapped[str] = mapped_column(String(5), default="12:00")
+    hora_fim_intervalo: Mapped[str] = mapped_column(String(5), default="13:00")
+    employee = relationship("Employee")
+
+
+class RegistroPonto(Base):
+    """Marcação eletrônica de ponto do servidor para um determinado dia.
+
+    tipo_registro:
+      entrada | saida | inicio_intervalo | fim_intervalo
+
+    O processamento da folha agrupa registros por employee_id+data e computa:
+      - horas trabalhadas = (saida - entrada) - intervalo
+      - horas_extras = max(0, trabalhadas - carga_diaria)
+      - minutos_atraso = max(0, (hora_entrada_real - hora_entrada_prevista)) se chegada atrasada
+      - falta = True quando não há marcação de entrada para um dia útil sem abono
+    """
+    __tablename__ = "registros_ponto"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    data: Mapped[date] = mapped_column(Date, index=True)
+    tipo_registro: Mapped[str] = mapped_column(String(20))   # entrada | saida | inicio_intervalo | fim_intervalo
+    hora_registro: Mapped[str] = mapped_column(String(5))    # HH:MM
+    origem: Mapped[str] = mapped_column(String(20), default="manual")   # manual | biometrico | portal
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    employee = relationship("Employee")
+
+
+class AbonoFalta(Base):
+    """Abono de falta ou atraso para um servidor em um determinado dia.
+
+    tipo: falta | atraso | folga_compensacao
+    status: pendente | aprovado | rejeitado
+    """
+    __tablename__ = "abonos_falta"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    data: Mapped[date] = mapped_column(Date, index=True)
+    tipo: Mapped[str] = mapped_column(String(20), default="falta")   # falta | atraso | folga_compensacao
+    motivo: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="pendente", index=True)  # pendente | aprovado | rejeitado
+    aprovado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    employee = relationship("Employee")
+    aprovado_por = relationship("User", foreign_keys=[aprovado_por_id])
+
+
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -1119,3 +1119,116 @@ class ITBIOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Ponto e Frequência ────────────────────────────────────────────────────────
+
+class EscalaServidorCreate(BaseModel):
+    employee_id: int
+    horas_dia: float = 8.0
+    dias_semana: str = "12345"
+    hora_entrada: str = "08:00"
+    hora_saida: str = "17:00"
+    hora_inicio_intervalo: str = "12:00"
+    hora_fim_intervalo: str = "13:00"
+
+
+class EscalaServidorUpdate(BaseModel):
+    horas_dia: float | None = None
+    dias_semana: str | None = None
+    hora_entrada: str | None = None
+    hora_saida: str | None = None
+    hora_inicio_intervalo: str | None = None
+    hora_fim_intervalo: str | None = None
+
+
+class EscalaServidorOut(BaseModel):
+    id: int
+    employee_id: int
+    horas_dia: float
+    dias_semana: str
+    hora_entrada: str
+    hora_saida: str
+    hora_inicio_intervalo: str
+    hora_fim_intervalo: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RegistroPontoCreate(BaseModel):
+    employee_id: int
+    data: date
+    tipo_registro: str        # entrada | saida | inicio_intervalo | fim_intervalo
+    hora_registro: str        # HH:MM
+    origem: str = "manual"
+    observacoes: str = ""
+
+
+class RegistroPontoOut(BaseModel):
+    id: int
+    employee_id: int
+    data: date
+    tipo_registro: str
+    hora_registro: str
+    origem: str
+    observacoes: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AbonoFaltaCreate(BaseModel):
+    employee_id: int
+    data: date
+    tipo: str = "falta"       # falta | atraso | folga_compensacao
+    motivo: str = ""
+
+
+class AbonoFaltaUpdate(BaseModel):
+    status: str               # pendente | aprovado | rejeitado
+    motivo: str | None = None
+
+
+class AbonoFaltaOut(BaseModel):
+    id: int
+    employee_id: int
+    data: date
+    tipo: str
+    motivo: str
+    status: str
+    aprovado_por_id: int | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DiaFrequenciaOut(BaseModel):
+    """Resumo de um dia de trabalho para a folha de frequência."""
+    data: date
+    dia_semana: str             # "Seg", "Ter" …
+    dia_util: bool
+    entrada: str | None
+    saida: str | None
+    inicio_intervalo: str | None
+    fim_intervalo: str | None
+    horas_trabalhadas: float    # em horas decimais
+    horas_extras: float
+    minutos_atraso: int
+    falta: bool
+    abonado: bool
+    abono_tipo: str | None
+    status_dia: str             # presente | falta | falta_abonada | folga | fim_semana
+
+
+class FolhaFrequenciaOut(BaseModel):
+    employee_id: int
+    employee_name: str
+    periodo: str                # YYYY-MM
+    total_dias_uteis: int
+    total_presencas: int
+    total_faltas: int
+    total_faltas_abonadas: int
+    total_horas_trabalhadas: float
+    total_horas_extras: float
+    total_minutos_atraso: int
+    dias: list[DiaFrequenciaOut]

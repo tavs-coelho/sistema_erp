@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from .models import (
+    AbonoFalta,
     Asset,
     AssetMovement,
     BudgetAllocation,
@@ -12,6 +13,7 @@ from .models import (
     Contribuinte,
     Department,
     Employee,
+    EscalaServidor,
     FiscalYear,
     FundingSource,
     ImovelCadastral,
@@ -25,6 +27,7 @@ from .models import (
     Payslip,
     ProcurementProcess,
     Liquidation,
+    RegistroPonto,
     RevenueEntry,
     RoleEnum,
     User,
@@ -36,6 +39,7 @@ from .security import hash_password
 def seed_data(db: Session):
     if db.query(User).first():
         _seed_nfse_itbi(db)
+        _seed_ponto(db)
         return
 
     db.add(Municipality(name="Município de Vila Esperança"))
@@ -323,6 +327,7 @@ def seed_data(db: Session):
 
     db.commit()
     _seed_nfse_itbi(db)
+    _seed_ponto(db)
 
 
 def _seed_nfse_itbi(db: Session):
@@ -505,5 +510,106 @@ def _seed_nfse_itbi(db: Session):
         observacoes="ITBI demo — compra e venda residencial",
     )
     db.add(itbi_1)
+
+    db.commit()
+
+
+def _seed_ponto(db: Session):
+    """Seed de dados demo para ponto e frequência."""
+    if db.query(EscalaServidor).first():
+        return
+
+    # Usa funcionários já existentes no seed
+    employees = db.query(Employee).all()
+    if not employees:
+        return
+
+    year = date.today().year
+    month = date.today().month
+    # Usar mês anterior para ter histórico completo
+    if month == 1:
+        ano_ref, mes_ref = year - 1, 12
+    else:
+        ano_ref, mes_ref = year, month - 1
+
+    emp1 = employees[0]
+    emp2 = employees[1] if len(employees) > 1 else None
+
+    # Escala padrão para emp1
+    escala1 = EscalaServidor(
+        employee_id=emp1.id,
+        horas_dia=8.0,
+        dias_semana="12345",
+        hora_entrada="08:00",
+        hora_saida="17:00",
+        hora_inicio_intervalo="12:00",
+        hora_fim_intervalo="13:00",
+    )
+    db.add(escala1)
+
+    if emp2:
+        # Escala 6h para emp2
+        escala2 = EscalaServidor(
+            employee_id=emp2.id,
+            horas_dia=6.0,
+            dias_semana="12345",
+            hora_entrada="07:00",
+            hora_saida="13:00",
+            hora_inicio_intervalo="10:00",
+            hora_fim_intervalo="10:15",
+        )
+        db.add(escala2)
+
+    db.flush()
+
+    import calendar as _cal
+    _, days_in_ref_month = _cal.monthrange(ano_ref, mes_ref)
+
+    # Registros para emp1: dias úteis do mês de referência
+    for day in range(1, days_in_ref_month + 1):
+        d = date(ano_ref, mes_ref, day)
+        if d.weekday() >= 5:  # sábado / domingo
+            continue
+
+        if day == 5:
+            # Falta no dia 5 — sem registro
+            continue
+        if day == 10:
+            # Atraso de 25 min no dia 10
+            hora_entrada = "08:25"
+        else:
+            hora_entrada = "08:00"
+
+        if day == 15:
+            # Hora extra: sai às 19h
+            hora_saida = "19:00"
+        else:
+            hora_saida = "17:00"
+
+        for tipo, hora in [
+            ("entrada", hora_entrada),
+            ("inicio_intervalo", "12:00"),
+            ("fim_intervalo", "13:00"),
+            ("saida", hora_saida),
+        ]:
+            db.add(RegistroPonto(
+                employee_id=emp1.id,
+                data=d,
+                tipo_registro=tipo,
+                hora_registro=hora,
+                origem="demo",
+                observacoes="seed demo",
+            ))
+
+    # Abono para a falta do dia 5
+    data_falta = date(ano_ref, mes_ref, 5)
+    if data_falta.weekday() < 5:  # só se for dia útil
+        db.add(AbonoFalta(
+            employee_id=emp1.id,
+            data=data_falta,
+            tipo="falta",
+            motivo="Consulta médica — atestado apresentado",
+            status="aprovado",
+        ))
 
     db.commit()

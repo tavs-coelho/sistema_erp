@@ -101,7 +101,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | Cargos e departamentos | ✅ Atende | Tabelas `Department`, `JobPosition` com hierarquia |
 | Folha de pagamento (eventos) | ✅ Atende | `PayrollEvent`, `PayrollEntry` com cálculo e fechamento |
 | Portal do servidor | ✅ Atende | Visualização de contracheque, afastamentos, férias |
-| Ponto / frequência | ❌ Pendente Crítico | Não implementado |
+| Ponto / frequência | ✅ Atende | `RegistroPonto`, `EscalaServidor`, `AbonoFalta` — folha mensal, horas extras, abono com aprovação, dashboard, CSV |
 | DIRF / declarações fiscais | ❌ Pendente Crítico | Não implementado |
 | Controle de férias | ⚠️ Atende Parcialmente | `Absence` existe; gestão de escala de férias ausente |
 
@@ -203,7 +203,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 | ~~🔴 Alta~~ ✅ | ~~RREO / RGF / Demonstrações contábeis~~ **Implementado** | RREO e RGF disponíveis em `/lrf/rreo` e `/lrf/rgf` |
 | ~~🔴 Alta~~ ✅ | ~~Conciliação bancária~~ **Implementado** | Contas, lançamentos, conciliação auto/manual, dashboard, CSV |
 | ~~🔴 Alta~~ ✅ | ~~NFS-e / ITBI~~ **Implementado** | NFS-e simplificada, ITBI com base de cálculo, dashboard, CSV, integração tributária |
-| 🔴 Alta | Ponto / frequência de servidores | Vinculado a folha; impacta legalidade da remuneração |
+| ~~🔴 Alta~~ ✅ | ~~Ponto / frequência de servidores~~ **Implementado** | Registro ponto, folha mensal, horas extras, abono + aprovação, dashboard, CSV |
 | 🟡 Média | Depreciação patrimonial (NBCASP) | Exigência IPSAS/NBCASP — impacta balanço patrimonial |
 | 🟡 Média | L/100km e alertas preventivos de frota | Ganho operacional; não bloqueia conformidade |
 | 🟡 Média | SICONFI / SIOP | Obrigação de prestação de contas ao governo federal |
@@ -211,7 +211,7 @@ A auditoria avalia cada módulo e requisito técnico esperado num ERP Municipal 
 
 ---
 
-## 5. Conclusão (atualizado após onda 13)
+## 5. Conclusão (atualizado após onda 14)
 
 O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para os módulos de:
 - ✅ Compras, Licitações e Almoxarifado (praticamente completos)
@@ -221,9 +221,9 @@ O sistema **pode ser demonstrado como aderente de forma parcial e sólida** para
 - ✅ **Demonstrativos LRF (RREO e RGF)** — implementados na onda 11
 - ✅ **Conciliação bancária** — implementada na onda 12
 - ✅ **NFS-e e ITBI** — implementados na onda 13 (ISS, ITBI, dashboard, CSV, integração tributária)
+- ✅ **Ponto e Frequência** — implementados na onda 14 (escala, registro, folha mensal, horas extras, abono, dashboard, CSV)
 
-**Ainda não pode ser defendido como integralmente aderente** sem ponto/frequência de servidores e depreciação patrimonial (NBCASP).
+**Ainda não pode ser defendido como integralmente aderente** sem depreciação patrimonial (NBCASP) e integração SICONFI/SIOP.
 
-**Próximo passo ideal:** ponto/frequência de servidores — vinculado à folha de pagamento e impacta diretamente a legalidade da remuneração (RBGF, instrução normativa TCE).
-Alternativa: depreciação patrimonial, que fecha a conformidade com NBCASP/IPSAS no balanço.
+**Próximo passo ideal:** depreciação patrimonial (NBCASP/IPSAS) — fecha a conformidade contábil patrimonial, examinada em TCE e auditorias de prestação de contas anuais. Alternativa: SICONFI/SIOP, que impacta a obrigação de prestação de contas ao governo federal.
 

@@ -171,7 +171,7 @@ export default function Fase2Page() {
     <main style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>Fluxo demonstrável — Fase 2</h1>
       <p>Admin: departamento → fornecedor → dotação → empenho → liquidação → pagamento.</p>
-      <p><Link href="/">Voltar ao painel</Link> | <Link href="/public">Transparência pública</Link></p>
+      <p><Link href="/">Voltar ao painel</Link> | <Link href="/public">Transparência pública</Link> | <Link href="/rh">RH</Link> | <Link href="/patrimonio">Patrimônio</Link></p>
       {statusMsg && <p><strong>{statusMsg}</strong></p>}
       <button
         onClick={() => {

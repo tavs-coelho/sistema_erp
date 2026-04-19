@@ -13,8 +13,21 @@ router = APIRouter(prefix="/hr", tags=["hr"])
 
 
 @router.get("/employees", response_model=list[EmployeeOut])
-def list_employees(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(Employee).order_by(Employee.id).all()
+def list_employees(
+    search: str | None = None,
+    department_id: int | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    q = db.query(Employee)
+    if search:
+        q = q.filter(Employee.name.ilike(f"%{search}%"))
+    if department_id:
+        q = q.filter(Employee.department_id == department_id)
+    items = q.order_by(Employee.id.desc()).offset((page - 1) * size).limit(size).all()
+    return items
 
 
 @router.post("/employees", response_model=EmployeeOut)
@@ -80,6 +93,25 @@ def calculate_payroll(payload: PayrollCalculationRequest, db: Session = Depends(
     write_audit(db, user_id=current.id, action="create", entity="payroll", entity_id=payload.month, after_data={"created": created})
     db.commit()
     return {"message": "Folha calculada", "created": created}
+
+
+@router.get("/payslips")
+def list_payslips(
+    month: str | None = None,
+    employee_id: int | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr, RoleEnum.read_only)),
+):
+    q = db.query(Payslip)
+    if month:
+        q = q.filter(Payslip.month == month)
+    if employee_id:
+        q = q.filter(Payslip.employee_id == employee_id)
+    total = q.count()
+    items = q.order_by(Payslip.id.desc()).offset((page - 1) * size).limit(size).all()
+    return {"total": total, "page": page, "size": size, "items": items}
 
 
 @router.get("/payslips/{payslip_id}/pdf")

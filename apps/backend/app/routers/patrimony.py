@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import csv
+from io import StringIO
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
@@ -14,6 +17,9 @@ router = APIRouter(prefix="/patrimony", tags=["patrimony"])
 def list_assets(
     search: str | None = None,
     department_id: int | None = None,
+    classification: str | None = None,
+    status: str | None = None,
+    export: str | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -24,6 +30,17 @@ def list_assets(
         q = q.filter(Asset.description.ilike(f"%{search}%"))
     if department_id:
         q = q.filter(Asset.department_id == department_id)
+    if classification:
+        q = q.filter(Asset.classification == classification)
+    if status:
+        q = q.filter(Asset.status == status)
+    if export == "csv":
+        buf = StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["id", "tombamento", "descricao", "classificacao", "localizacao", "departamento_id", "responsavel_id", "valor", "status"])
+        for item in q.order_by(Asset.id.desc()).all():
+            writer.writerow([item.id, item.tag, item.description, item.classification, item.location, item.department_id, item.responsible_employee_id, item.value, item.status])
+        return Response(content=buf.getvalue(), media_type="text/csv")
     total = q.count()
     items = q.order_by(Asset.id.desc()).offset((page - 1) * size).limit(size).all()
     return {"total": total, "page": page, "size": size, "items": items}
@@ -81,6 +98,8 @@ def transfer_asset(
 @router.post("/assets/{asset_id}/write-off")
 def write_off(asset_id: int, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.patrimony))):
     asset = db.get(Asset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Bem não encontrado")
     asset.status = "baixado"
     db.add(AssetMovement(asset_id=asset.id, from_department_id=asset.department_id, to_department_id=None, movement_type="baixa"))
     write_audit(db, user_id=current.id, action="update", entity="assets", entity_id=str(asset.id), after_data={"status": asset.status})

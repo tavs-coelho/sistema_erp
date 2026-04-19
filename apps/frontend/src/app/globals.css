@@ -55,10 +55,29 @@ a {
   color: #fff;
   padding: 14px 20px;
   border-bottom: 3px solid #0e2d58;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .app-header strong {
   letter-spacing: 0.2px;
+}
+
+.app-header-nav {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-header-nav a {
+  color: #fff;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
 }
 
 .app-content {

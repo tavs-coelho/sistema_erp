@@ -51,18 +51,29 @@ Fluxos:
 - Publicação em portal de transparência público
 - Auditoria de operações C/U/D nas ações do fluxo
 
-### ✅ Fluxos validados adicionalmente neste ciclo (hardening)
-- RH/Servidor via API:
+### ✅ Fase 3A demonstrável no frontend (RH + portal do servidor)
+- RH via UI (`/rh`):
   - login RH
   - cadastro de servidor
   - lançamento de evento de folha
   - cálculo de folha mensal
-  - geração de holerite PDF
-  - login servidor e consulta/download de próprio holerite
-- Patrimônio via API:
+  - listagem de resultados de folha (holerites) com download de PDF
+- Portal do servidor via UI (`/portal-servidor`):
+  - login servidor
+  - acesso ao portal do servidor
+  - visualização de holerites próprios
+  - download do próprio holerite
+  - demonstrativo de rendimentos (demo)
+
+### ✅ Fase 3B demonstrável no frontend (Patrimônio)
+- Patrimônio via UI (`/patrimonio`):
   - login patrimônio
   - cadastro de bem com departamento/local/responsável
+  - classificação do bem
   - transferência de bem com atualização de local/responsável
+  - baixa de bem
+  - listagem com filtros/paginação
+  - exportação CSV da listagem de bens
   - histórico de movimentações
   - relatório por departamento
 
@@ -169,27 +180,40 @@ Frontend:
 7. Acesse `http://localhost/public` e confirme o empenho/pagamento exposto no portal público
 8. Acesse `http://localhost/api/docs` e consulte `GET /core/audit-logs` para validar os registros de auditoria
 
-### Demo rápida RH/Servidor (API)
-1. Login `hr1 / demo123` em `POST /auth/login`
-2. Criar servidor em `POST /hr/employees`
-3. Criar evento em `POST /hr/payroll-events`
-4. Calcular folha em `POST /hr/payroll/calculate`
-5. Login `employee1 / demo123` e consultar `GET /employee-portal/payslips`
-6. Baixar holerite em `GET /hr/payslips/{id}/pdf`
+### Demo UI completa RH/Servidor
+1. Faça login com `hr1 / demo123`
+2. Abra `http://localhost/rh`
+3. Execute o fluxo:
+   - Cadastrar servidor
+   - Criar evento de folha
+   - Clicar em **Calcular folha mensal**
+   - Validar listas de servidores/eventos/holerites (filtros + paginação)
+   - Baixar PDF de holerite na tabela de resultados
+4. Faça logout e login com `employee1 / demo123`
+5. Abra `http://localhost/portal-servidor`
+6. Valide:
+   - dados do servidor
+   - demonstrativo de rendimentos
+   - lista de holerites próprios
+   - download do próprio holerite PDF
 
-### Demo rápida Patrimônio (API)
-1. Login `patrimony1 / demo123`
-2. Criar bem em `POST /patrimony/assets`
-3. Transferir em `POST /patrimony/assets/{id}/transfer`
-4. Conferir histórico em `GET /patrimony/movements`
-5. Conferir relatório em `GET /patrimony/reports/by-department`
+### Demo UI completa Patrimônio
+1. Faça login com `patrimony1 / demo123`
+2. Abra `http://localhost/patrimonio`
+3. Execute o fluxo:
+   - Cadastrar bem com classificação/departamento/local/responsável
+   - Transferir bem (departamento/local/responsável)
+   - Baixar bem
+   - Validar listagem com filtros + paginação
+   - Exportar CSV da listagem de bens
+   - Conferir histórico de movimentações
+   - Gerar relatório por departamento
 
 ## Screenshot
 
-- Fluxo validado: https://github.com/user-attachments/assets/c2ae2c1c-da9f-4322-9b13-9149c3c3e6c0
+- RH/folha (UI demonstrável): https://github.com/user-attachments/assets/600fcae7-e8c6-478a-8a85-7e3512bd24ad
 
 ## Implementado vs parcial
 
-- **Implementado e validado ponta a ponta no frontend**: Fase 1 + Fase 2.
-- **Implementado e validado via API (sem tela dedicada de fluxo completo)**: RH/Servidor e Patrimônio.
-- Regras avançadas de domínio (fiscal/folha/patrimonial) seguem simplificadas para demo.
+- **Implementado e validado ponta a ponta no frontend**: Fase 1 + Fase 2 + Fase 3A (RH/portal servidor) + Fase 3B (patrimônio).
+- **Parcial**: regras de negócio avançadas seguem simplificadas para demonstração.

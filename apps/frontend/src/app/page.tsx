@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { API_URL, authJson } from "@/lib/auth";
+import { API_URL, authJson, clearSessionCookies } from "@/lib/auth";
 
 type Dashboard = {
   total_empenhado: number;
@@ -89,10 +89,7 @@ export default function Home() {
     window.localStorage.removeItem("access_token");
     window.localStorage.removeItem("role");
     window.localStorage.removeItem("username");
-    document.cookie = "session=; Max-Age=0; path=/; SameSite=Lax; Secure";
-    document.cookie = "role=; Max-Age=0; path=/; SameSite=Lax; Secure";
-    document.cookie = "username=; Max-Age=0; path=/; SameSite=Lax; Secure";
-    document.cookie = "access_token=; Max-Age=0; path=/; SameSite=Lax; Secure";
+    clearSessionCookies();
     window.location.href = "/login";
   };
 

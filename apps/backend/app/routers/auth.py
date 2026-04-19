@@ -66,9 +66,12 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     token = secrets.token_urlsafe(24)
     reset = PasswordResetToken(user_id=user.id, token=token, expires_at=datetime.now(timezone.utc) + timedelta(minutes=30))
     db.add(reset)
-    write_audit(db, user_id=user.id, action="create", entity="password_reset", entity_id=str(user.id), after_data={"token": token})
+    write_audit(db, user_id=user.id, action="create", entity="password_reset", entity_id=str(user.id), after_data={"issued": True})
     db.commit()
-    return {"message": "Reset gerado para demo", "reset_token": token}
+    response = {"message": "Se usuário existir, o reset foi gerado"}
+    if settings.demo_mode:
+        response = {"message": "Reset gerado para demo", "reset_token": token}
+    return response
 
 
 @router.post("/reset-password")

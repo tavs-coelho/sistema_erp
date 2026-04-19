@@ -38,6 +38,10 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
+
 class UserCreate(BaseModel):
     username: str
     full_name: str

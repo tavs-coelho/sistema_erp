@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://erp:erp@db:5432/erp"
     upload_dir: str = "/data/uploads"
     cors_allowed_origins: str = "http://localhost,http://127.0.0.1"
+    demo_mode: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 

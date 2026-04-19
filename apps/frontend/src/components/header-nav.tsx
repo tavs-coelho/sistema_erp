@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 
 import { readCookie } from "@/lib/auth";
 
@@ -20,17 +20,18 @@ const NAV_ITEMS = [
 
 export default function HeaderNav() {
   const pathname = usePathname();
-  const getSessionSnapshot = useCallback(() => ({ username: readCookie("username"), role: readCookie("role") }), []);
-  const session = useSyncExternalStore<Session>(
+  const sessionRaw = useSyncExternalStore<string>(
     (onStoreChange) => {
       if (typeof window === "undefined") return () => {};
       const handler = () => onStoreChange();
       window.addEventListener("storage", handler);
       return () => window.removeEventListener("storage", handler);
     },
-    getSessionSnapshot,
-    () => ({ username: "", role: "" }),
+    () => `${readCookie("username")}|${readCookie("role")}`,
+    () => "|",
   );
+  const [username = "", role = ""] = sessionRaw.split("|");
+  const session: Session = { username, role };
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.length === 0 || item.roles.includes(session.role));
 

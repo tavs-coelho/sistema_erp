@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
@@ -31,6 +31,8 @@ def create_process(payload: ProcurementProcessCreate, db: Session = Depends(get_
 @router.post("/processes/{process_id}/award")
 def award_process(process_id: int, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement))):
     obj = db.get(ProcurementProcess, process_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Processo não encontrado")
     obj.status = "homologado"
     write_audit(db, user_id=current.id, action="update", entity="procurement_processes", entity_id=str(obj.id), after_data={"status": obj.status})
     db.commit()

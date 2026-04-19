@@ -9,6 +9,40 @@ export function readCookie(name: string): string {
   return decodeURIComponent(entry.trim().slice(name.length + 1));
 }
 
+function isHttps(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.protocol === "https:";
+}
+
+function cookieFlags(maxAge?: number): string {
+  const secure = isHttps() ? "; Secure" : "";
+  const age = typeof maxAge === "number" ? `; Max-Age=${maxAge}` : "";
+  return `path=/; SameSite=Lax${age}${secure}`;
+}
+
+function writeCookie(name: string, value: string, maxAge?: number) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; ${cookieFlags(maxAge)}`;
+}
+
+function clearCookieBothSchemes(name: string) {
+  document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+  document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax; Secure`;
+}
+
+export function setSessionCookies(role: string, username: string) {
+  if (typeof document === "undefined") return;
+  writeCookie("session", "active");
+  writeCookie("role", role);
+  writeCookie("username", username);
+}
+
+export function clearSessionCookies() {
+  if (typeof document === "undefined") return;
+  for (const name of ["session", "role", "username", "access_token"]) {
+    clearCookieBothSchemes(name);
+  }
+}
+
 function readStorage(name: string): string {
   if (typeof window === "undefined") return "";
   return window.localStorage.getItem(name) || "";

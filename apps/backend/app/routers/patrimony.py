@@ -76,7 +76,7 @@ def transfer_asset(
     asset.department_id = payload.to_department_id
     if payload.new_location:
         asset.location = payload.new_location
-    if payload.new_responsible_employee_id:
+    if "new_responsible_employee_id" in payload.model_fields_set:
         asset.responsible_employee_id = payload.new_responsible_employee_id
     db.add(movement)
     write_audit(

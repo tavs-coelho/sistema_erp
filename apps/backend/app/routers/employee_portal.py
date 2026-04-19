@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from ..db import get_db
 from ..deps import get_current_user, require_roles
 from ..models import Payslip, RoleEnum, User
+from ..schemas import ChangePasswordRequest
 from ..security import hash_password
 
 router = APIRouter(prefix="/employee-portal", tags=["employee_portal"])
@@ -29,8 +30,8 @@ def income_statement(db: Session = Depends(get_db), user: User = Depends(require
 
 
 @router.post("/change-password")
-def change_password(new_password: str, db: Session = Depends(get_db), user: User = Depends(require_roles(RoleEnum.employee, RoleEnum.admin, RoleEnum.hr))):
-    user.hashed_password = hash_password(new_password)
+def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(require_roles(RoleEnum.employee, RoleEnum.admin, RoleEnum.hr))):
+    user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
     db.commit()
     return {"message": "Senha alterada"}

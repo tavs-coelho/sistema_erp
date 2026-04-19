@@ -152,11 +152,12 @@ def list_payments(
 
 @router.post("/payments", response_model=PaymentOut)
 def create_payment(payload: PaymentCreate, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant))):
+    commitment = db.get(Commitment, payload.commitment_id)
+    if not commitment:
+        raise HTTPException(status_code=404, detail="Empenho não encontrado")
     obj = Payment(**payload.model_dump())
     db.add(obj)
-    commitment = db.get(Commitment, payload.commitment_id)
-    if commitment:
-        commitment.status = "pago"
+    commitment.status = "pago"
     db.flush()
     write_audit(db, user_id=current.id, action="create", entity="payments", entity_id=str(obj.id), after_data=payload.model_dump(mode="json"))
     db.commit()

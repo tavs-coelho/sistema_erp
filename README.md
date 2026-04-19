@@ -113,15 +113,20 @@ Usuários demo principais:
 2. Suba a stack:
    - `docker compose up --build`
 3. Acesse:
-    - Frontend (via Nginx): `http://localhost`
-    - Frontend (direto): `http://localhost:3000`
-    - Backend (direto): `http://localhost:8000`
-    - API OpenAPI: `http://localhost/api/docs`
+    - Frontend integrado (recomendado, via Nginx): `http://localhost`
+    - Frontend direto (somente validação do serviço Next.js): `http://localhost:3000`
+    - Backend direto: `http://localhost:8000`
+    - API OpenAPI via Nginx: `http://localhost/api/docs`
+    - API OpenAPI direto: `http://localhost:8000/docs`
+
+> **Importante:** na stack padrão do `docker compose`, o frontend foi preparado para uso integrado via Nginx (`http://localhost`) com `NEXT_PUBLIC_API_URL=/api`.
+> Se abrir o frontend direto em `http://localhost:3000`, as chamadas para `/api` não passam pelo proxy do Nginx.
+> Para usar `:3000` de forma independente, ajuste `NEXT_PUBLIC_API_URL=http://localhost:8000` no frontend e mantenha CORS no backend para essa origem.
 
 ## Checklist de verificação de saúde (stack)
 
-- [ ] Nginx: `http://localhost`
-- [ ] Frontend (Next): `http://localhost:3000`
+- [ ] Fluxo integrado via Nginx: `http://localhost`
+- [ ] Frontend direto (verificação do serviço Next.js): `http://localhost:3000`
 - [ ] Backend (FastAPI): `http://localhost:8000/`
 - [ ] OpenAPI via Nginx: `http://localhost/api/docs`
 - [ ] OpenAPI direto: `http://localhost:8000/docs`

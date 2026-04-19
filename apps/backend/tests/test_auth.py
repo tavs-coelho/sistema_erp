@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.db import Base, SessionLocal, engine
 from app.main import app
-from app.models import AssetMovement, Liquidation, Payslip
+from app.models import Asset, AssetMovement, Liquidation, Payslip
 from app.seed import seed_data
 
 
@@ -222,5 +222,58 @@ def test_patrimony_transfer_creates_movement_history():
     db = SessionLocal()
     try:
         assert db.query(AssetMovement).filter(AssetMovement.asset_id == asset_id).count() >= 1
+    finally:
+        db.close()
+
+
+def test_create_payment_returns_404_for_unknown_commitment():
+    headers = auth_headers("admin1")
+    payment = client.post(
+        "/accounting/payments",
+        json={"commitment_id": 999999, "amount": 12000, "payment_date": "2026-04-19"},
+        headers=headers,
+    )
+    assert payment.status_code == 404
+    assert payment.json()["detail"] == "Empenho não encontrado"
+
+
+def test_award_process_returns_404_when_not_found():
+    headers = auth_headers("admin1")
+    response = client.post("/procurement/processes/999999/award", headers=headers)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Processo não encontrado"
+
+
+def test_transfer_asset_allows_clearing_responsible_employee():
+    headers = auth_headers("patrimony1")
+    created = client.post(
+        "/patrimony/assets",
+        json={
+            "tag": "PAT-E2E-9002",
+            "description": "Desktop Patrimônio E2E",
+            "classification": "Informática",
+            "location": "Sala TI",
+            "department_id": 1,
+            "responsible_employee_id": 1,
+            "value": 3200,
+            "status": "ativo",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 200
+    asset_id = created.json()["id"]
+
+    transfer = client.post(
+        f"/patrimony/assets/{asset_id}/transfer",
+        json={"to_department_id": 2, "new_location": "Sala Compras", "new_responsible_employee_id": None},
+        headers=headers,
+    )
+    assert transfer.status_code == 200
+
+    db = SessionLocal()
+    try:
+        asset = db.get(Asset, asset_id)
+        assert asset is not None
+        assert asset.responsible_employee_id is None
     finally:
         db.close()

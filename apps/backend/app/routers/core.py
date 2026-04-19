@@ -82,11 +82,14 @@ def upload_attachment(
     upload_dir.mkdir(parents=True, exist_ok=True)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Arquivo inválido")
-    path = upload_dir / file.filename
+    safe_name = Path(file.filename).name
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Arquivo inválido")
+    path = upload_dir / safe_name
     path.write_bytes(file.file.read())
-    att = Attachment(entity_type=entity_type, entity_id=entity_id, file_name=file.filename, path=str(path))
+    att = Attachment(entity_type=entity_type, entity_id=entity_id, file_name=safe_name, path=str(path))
     db.add(att)
     db.flush()
-    write_audit(db, user_id=current.id, action="create", entity="attachments", entity_id=str(att.id), after_data={"file": file.filename})
+    write_audit(db, user_id=current.id, action="create", entity="attachments", entity_id=str(att.id), after_data={"file": safe_name})
     db.commit()
     return {"id": att.id, "file_name": att.file_name}

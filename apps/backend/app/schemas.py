@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from .models import RoleEnum
@@ -221,4 +221,126 @@ class ContractUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     amount: float | None = None
+    status: str | None = None
+
+
+# ── Schemas de orçamento público: PPA / LDO / LOA ────────────────────────────
+
+class PPAProgramCreate(BaseModel):
+    code: str
+    name: str
+    objective: str = ""
+    estimated_amount: float = 0.0
+
+
+class PPAProgramOut(PPAProgramCreate):
+    id: int
+    ppa_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class PPACreate(BaseModel):
+    period_start: int
+    period_end: int
+    description: str
+    status: str = "rascunho"
+
+
+class PPAOut(PPACreate):
+    id: int
+    created_at: datetime
+    programs: list[PPAProgramOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PPAUpdate(BaseModel):
+    description: str | None = None
+    status: str | None = None
+
+
+class LDOGoalCreate(BaseModel):
+    code: str
+    description: str
+    category: str = "prioridade"
+
+
+class LDOGoalOut(LDOGoalCreate):
+    id: int
+    ldo_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class LDOCreate(BaseModel):
+    fiscal_year_id: int
+    description: str
+    status: str = "rascunho"
+
+
+class LDOOut(LDOCreate):
+    id: int
+    created_at: datetime
+    goals: list[LDOGoalOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+class LDOUpdate(BaseModel):
+    description: str | None = None
+    status: str | None = None
+
+
+class LOAItemCreate(BaseModel):
+    function_code: str
+    subfunction_code: str
+    program_code: str
+    action_code: str
+    description: str
+    category: str = "despesa"
+    authorized_amount: float
+    executed_amount: float = 0.0
+
+
+class LOAItemOut(LOAItemCreate):
+    id: int
+    loa_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class LOAItemUpdate(BaseModel):
+    description: str | None = None
+    authorized_amount: float | None = None
+    executed_amount: float | None = None
+
+
+class LOACreate(BaseModel):
+    fiscal_year_id: int
+    ldo_id: int | None = None
+    description: str
+    total_revenue: float = 0.0
+    total_expenditure: float = 0.0
+    status: str = "rascunho"
+
+
+class LOAOut(LOACreate):
+    id: int
+    created_at: datetime
+    items: list[LOAItemOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+class LOAUpdate(BaseModel):
+    description: str | None = None
+    total_revenue: float | None = None
+    total_expenditure: float | None = None
     status: str | None = None

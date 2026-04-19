@@ -223,3 +223,81 @@ class PasswordResetToken(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     token: Mapped[str] = mapped_column(String(120), unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+# ── Módulo orçamentário: PPA / LDO / LOA ─────────────────────────────────────
+
+class PPA(Base):
+    """Plano Plurianual — vigência de 4 anos."""
+    __tablename__ = "ppas"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    period_start: Mapped[int] = mapped_column(Integer)
+    period_end: Mapped[int] = mapped_column(Integer)
+    description: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(30), default="rascunho")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    programs = relationship("PPAProgram", back_populates="ppa", cascade="all, delete-orphan")
+
+
+class PPAProgram(Base):
+    """Programa de governo dentro do PPA."""
+    __tablename__ = "ppa_programs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ppa_id: Mapped[int] = mapped_column(ForeignKey("ppas.id"))
+    code: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(200))
+    objective: Mapped[str] = mapped_column(Text, default="")
+    estimated_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    ppa = relationship("PPA", back_populates="programs")
+
+
+class LDO(Base):
+    """Lei de Diretrizes Orçamentárias — por exercício."""
+    __tablename__ = "ldos"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year_id: Mapped[int] = mapped_column(ForeignKey("fiscal_years.id"))
+    description: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(30), default="rascunho")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    goals = relationship("LDOGoal", back_populates="ldo", cascade="all, delete-orphan")
+
+
+class LDOGoal(Base):
+    """Meta/diretriz dentro da LDO."""
+    __tablename__ = "ldo_goals"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ldo_id: Mapped[int] = mapped_column(ForeignKey("ldos.id"))
+    code: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(60), default="prioridade")
+    ldo = relationship("LDO", back_populates="goals")
+
+
+class LOA(Base):
+    """Lei Orçamentária Anual — orçamento aprovado para o exercício."""
+    __tablename__ = "loas"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fiscal_year_id: Mapped[int] = mapped_column(ForeignKey("fiscal_years.id"))
+    ldo_id: Mapped[int | None] = mapped_column(ForeignKey("ldos.id"), nullable=True)
+    description: Mapped[str] = mapped_column(String(255))
+    total_revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    total_expenditure: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(30), default="rascunho")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    items = relationship("LOAItem", back_populates="loa", cascade="all, delete-orphan")
+
+
+class LOAItem(Base):
+    """Dotação unitária dentro da LOA (função/subfunção/programa/ação)."""
+    __tablename__ = "loa_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    loa_id: Mapped[int] = mapped_column(ForeignKey("loas.id"))
+    function_code: Mapped[str] = mapped_column(String(10))
+    subfunction_code: Mapped[str] = mapped_column(String(10))
+    program_code: Mapped[str] = mapped_column(String(20))
+    action_code: Mapped[str] = mapped_column(String(20))
+    description: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(30), default="despesa")
+    authorized_amount: Mapped[float] = mapped_column(Float)
+    executed_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    loa = relationship("LOA", back_populates="items")

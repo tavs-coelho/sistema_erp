@@ -11,6 +11,8 @@ type Session = { username: string; role: string };
 const NAV_ITEMS = [
   { href: "/", label: "Painel", roles: [] as string[] },
   { href: "/fase-2", label: "Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/orcamento", label: "Orçamento", roles: ["admin", "accountant", "read_only"] },
+  { href: "/compras", label: "Compras", roles: ["admin", "accountant", "procurement", "read_only"] },
   { href: "/rh", label: "RH", roles: ["admin", "hr", "read_only"] },
   { href: "/portal-servidor", label: "Portal Servidor", roles: ["admin", "hr", "employee", "read_only"] },
   { href: "/patrimonio", label: "Patrimônio", roles: ["admin", "patrimony", "read_only"] },

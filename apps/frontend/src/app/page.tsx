@@ -18,11 +18,13 @@ type MessageKind = "success" | "error" | "info";
 
 const QUICK_LINKS = [
   { href: "/fase-2", label: "1) Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
-  { href: "/public", label: "2) Transparência", roles: [] },
-  { href: "/rh", label: "3) RH e Folha", roles: ["admin", "hr", "read_only"] },
-  { href: "/portal-servidor", label: "4) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
-  { href: "/patrimonio", label: "5) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
-  { href: "/auditoria", label: "6) Auditoria", roles: ["admin", "read_only"] },
+  { href: "/orcamento", label: "2) Orçamento (PPA/LDO/LOA)", roles: ["admin", "accountant", "read_only"] },
+  { href: "/compras", label: "3) Compras e Contratos", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/public", label: "4) Transparência", roles: [] },
+  { href: "/rh", label: "5) RH e Folha", roles: ["admin", "hr", "read_only"] },
+  { href: "/portal-servidor", label: "6) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
+  { href: "/patrimonio", label: "7) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
+  { href: "/auditoria", label: "8) Auditoria", roles: ["admin", "read_only"] },
 ];
 
 export default function Home() {

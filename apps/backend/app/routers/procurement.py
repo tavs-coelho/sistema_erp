@@ -106,6 +106,12 @@ def list_contracts(
     return _paginate(q.order_by(Contract.id.desc()), page, size)
 
 
+@router.get("/contracts/expiring")
+def expiring_contracts(days: int = 60, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    limit_date = date.today() + timedelta(days=days)
+    return db.query(Contract).filter(Contract.end_date <= limit_date, Contract.status == "vigente").all()
+
+
 @router.get("/contracts/{contract_id}")
 def get_contract(contract_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     obj = db.get(Contract, contract_id)
@@ -172,9 +178,3 @@ def list_addenda(contract_id: int, db: Session = Depends(get_db), _: User = Depe
     if not contract:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
     return db.query(ContractAddendum).filter(ContractAddendum.contract_id == contract_id).all()
-
-
-@router.get("/contracts/expiring")
-def expiring_contracts(days: int = 60, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    limit_date = date.today() + timedelta(days=days)
-    return db.query(Contract).filter(Contract.end_date <= limit_date, Contract.status == "vigente").all()

@@ -9,6 +9,7 @@ from ..db import get_db
 from ..models import (
     Commitment,
     Contract,
+    Contribuinte,
     Convenio,
     ConvenioDesembolso,
     DividaAtiva,
@@ -268,4 +269,119 @@ def stats(db: Session = Depends(get_db)):
         "convenios": {"total": total_convenios, "valor": round(valor_convenios, 2)},
         "arrecadacao_tributaria": {"arrecadado": round(arrecadacao_total, 2), "divida_ativa": round(divida_total, 2)},
     }
+
+
+# ── Portal do Contribuinte — TRIB-07 ─────────────────────────────────────────
+
+@router.get("/contribuinte/{cpf_cnpj}/debitos")
+def portal_contribuinte_debitos(
+    cpf_cnpj: str,
+    exercicio: int | None = None,
+    tributo: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Portal do Contribuinte — consulta pública de débitos por CPF/CNPJ.
+
+    Retorna lançamentos tributários abertos, parcialmente pagos ou inscritos
+    em dívida ativa. Não requer autenticação.
+
+    Parâmetros opcionais:
+    - exercicio: filtra por ano (ex: 2025)
+    - tributo: IPTU, ISS, ITBI, TAXA_LIXO, etc.
+    - status: aberto | inscrito_divida | parcelado (omite 'pago' e 'cancelado')
+    """
+    contribuinte = (
+        db.query(Contribuinte)
+        .filter(Contribuinte.cpf_cnpj == cpf_cnpj, Contribuinte.ativo.is_(True))
+        .first()
+    )
+    if not contribuinte:
+        return {"contribuinte": None, "debitos": [], "total_debitos": 0, "valor_total": 0.0}
+
+    q = (
+        db.query(LancamentoTributario)
+        .filter(
+            LancamentoTributario.contribuinte_id == contribuinte.id,
+            LancamentoTributario.status.notin_(["pago", "cancelado"]),
+        )
+    )
+    if exercicio:
+        q = q.filter(LancamentoTributario.exercicio == exercicio)
+    if tributo:
+        q = q.filter(LancamentoTributario.tributo == tributo.upper())
+    if status:
+        q = q.filter(LancamentoTributario.status == status)
+
+    lancamentos = q.order_by(LancamentoTributario.vencimento).all()
+    valor_total = round(sum(l.valor_total for l in lancamentos), 2)
+
+    debitos = [
+        {
+            "id": l.id,
+            "tributo": l.tributo,
+            "competencia": l.competencia,
+            "exercicio": l.exercicio,
+            "valor_principal": l.valor_principal,
+            "valor_juros": l.valor_juros,
+            "valor_multa": l.valor_multa,
+            "valor_total": l.valor_total,
+            "vencimento": l.vencimento.isoformat(),
+            "status": l.status,
+        }
+        for l in lancamentos
+    ]
+
+    return {
+        "contribuinte": {
+            "cpf_cnpj": contribuinte.cpf_cnpj,
+            "nome": contribuinte.nome,
+            "tipo": contribuinte.tipo,
+        },
+        "debitos": debitos,
+        "total_debitos": len(debitos),
+        "valor_total": valor_total,
+    }
+
+
+@router.get("/contribuinte/{cpf_cnpj}/certidao")
+def portal_contribuinte_certidao(
+    cpf_cnpj: str,
+    db: Session = Depends(get_db),
+):
+    """Certidão de situação fiscal (negativa/positiva com efeito de negativa).
+
+    Não requer autenticação.
+    """
+    contribuinte = (
+        db.query(Contribuinte)
+        .filter(Contribuinte.cpf_cnpj == cpf_cnpj, Contribuinte.ativo.is_(True))
+        .first()
+    )
+    if not contribuinte:
+        return {"situacao": "nao_cadastrado", "cpf_cnpj": cpf_cnpj}
+
+    debitos_abertos = (
+        db.query(LancamentoTributario)
+        .filter(
+            LancamentoTributario.contribuinte_id == contribuinte.id,
+            LancamentoTributario.status.notin_(["pago", "cancelado"]),
+        )
+        .count()
+    )
+
+    situacao = "negativa" if debitos_abertos == 0 else "positiva"
+    return {
+        "cpf_cnpj": contribuinte.cpf_cnpj,
+        "nome": contribuinte.nome,
+        "situacao": situacao,
+        "debitos_pendentes": debitos_abertos,
+        "emitida_em": __import__("datetime").date.today().isoformat(),
+        "observacao": (
+            "Certidão Negativa de Débitos — sem pendências fiscais municipais"
+            if situacao == "negativa"
+            else "Certidão Positiva — existem débitos fiscais municipais em aberto"
+        ),
+    }
+
 

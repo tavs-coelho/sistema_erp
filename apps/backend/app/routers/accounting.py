@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import BudgetAllocation, Commitment, FundingSource, Liquidation, Payment, RevenueEntry, RoleEnum, User, Vendor
+from ..models import BudgetAllocation, Commitment, FundingSource, Liquidation, LOAItem, Payment, RevenueEntry, RoleEnum, User, Vendor
 from ..schemas import (
     BudgetAllocationCreate,
     BudgetAllocationOut,
@@ -117,6 +117,11 @@ def create_commitment(payload: CommitmentCreate, db: Session = Depends(get_db), 
     obj = Commitment(**payload.model_dump())
     db.add(obj)
     db.flush()
+    # ORC-05: atualiza executed_amount na dotação LOA vinculada
+    if payload.loa_item_id:
+        loa_item = db.get(LOAItem, payload.loa_item_id)
+        if loa_item:
+            loa_item.executed_amount = round(loa_item.executed_amount + payload.amount, 2)
     write_audit(db, user_id=current.id, action="create", entity="commitments", entity_id=str(obj.id), after_data=payload.model_dump())
     db.commit()
     db.refresh(obj)

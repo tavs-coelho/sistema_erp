@@ -99,6 +99,7 @@ class Commitment(Base):
     fiscal_year_id: Mapped[int] = mapped_column(ForeignKey("fiscal_years.id"))
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
     vendor_id: Mapped[int] = mapped_column(ForeignKey("vendors.id"))
+    loa_item_id: Mapped[int | None] = mapped_column(ForeignKey("loa_items.id"), nullable=True)
 
 
 class Liquidation(Base):
@@ -368,6 +369,38 @@ class RecalcularPayslipLog(Base):
     executado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     employee = relationship("Employee")
+
+
+# ── Escala de Férias ──────────────────────────────────────────────────────────
+
+class EscalaFerias(Base):
+    """Programação de férias de um servidor.
+
+    Regras básicas refletidas neste modelo:
+    - Período aquisitivo: 12 meses trabalhados geram 30 dias de férias (CLT/estatuto).
+    - Fracionamento: até 3 períodos (campo fracao: 1, 2 ou 3).
+    - Conflito: validado no router — não permite duas escalas com sobreposição
+      de datas para o mesmo servidor.
+
+    status:
+      programada  → aprovada → cancelada / gozada
+    """
+    __tablename__ = "escalas_ferias"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    ano_referencia: Mapped[int] = mapped_column(Integer, index=True)   # ano do período aquisitivo
+    data_inicio: Mapped[date] = mapped_column(Date, index=True)
+    data_fim: Mapped[date] = mapped_column(Date)
+    dias_gozados: Mapped[int] = mapped_column(Integer)                # data_fim - data_inicio + 1
+    fracao: Mapped[int] = mapped_column(Integer, default=1)           # 1, 2 ou 3 (fracionamento)
+    status: Mapped[str] = mapped_column(String(20), default="programada", index=True)
+    # programada | aprovada | cancelada | gozada
+    aprovado_por_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    observacoes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    employee = relationship("Employee")
+    aprovado_por = relationship("User", foreign_keys=[aprovado_por_id])
 
 
 # ── SICONFI / SIOP ────────────────────────────────────────────────────────────

@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     upload_dir: str = "/data/uploads"
     cors_allowed_origins: str = "http://localhost,http://127.0.0.1"
     demo_mode: bool = True
+    # Rate limiting for /auth/login. Set LOGIN_RATE_LIMIT=10000/minute to disable in tests.
+    login_rate_limit: str = "10/minute"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 

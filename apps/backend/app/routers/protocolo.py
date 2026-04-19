@@ -1,12 +1,17 @@
 """Router de Protocolo e Processos Administrativos."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import Protocolo, TramitacaoProtocolo, RoleEnum, User
+from ..models import Attachment, Protocolo, TramitacaoProtocolo, RoleEnum, User
 from ..schemas import (
     ProtocoloCreate,
     ProtocoloOut,
@@ -14,6 +19,23 @@ from ..schemas import (
     TramitacaoCreate,
     TramitacaoOut,
 )
+
+router = APIRouter(prefix="/protocolo", tags=["protocolo"])
+
+# Pasta de upload local — pode ser substituída por S3 via config
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/tmp/ged_uploads"))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+# Tipos de arquivo permitidos
+ALLOWED_MIME = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/msword",
+    "text/plain",
+}
+MAX_UPLOAD_MB = 10
 
 router = APIRouter(prefix="/protocolo", tags=["protocolo"])
 
@@ -192,3 +214,122 @@ def estatisticas(db: Session = Depends(get_db), _: User = Depends(get_current_us
         .all()
     )
     return {status: count for status, count in rows}
+
+
+# ── GED — Anexos de Protocolo ─────────────────────────────────────────────────
+
+@router.post("/protocolos/{protocolo_id}/anexos")
+def upload_anexo(
+    protocolo_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Faz upload de um arquivo e vincula ao protocolo.
+
+    - Tamanho máximo: 10 MB
+    - Tipos permitidos: PDF, JPEG, PNG, DOCX, DOC, TXT
+    """
+    obj = db.get(Protocolo, protocolo_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+
+    if file.content_type not in ALLOWED_MIME:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Tipo de arquivo não permitido: {file.content_type}. "
+                   f"Permitidos: {sorted(ALLOWED_MIME)}",
+        )
+
+    contents = file.file.read()
+    if len(contents) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Arquivo excede o limite de {MAX_UPLOAD_MB} MB")
+
+    # Salva com nome único para evitar colisões
+    ext = Path(file.filename or "file").suffix
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    dest = UPLOAD_DIR / unique_name
+    dest.write_bytes(contents)
+
+    attachment = Attachment(
+        entity_type="protocolo",
+        entity_id=protocolo_id,
+        file_name=file.filename or unique_name,
+        path=str(dest),
+    )
+    db.add(attachment)
+    db.flush()
+    write_audit(
+        db, user_id=current.id, action="create",
+        entity="attachments", entity_id=str(attachment.id),
+        after_data={"protocolo_id": protocolo_id, "file_name": file.filename, "size_bytes": len(contents)},
+    )
+    db.commit()
+    db.refresh(attachment)
+    return {
+        "id": attachment.id,
+        "file_name": attachment.file_name,
+        "entity_type": attachment.entity_type,
+        "entity_id": attachment.entity_id,
+    }
+
+
+@router.get("/protocolos/{protocolo_id}/anexos")
+def list_anexos(
+    protocolo_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista todos os anexos de um protocolo."""
+    obj = db.get(Protocolo, protocolo_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    anexos = (
+        db.query(Attachment)
+        .filter(Attachment.entity_type == "protocolo", Attachment.entity_id == protocolo_id)
+        .all()
+    )
+    return [{"id": a.id, "file_name": a.file_name} for a in anexos]
+
+
+@router.get("/anexos/{attachment_id}/download")
+def download_anexo(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Faz download de um anexo pelo ID."""
+    attachment = db.get(Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    if not Path(attachment.path).exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
+    return FileResponse(
+        path=attachment.path,
+        filename=attachment.file_name,
+        media_type="application/octet-stream",
+    )
+
+
+@router.delete("/anexos/{attachment_id}", status_code=204)
+def delete_anexo(
+    attachment_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """Remove um anexo (arquivo e registro no banco)."""
+    attachment = db.get(Attachment, attachment_id)
+    if not attachment:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    # Remove o arquivo do disco
+    try:
+        Path(attachment.path).unlink(missing_ok=True)
+    except OSError:
+        pass
+    write_audit(
+        db, user_id=current.id, action="delete",
+        entity="attachments", entity_id=str(attachment_id),
+        before_data={"file_name": attachment.file_name, "entity_id": attachment.entity_id},
+    )
+    db.delete(attachment)
+    db.commit()

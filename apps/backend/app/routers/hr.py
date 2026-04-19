@@ -5,10 +5,13 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import Employee, PayrollEvent, Payslip, RecalcularPayslipLog, RoleEnum, User
+from ..models import Employee, EscalaFerias, PayrollEvent, Payslip, RecalcularPayslipLog, RoleEnum, User
 from ..schemas import (
     EmployeeCreate,
     EmployeeOut,
+    EscalaFeriasCreate,
+    EscalaFeriasOut,
+    EscalaFeriasUpdate,
     PayrollCalculationRequest,
     PayrollEventCreate,
     RecalcularPayslipRequest,
@@ -327,3 +330,193 @@ def payroll_by_department(db: Session = Depends(get_db), _: User = Depends(requi
     for emp in db.query(Employee).all():
         rows.append({"department_id": emp.department_id, "employee": emp.name, "salary": emp.base_salary})
     return rows
+
+
+# ── Escala de Férias ──────────────────────────────────────────────────────────
+
+def _check_conflict(db: Session, employee_id: int, data_inicio, data_fim, exclude_id: int | None = None):
+    """Verifica sobreposição de período de férias para o servidor."""
+    from ..models import EscalaFerias
+    q = (
+        db.query(EscalaFerias)
+        .filter(
+            EscalaFerias.employee_id == employee_id,
+            EscalaFerias.status.notin_(["cancelada"]),
+            EscalaFerias.data_inicio <= data_fim,
+            EscalaFerias.data_fim >= data_inicio,
+        )
+    )
+    if exclude_id:
+        q = q.filter(EscalaFerias.id != exclude_id)
+    return q.first()
+
+
+@router.post("/ferias", response_model=EscalaFeriasOut, status_code=201)
+def create_ferias(
+    payload: EscalaFeriasCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr)),
+):
+    """Programa férias para um servidor.
+
+    Valida:
+    - data_fim >= data_inicio
+    - fracao em {1, 2, 3}
+    - sem sobreposição com outra escala ativa do mesmo servidor
+    """
+    emp = db.get(Employee, payload.employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Servidor não encontrado")
+    if payload.data_fim < payload.data_inicio:
+        raise HTTPException(status_code=422, detail="data_fim deve ser >= data_inicio")
+    if payload.fracao not in (1, 2, 3):
+        raise HTTPException(status_code=422, detail="fracao deve ser 1, 2 ou 3 (CLT/estatuto)")
+
+    if _check_conflict(db, payload.employee_id, payload.data_inicio, payload.data_fim):
+        raise HTTPException(status_code=409, detail="Período de férias sobrepõe escala existente para este servidor")
+
+    dias = (payload.data_fim - payload.data_inicio).days + 1
+    obj = EscalaFerias(
+        employee_id=payload.employee_id,
+        ano_referencia=payload.ano_referencia,
+        data_inicio=payload.data_inicio,
+        data_fim=payload.data_fim,
+        dias_gozados=dias,
+        fracao=payload.fracao,
+        observacoes=payload.observacoes,
+    )
+    db.add(obj)
+    db.flush()
+    write_audit(
+        db, user_id=current.id, action="create",
+        entity="escalas_ferias", entity_id=str(obj.id),
+        after_data={"employee_id": obj.employee_id, "data_inicio": str(obj.data_inicio),
+                    "data_fim": str(obj.data_fim), "dias": dias},
+    )
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@router.get("/ferias", response_model=list[EscalaFeriasOut])
+def list_ferias(
+    employee_id: int | None = None,
+    ano_referencia: int | None = None,
+    status: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr, RoleEnum.read_only)),
+):
+    q = db.query(EscalaFerias)
+    if employee_id:
+        q = q.filter(EscalaFerias.employee_id == employee_id)
+    if ano_referencia:
+        q = q.filter(EscalaFerias.ano_referencia == ano_referencia)
+    if status:
+        q = q.filter(EscalaFerias.status == status)
+    total = q.count()
+    items = q.order_by(EscalaFerias.data_inicio).offset((page - 1) * size).limit(size).all()
+    return items
+
+
+@router.get("/ferias/{ferias_id}", response_model=EscalaFeriasOut)
+def get_ferias(
+    ferias_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    obj = db.get(EscalaFerias, ferias_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Escala de férias não encontrada")
+    return obj
+
+
+@router.patch("/ferias/{ferias_id}", response_model=EscalaFeriasOut)
+def update_ferias(
+    ferias_id: int,
+    payload: EscalaFeriasUpdate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr)),
+):
+    obj = db.get(EscalaFerias, ferias_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Escala de férias não encontrada")
+    if obj.status in ("cancelada", "gozada"):
+        raise HTTPException(status_code=409, detail=f"Escala com status '{obj.status}' não pode ser alterada")
+
+    before = {"status": obj.status, "data_inicio": str(obj.data_inicio), "data_fim": str(obj.data_fim)}
+
+    new_inicio = payload.data_inicio or obj.data_inicio
+    new_fim = payload.data_fim or obj.data_fim
+    if new_fim < new_inicio:
+        raise HTTPException(status_code=422, detail="data_fim deve ser >= data_inicio")
+    if (payload.data_inicio or payload.data_fim) and _check_conflict(db, obj.employee_id, new_inicio, new_fim, exclude_id=ferias_id):
+        raise HTTPException(status_code=409, detail="Período de férias sobrepõe escala existente para este servidor")
+
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(obj, field, value)
+    obj.dias_gozados = (obj.data_fim - obj.data_inicio).days + 1
+
+    # Registra aprovador se mudando para 'aprovada'
+    if payload.status == "aprovada":
+        obj.aprovado_por_id = current.id
+
+    write_audit(
+        db, user_id=current.id, action="update",
+        entity="escalas_ferias", entity_id=str(obj.id),
+        before_data=before,
+        after_data=payload.model_dump(exclude_none=True),
+    )
+    db.commit()
+    db.refresh(obj)
+    return obj
+
+
+@router.delete("/ferias/{ferias_id}", status_code=204)
+def cancel_ferias(
+    ferias_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr)),
+):
+    obj = db.get(EscalaFerias, ferias_id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Escala de férias não encontrada")
+    if obj.status == "gozada":
+        raise HTTPException(status_code=409, detail="Férias já gozadas não podem ser canceladas")
+    before = {"status": obj.status}
+    obj.status = "cancelada"
+    write_audit(
+        db, user_id=current.id, action="update",
+        entity="escalas_ferias", entity_id=str(obj.id),
+        before_data=before, after_data={"status": "cancelada"},
+    )
+    db.commit()
+
+
+@router.get("/ferias/servidor/{employee_id}/saldo")
+def saldo_ferias(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Resumo do saldo de férias por ano de referência para um servidor."""
+    emp = db.get(Employee, employee_id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Servidor não encontrado")
+    escalas = (
+        db.query(EscalaFerias)
+        .filter(EscalaFerias.employee_id == employee_id, EscalaFerias.status != "cancelada")
+        .all()
+    )
+    por_ano: dict[int, int] = {}
+    for e in escalas:
+        por_ano[e.ano_referencia] = por_ano.get(e.ano_referencia, 0) + e.dias_gozados
+    return {
+        "employee_id": employee_id,
+        "employee_name": emp.name,
+        "saldo_por_ano": [
+            {"ano_referencia": ano, "dias_gozados": dias, "dias_saldo": max(0, 30 - dias)}
+            for ano, dias in sorted(por_ano.items())
+        ],
+    }

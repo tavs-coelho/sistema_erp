@@ -125,6 +125,7 @@ class CommitmentCreate(BaseModel):
     fiscal_year_id: int
     department_id: int
     vendor_id: int
+    loa_item_id: int | None = None
 
 
 class CommitmentOut(CommitmentCreate):
@@ -1474,6 +1475,40 @@ class EnvioSiconfiOut(BaseModel):
     http_status: int | None
     certificado_serial: str | None
     tentativas: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ── Escala de Férias ──────────────────────────────────────────────────────────
+
+class EscalaFeriasCreate(BaseModel):
+    employee_id: int
+    ano_referencia: int
+    data_inicio: date
+    data_fim: date
+    fracao: int = 1
+    observacoes: str = ""
+
+
+class EscalaFeriasUpdate(BaseModel):
+    data_inicio: date | None = None
+    data_fim: date | None = None
+    status: str | None = None
+    observacoes: str | None = None
+
+
+class EscalaFeriasOut(BaseModel):
+    id: int
+    employee_id: int
+    ano_referencia: int
+    data_inicio: date
+    data_fim: date
+    dias_gozados: int
+    fracao: int
+    status: str
+    aprovado_por_id: int | None
+    observacoes: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

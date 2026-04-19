@@ -1,12 +1,21 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from .config import settings
 from .db import SessionLocal
 from .routers import accounting, almoxarifado, auth, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
 from .seed import seed_data
 
+# Rate limiter — applied selectively on sensitive endpoints
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

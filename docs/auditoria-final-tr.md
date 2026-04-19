@@ -2,8 +2,8 @@
 
 **Data:** 2026-04-19  
 **Branch auditada:** `copilot/diagnostico-tecnico-erp`  
-**Total de testes:** 565 (20 suítes)  
-**Migrations:** 16 (0001–0016)  
+**Total de testes:** 592 (21 suítes, +27 sprint)  
+**Migrations:** 17 (0001–0017)  
 **Frontend:** 23 páginas Next.js
 
 ---
@@ -27,7 +27,7 @@
 | ORC-02 | Cadastro de LDO com diretrizes e metas | ✅ | `LDO`, `LDOGoal`; frontend `/orcamento`; CRUD completo | Baixo | — |
 | ORC-03 | Cadastro de LOA com dotações por função/subfunção/programa/ação | ✅ | `LOA`, `LOAItem`, `BudgetAllocation`; código estruturado | Baixo | — |
 | ORC-04 | Execução orçamentária — empenho, liquidação, pagamento | ✅ | `routers/accounting.py`; ciclo `Commitment→Liquidation→Payment`; `test_integracao_compras.py` | Baixo | — |
-| ORC-05 | Atualização automática de saldo executado ao empenhar | ⚠️ | `LOAItem.executed_amount` existe; sem disparo automático ao criar `Commitment` | Médio — risco de divergência orçamentária | Disparar trigger de atualização de `executed_amount` no `create_commitment` (Onda 20) |
+| ORC-05 | Atualização automática de saldo executado ao empenhar | ✅ | `create_commitment` incrementa `LOAItem.executed_amount`; `loa_item_id` em `Commitment`; migration 0017; 2 testes em `test_sprint_aderencia.py` | Baixo | — |
 | ORC-06 | Relatório de execução orçamentária por dotação | ⚠️ | `/accounting/commitments-report` existe; sem relatório formatado por dotação/função | Médio | Implementar relatório LOA vs executado em `/relatorios/execucao-orcamentaria` (Onda 20) |
 | ORC-07 | Consulta pública de LOA e execução | ⚠️ | `/public/licitacoes` existe; LOA não exposta publicamente | Baixo | Expor endpoint `/public/loa/{exercicio}` (Onda 20) |
 
@@ -103,7 +103,7 @@
 | RH-04 | Ponto e frequência (escala, registro, abono) | ✅ | `RegistroPonto`, `EscalaServidor`, `AbonoFalta`; folha mensal; horas extras; 39 testes; `docs/ponto-frequencia.md` | Baixo | — |
 | RH-05 | Integração ponto → folha (descontos/créditos automáticos) | ✅ | `IntegracaoPontoFolha`; idempotente; preview dry-run; 32 testes; `docs/integracao-ponto-folha.md` | Baixo | — |
 | RH-06 | Portal do servidor (contracheque, afastamentos) | ✅ | `routers/employee_portal.py`; frontend `/portal-servidor` | Baixo | — |
-| RH-07 | Controle de férias (programação/escala) | ⚠️ | `Absence` com tipo `ferias` existe; sem escala anual de férias, conflito de períodos ou relatório de gozo | Alto — obrigação trabalhista | Implementar `EscalaFerias` com controle de 30 dias e relatório (Onda 20) |
+| RH-07 | Controle de férias (programação/escala) | ✅ | `EscalaFerias` model + migration 0017; CRUD completo em `GET/POST/PATCH/DELETE /hr/ferias`; endpoint `/hr/ferias/servidor/{id}/saldo`; validação de sobreposição de período e fracionamento (1/2/3); 8 testes em `test_sprint_aderencia.py` | Baixo | — |
 | RH-08 | DIRF (Declaração de Imposto de Renda na Fonte) | ❌ | Não implementada; sem cálculo de IRRF, tabela progressiva ou arquivo RFB | Alto — obrigação acessória IR | Implementar cálculo IRRF em `PayrollEvent` + geração de arquivo DIRF (Onda 21) |
 | RH-09 | RAIS / eSocial (obrigações acessórias trabalhistas) | ❌ | Não implementado; sem módulo de obrigações acessórias | Alto — multa por não entrega | Fora do escopo do TR atual — requerer clareza contratual |
 
@@ -116,7 +116,7 @@
 | PROT-01 | Protocolo de documentos com número único | ✅ | `Protocolo`; `routers/protocolo.py`; 21 testes; frontend `/protocolo` | Baixo | — |
 | PROT-02 | Tramitação entre departamentos com histórico | ✅ | `TramitacaoProtocolo`; responsável, data, observação | Baixo | — |
 | PROT-03 | Status e prazo de resposta | ✅ | Campo `status` com transições; campo `data_limite` | Baixo | — |
-| PROT-04 | Upload e gestão de documentos (GED) | ❌ | `Attachment` model criado mas sem endpoint de upload; sem armazenamento de arquivo | Alto — sem evidência documental | Implementar `POST /attachments` com armazenamento local/S3 (Onda 21) |
+| PROT-04 | Upload e gestão de documentos (GED) | ✅ | `POST /protocolo/protocolos/{id}/anexos` (multipart); `GET` lista; `GET /protocolo/anexos/{id}/download`; `DELETE`; validação MIME (PDF/JPEG/PNG/DOCX/TXT) e tamanho máx. 10 MB; armazenamento local configurável via `UPLOAD_DIR`; auditado; 5 testes | Baixo (armazenamento em disco; produção deve usar S3) | Configurar S3/blob storage para produção |
 
 ---
 
@@ -141,7 +141,7 @@
 | TRIB-04 | ITBI (base de cálculo, alíquota configurável) | ✅ | `OperacaoITBI`; base = max(declarado, venal); 36 testes; `docs/nfse-itbi.md` | Baixo | — |
 | TRIB-05 | NFS-e (emissão, cancelamento, numeração) | ✅ (simplificado) | Emissão interna; sem integração SEFAZ; sem XML padrão ABRASF | Médio — sem validade fiscal perante SEFAZ | Documentar como NFS-e interna; integração SEFAZ como Onda futura |
 | TRIB-06 | Dívida ativa — ajuizamento e PGM | ⚠️ | Status `ajuizada` existe; sem integração PGM ou geração de CDA | Médio | Integração PGM fora do escopo do TR; documentar limitação |
-| TRIB-07 | Consulta pública de débitos (portal do contribuinte) | ❌ | Não implementado; sem endpoint público de consulta de débitos do contribuinte | Alto — transparência fiscal | Implementar `GET /public/contribuinte/{cpf_cnpj}/debitos` (Onda 20) |
+| TRIB-07 | Consulta pública de débitos (portal do contribuinte) | ✅ | `GET /public/contribuinte/{cpf_cnpj}/debitos` (sem auth); filtros por exercício/tributo/status; `GET /public/contribuinte/{cpf_cnpj}/certidao` (certidão negativa/positiva); 5 testes | Baixo | — |
 
 ---
 
@@ -177,8 +177,8 @@
 | TRV-09 | Migrations versionadas e reversíveis | ✅ | 16 migrations Alembic (0001–0016); `upgrade()` + `downgrade()` em todas | Baixo | — |
 | TRV-10 | Multi-tenancy (isolamento por município) | ❌ | Não implementado; banco único sem partição por tenant | Alto — necessário para SaaS multi-prefeitura | Adicionar `tenant_id` nos models principais + middleware de isolamento (Onda futura) |
 | TRV-11 | Criptografia em repouso de dados sensíveis (CPF, CNPJ) | ⚠️ | Senhas hasheadas com bcrypt; CPF/CNPJ gravados em texto | Médio — risco LGPD | Aplicar criptografia AES-256 nos campos sensíveis (Onda 21) |
-| TRV-12 | Log de autenticação (login/logout/falha) | ⚠️ | Auditoria de operações existe; login bem-sucedido não gera `audit_log`; sem registro de falha | Médio — rastreabilidade de segurança | Adicionar `write_audit` no `POST /auth/login` (sucesso e falha) |
-| TRV-13 | Rate limiting / proteção contra brute force | ❌ | Não implementado; sem throttle no endpoint de login | Alto — risco de ataque de força bruta | Adicionar `slowapi` ou middleware de rate limiting (Onda 20) |
+| TRV-12 | Log de autenticação (login/logout/falha) | ✅ | `write_audit` em `POST /auth/login` (sucesso: `action=login`; falha: `action=login_failure`); `POST /auth/logout` (autenticado, `action=logout`); 4 testes em `test_sprint_aderencia.py` | Baixo | — |
+| TRV-13 | Rate limiting / proteção contra brute force | ✅ | `slowapi==0.1.9`; `@_limiter.limit(settings.login_rate_limit)` em `POST /auth/login`; padrão 10/min; configurável via `LOGIN_RATE_LIMIT` env var; `app.state.limiter` instalado; 2 testes | Baixo | Configurar Redis como backend do slowapi em produção para multi-instância |
 | TRV-14 | HTTPS / TLS em produção | 〰️ | Responsabilidade do infra/deploy; código usa uvicorn puro | Baixo | Documentar requisito de proxy reverso (Nginx/Traefik) no guia de deploy |
 
 ---
@@ -187,22 +187,22 @@
 
 | Módulo | ✅ Atende | ⚠️ Parcial | ❌ Pendente | Total |
 |---|:---:|:---:|:---:|:---:|
-| Orçamento (PPA/LDO/LOA) | 4 | 3 | 0 | 7 |
+| Orçamento (PPA/LDO/LOA) | 5 | 2 | 0 | 7 |
 | Compras / Licitações | 8 | 1 | 0 | 9 |
 | Almoxarifado | 8 | 0 | 0 | 8 |
 | Patrimônio | 4 | 1 | 1 | 6 |
 | Frota | 7 | 0 | 2 | 9 |
-| Recursos Humanos | 6 | 1 | 2 | 9 |
-| Protocolo / GED | 3 | 0 | 1 | 4 |
+| Recursos Humanos | 7 | 0 | 2 | 9 |
+| Protocolo / GED | 4 | 0 | 0 | 4 |
 | Convênios | 3 | 1 | 0 | 4 |
-| Tributação | 4 | 2 | 1 | 7 |
+| Tributação | 5 | 1 | 1 | 7 |
 | Contabilidade / LRF | 7 | 2 | 1 | 10 |
-| Requisitos Transversais | 9 | 3 | 2 | 14 |
-| **Total** | **63** | **14** | **10** | **87** |
+| Requisitos Transversais | 11 | 1 | 2 | 14 |
+| **Total** | **69** | **9** | **9** | **87** |
 
 **Taxa de aderência:**
-- Plena: **63/87 = 72%**
-- Plena + Parcial: **77/87 = 89%**
+- Plena: **69/87 = 79%** *(era 72%)*
+- Plena + Parcial: **78/87 = 90%** *(era 89%)*
 
 ---
 
@@ -210,16 +210,16 @@
 
 | ID | Item | Impacto | Complexidade | Prioridade |
 |---|---|:---:|:---:|:---:|
-| TRIB-07 | Portal público do contribuinte (consulta de débitos) | Alto | Baixa | 🔴 Alta |
-| TRV-13 | Rate limiting / proteção brute force | Alto | Baixa | 🔴 Alta |
+| TRIB-07 | Portal público do contribuinte (consulta de débitos) | Alto | Baixa | ✅ Resolvido — Sprint Aderência |
+| TRV-13 | Rate limiting / proteção brute force | Alto | Baixa | ✅ Resolvido — Sprint Aderência |
 | TRV-10 | Multi-tenancy | Alto | Alta | 🟡 Média (pré-SaaS) |
-| RH-07 | Controle de férias (escala anual) | Alto | Média | 🔴 Alta |
+| RH-07 | Controle de férias (escala anual) | Alto | Média | ✅ Resolvido — Sprint Aderência |
 | RH-08 | DIRF | Alto | Alta | 🟡 Média |
 | PAT-06 | Reavaliação de ativo (NBCASP 16.9) | Alto | Média | 🟡 Média |
 | CONT-10 | Demonstrações Contábeis (BP, DRE) | Alto | Alta | 🟡 Média |
-| PROT-04 | Upload / GED | Alto | Média | 🟡 Média |
-| ORC-05 | Atualização saldo executado ao empenhar | Médio | Baixa | 🟡 Média |
-| TRV-12 | Log de autenticação | Médio | Baixa | 🟡 Média |
+| PROT-04 | Upload / GED | Alto | Média | ✅ Resolvido — Sprint Aderência |
+| ORC-05 | Atualização saldo executado ao empenhar | Médio | Baixa | ✅ Resolvido — Sprint Aderência |
+| TRV-12 | Log de autenticação | Médio | Baixa | ✅ Resolvido — Sprint Aderência |
 
 ---
 
@@ -236,26 +236,39 @@
 | Recálculo automático do Payslip | 17 | ❌ Pendente | ✅ Atende |
 | SICONFI preparatório (FINBRA/RREO/RGF/SIOP) | 18 | ❌ Pendente | ✅ Atende |
 | SICONFI XML + validação XSD | 19 | ❌ Pendente | ✅ Atende |
+| TRV-13 Rate limiting | Sprint Aderência | ❌ Pendente | ✅ Atende |
+| TRV-12 Log de autenticação | Sprint Aderência | ⚠️ Parcial | ✅ Atende |
+| ORC-05 Saldo executado ao empenhar | Sprint Aderência | ⚠️ Parcial | ✅ Atende |
+| PROT-04 Upload / GED | Sprint Aderência | ❌ Pendente | ✅ Atende |
+| TRIB-07 Portal do contribuinte | Sprint Aderência | ❌ Pendente | ✅ Atende |
+| RH-07 Escala de férias | Sprint Aderência | ⚠️ Parcial | ✅ Atende |
 
 ---
 
 ## 15. Conclusão
 
-O sistema atingiu **72% de aderência plena e 89% incluindo parciais** em relação ao TR auditado.
+O sistema atingiu **79% de aderência plena e 90% incluindo parciais** em relação ao TR auditado.
+
+**Sprint de aderência — resultados (TRV-13, TRV-12, ORC-05, PROT-04, TRIB-07, RH-07):**
+- +6 itens elevados de ❌/⚠️ para ✅ Atende
+- +27 testes de regressão (`test_sprint_aderencia.py`)
+- +1 migration (0017)
+- Ganho de 7 pontos de aderência plena (72% → 79%)
 
 **Pontos fortes:**
 - Todos os módulos operacionais core (compras, almoxarifado, frota, contabilidade) estão completos e com testes extensos
-- Ciclo completo de RH: frequência → eventos → holerite
+- Ciclo completo de RH: frequência → eventos → holerite → escala de férias
 - LRF: RREO, RGF e SICONFI XML (Fase 1) implementados
 - Auditoria de operações e RBAC em todos os módulos
+- Rate limiting e log de autenticação protegem contra brute force e garantem rastreabilidade
+- Portal do contribuinte e certidão de situação fiscal (TRIB-07) disponíveis publicamente
+- GED com upload/download/delete de anexos por protocolo
 
 **Riscos maiores remanescentes:**
 1. **DIRF e obrigações acessórias de RH** — obrigações fiscais com prazo determinado; multas por atraso
 2. **Reavaliação de ativos** — sem conformidade NBCASP 16.9 / IPSAS 17
 3. **Demonstrações contábeis consolidadas** — obrigação anual TCE/TCU
-4. **Rate limiting** — superfície de ataque em produção
-5. **Multi-tenancy** — necessário se o sistema for implantado como SaaS
+4. **Multi-tenancy** — necessário se o sistema for implantado como SaaS
+5. **Rate limiting Redis** — slowapi usa memória local; em deploy multi-instância deve usar Redis como backend
 
-**Recomendação para Onda 20:** focar em rate limiting (TRV-13), portal do contribuinte (TRIB-07), escala de férias (RH-07), atualização automática de saldo orçamentário (ORC-05) e log de autenticação (TRV-12) — todos de alta prioridade e baixa a média complexidade.
-
-**SICONFI Fase 2** (envio real) permanece bloqueado por dependências externas (certificado ICP-Brasil + credenciais gov.br do gestor). Pode ser implementado tecnicamente em paralelo com os demais itens da Onda 20 assim que os artefatos forem fornecidos pelo cliente.
+**SICONFI Fase 2** (envio real) permanece bloqueado por dependências externas (certificado ICP-Brasil + credenciais gov.br do gestor). Pode ser implementado tecnicamente em paralelo com os demais itens assim que os artefatos forem fornecidos pelo cliente.

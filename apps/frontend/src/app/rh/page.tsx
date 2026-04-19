@@ -8,7 +8,12 @@ type Department = { id: number; name: string };
 type Employee = { id: number; name: string; cpf: string; job_title: string; employment_type: string; base_salary: number; department_id: number };
 type PayrollEvent = { id: number; employee_id: number; month: string; kind: string; description: string; value: number };
 type Payslip = { id: number; employee_id: number; month: string; gross_amount: number; deductions: number; net_amount: number };
-type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
+type EscalaFerias = {
+  id: number; employee_id: number; ano_referencia: number;
+  data_inicio: string; data_fim: string; dias_gozados: number;
+  fracao: number; status: string; aprovado_por_id: number | null;
+  observacoes: string;
+};
 
 function messageFrom(error: unknown) {
   return error instanceof Error ? error.message : "Falha na operação";
@@ -22,7 +27,15 @@ export default function RhPage() {
   const [events, setEvents] = useState<ListResponse<PayrollEvent> | null>(null);
   const [payslips, setPayslips] = useState<ListResponse<Payslip> | null>(null);
 
-  const [employeeName, setEmployeeName] = useState("Servidor RH Demo");
+  // ── Escala de férias (RH-07) ─────────────────────────────────────────────
+  const [ferias, setFerias] = useState<EscalaFerias[]>([]);
+  const [feriasEmpId, setFeriasEmpId] = useState(1);
+  const [feriasAno, setFeriasAno] = useState(new Date().getFullYear());
+  const [feriasInicio, setFeriasInicio] = useState("");
+  const [feriasFim, setFeriasFim] = useState("");
+  const [feriasFracao, setFeriasFracao] = useState(1);
+
+("Servidor RH Demo");
   const [employeeCpf, setEmployeeCpf] = useState("999.888.777-66");
   const [employeeJobTitle, setEmployeeJobTitle] = useState("Analista Administrativo");
   const [employeeType, setEmployeeType] = useState("Efetivo");
@@ -69,9 +82,15 @@ export default function RhPage() {
     setPayslips(data);
   };
 
+  const loadFerias = async () => {
+    const qs = new URLSearchParams({ employee_id: String(feriasEmpId), size: "50" });
+    const data = await authJson(`/hr/ferias?${qs.toString()}`);
+    setFerias(data || []);
+  };
+
   const refreshAll = async () => {
     try {
-      await Promise.all([loadDepartments(), loadEmployees(), loadEvents(), loadPayslips()]);
+      await Promise.all([loadDepartments(), loadEmployees(), loadEvents(), loadPayslips(), loadFerias()]);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Falha ao carregar dados de RH");
     }
@@ -290,6 +309,107 @@ export default function RhPage() {
           <span> Página {payslips?.page || 1} </span>
           <button className="btn" disabled={(payslips?.items?.length || 0) < 10} onClick={() => setPayslipPage((p) => p + 1)}>Próxima</button>
         </div>
+      </section>
+
+      {/* ── Escala de Férias (RH-07) ── */}
+      <section className="card">
+        <h2>Escala de Férias</h2>
+        {(role === "admin" || role === "hr") && (
+          <form onSubmit={async (e: FormEvent) => {
+            e.preventDefault();
+            try {
+              await authJson("/hr/ferias", {
+                method: "POST",
+                body: JSON.stringify({
+                  employee_id: feriasEmpId,
+                  ano_referencia: feriasAno,
+                  data_inicio: feriasInicio,
+                  data_fim: feriasFim,
+                  fracao: feriasFracao,
+                }),
+              });
+              setStatus("Férias programadas com sucesso.");
+              await loadFerias();
+            } catch (error) {
+              setStatus(messageFrom(error));
+            }
+          }} className="form-row">
+            <label>Servidor ID
+              <input type="number" value={feriasEmpId} min={1} onChange={(e) => setFeriasEmpId(+e.target.value)} required />
+            </label>
+            <label>Ano Ref.
+              <input type="number" value={feriasAno} min={2000} max={2099} onChange={(e) => setFeriasAno(+e.target.value)} required />
+            </label>
+            <label>Início
+              <input type="date" value={feriasInicio} onChange={(e) => setFeriasInicio(e.target.value)} required />
+            </label>
+            <label>Fim
+              <input type="date" value={feriasFim} onChange={(e) => setFeriasFim(e.target.value)} required />
+            </label>
+            <label>Fração
+              <select value={feriasFracao} onChange={(e) => setFeriasFracao(+e.target.value)}>
+                <option value={1}>1ª (único)</option>
+                <option value={2}>2ª</option>
+                <option value={3}>3ª</option>
+              </select>
+            </label>
+            <button className="btn" type="submit">Programar</button>
+            <button className="btn" type="button" onClick={() => loadFerias().catch((e) => setStatus(messageFrom(e)))}>
+              Atualizar
+            </button>
+          </form>
+        )}
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Servidor</th><th>Ano Ref.</th><th>Início</th>
+              <th>Fim</th><th>Dias</th><th>Fração</th><th>Status</th>
+              {(role === "admin" || role === "hr") && <th>Ações</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {ferias.length > 0 ? ferias.map((f) => (
+              <tr key={f.id}>
+                <td>{f.id}</td>
+                <td>{f.employee_id}</td>
+                <td>{f.ano_referencia}</td>
+                <td>{f.data_inicio}</td>
+                <td>{f.data_fim}</td>
+                <td>{f.dias_gozados}</td>
+                <td>{f.fracao}</td>
+                <td>
+                  <span className={`badge badge-${f.status === "aprovada" ? "success" : f.status === "cancelada" ? "danger" : "warning"}`}>
+                    {f.status}
+                  </span>
+                </td>
+                {(role === "admin" || role === "hr") && (
+                  <td>
+                    {f.status === "programada" && (
+                      <>
+                        <button className="btn btn-sm" onClick={async () => {
+                          try {
+                            await authJson(`/hr/ferias/${f.id}`, { method: "PATCH", body: JSON.stringify({ status: "aprovada" }) });
+                            await loadFerias();
+                          } catch (error) { setStatus(messageFrom(error)); }
+                        }}>Aprovar</button>
+                        {" "}
+                        <button className="btn btn-sm btn-danger" onClick={async () => {
+                          if (!confirm("Cancelar esta escala de férias?")) return;
+                          try {
+                            await authJson(`/hr/ferias/${f.id}`, { method: "DELETE" });
+                            await loadFerias();
+                          } catch (error) { setStatus(messageFrom(error)); }
+                        }}>Cancelar</button>
+                      </>
+                    )}
+                  </td>
+                )}
+              </tr>
+            )) : (
+              <tr><td colSpan={9} className="empty-state">Nenhuma escala de férias encontrada para este servidor.</td></tr>
+            )}
+          </tbody>
+        </table>
       </section>
     </main>
   );

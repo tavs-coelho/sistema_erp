@@ -31,6 +31,7 @@ class Department(Base):
     __tablename__ = "departments"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class FiscalYear(Base):
@@ -61,6 +62,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[RoleEnum] = mapped_column(SqlEnum(RoleEnum), index=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
 
 

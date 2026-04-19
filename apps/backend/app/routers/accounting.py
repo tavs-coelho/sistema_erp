@@ -19,6 +19,7 @@ from ..schemas import (
     PaymentOut,
     VendorCreate,
     VendorOut,
+    VendorUpdate,
 )
 
 router = APIRouter(prefix="/accounting", tags=["accounting"])

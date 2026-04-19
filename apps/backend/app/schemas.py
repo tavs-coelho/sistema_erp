@@ -57,6 +57,7 @@ class UserOut(BaseModel):
     full_name: str
     email: str
     role: RoleEnum
+    active: bool
 
     class Config:
         from_attributes = True
@@ -66,8 +67,10 @@ class DepartmentCreate(BaseModel):
     name: str
 
 
-class DepartmentOut(DepartmentCreate):
+class DepartmentOut(BaseModel):
     id: int
+    name: str
+    active: bool
 
     class Config:
         from_attributes = True
@@ -188,3 +191,34 @@ class AssetTransferRequest(BaseModel):
     to_department_id: int
     new_location: str | None = None
     new_responsible_employee_id: int | None = None
+
+
+# ── Schemas de atualização parcial ────────────────────────────────────────────
+
+class DepartmentUpdate(BaseModel):
+    name: str | None = None
+    active: bool | None = None
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    email: EmailStr | None = None
+    role: RoleEnum | None = None
+    active: bool | None = None
+
+
+class VendorUpdate(BaseModel):
+    name: str | None = None
+    document: str | None = None
+
+
+class ProcurementProcessUpdate(BaseModel):
+    object_description: str | None = None
+    status: str | None = None
+
+
+class ContractUpdate(BaseModel):
+    start_date: date | None = None
+    end_date: date | None = None
+    amount: float | None = None
+    status: str | None = None

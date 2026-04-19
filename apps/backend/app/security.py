@@ -9,6 +9,7 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # Prefixos $2a$/$2b$/$2y$ identificam hashes bcrypt legados.
     if hashed_password.startswith("$2"):
         try:
             return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))

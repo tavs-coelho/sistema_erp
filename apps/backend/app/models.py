@@ -603,3 +603,38 @@ class ItemRecebimento(Base):
     movimentacao_id: Mapped[int | None] = mapped_column(ForeignKey("movimentacoes_estoque.id"), nullable=True)
     recebimento = relationship("RecebimentoMaterial", back_populates="itens")
     item_almoxarifado = relationship("ItemAlmoxarifado", foreign_keys=[item_almoxarifado_id])
+
+
+class AlertaEstoqueMinimo(Base):
+    """Alerta gerado automaticamente quando uma saída deixa o saldo abaixo do mínimo."""
+    __tablename__ = "alertas_estoque_minimo"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("itens_almoxarifado.id"), index=True)
+    movimentacao_id: Mapped[int | None] = mapped_column(ForeignKey("movimentacoes_estoque.id"), nullable=True)
+    saldo_no_momento: Mapped[float] = mapped_column(Float)
+    estoque_minimo: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(20), default="aberto")   # aberto, em_processo, resolvido
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    resolvido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    item = relationship("ItemAlmoxarifado", foreign_keys=[item_id])
+    movimentacao = relationship("MovimentacaoEstoque", foreign_keys=[movimentacao_id])
+
+
+class RequisicaoCompra(Base):
+    """Minuta/requisição de compra gerada a partir de um alerta de estoque mínimo."""
+    __tablename__ = "requisicoes_compra"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    item_id: Mapped[int] = mapped_column(ForeignKey("itens_almoxarifado.id"), index=True)
+    departamento_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    alerta_id: Mapped[int | None] = mapped_column(ForeignKey("alertas_estoque_minimo.id"), nullable=True)
+    processo_id: Mapped[int | None] = mapped_column(ForeignKey("procurement_processes.id"), nullable=True)
+    quantidade_sugerida: Mapped[float] = mapped_column(Float)
+    justificativa: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="rascunho")  # rascunho, aprovada, cancelada, vinculada
+    solicitante_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    item = relationship("ItemAlmoxarifado", foreign_keys=[item_id])
+    departamento = relationship("Department", foreign_keys=[departamento_id])
+    alerta = relationship("AlertaEstoqueMinimo", foreign_keys=[alerta_id])
+    processo = relationship("ProcurementProcess", foreign_keys=[processo_id])
+    solicitante = relationship("User", foreign_keys=[solicitante_id])

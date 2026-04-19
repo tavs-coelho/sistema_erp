@@ -32,6 +32,19 @@ type Dashboard = {
   valor_total_estoque: number; entradas_no_mes: number; saidas_no_mes: number;
 };
 
+type Alerta = {
+  id: number; item_id: number; movimentacao_id: number | null;
+  saldo_no_momento: number; estoque_minimo: number;
+  status: string; criado_em: string; resolvido_em: string | null;
+};
+
+type RequisicaoCompra = {
+  id: number; item_id: number; departamento_id: number | null;
+  alerta_id: number | null; processo_id: number | null;
+  quantidade_sugerida: number; justificativa: string;
+  status: string; solicitante_id: number | null; criado_em: string;
+};
+
 type ItemRec = {
   id: number; item_almoxarifado_id: number; quantidade_recebida: number;
   valor_unitario: number; valor_total: number; movimentacao_id: number | null;
@@ -60,7 +73,7 @@ export default function AlmoxarifadoPage() {
   const [role] = useState(() => readCookie("role"));
   const [msg, setMsg] = useState("");
   const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
-  const [tab, setTab] = useState<"dashboard" | "itens" | "movimentacoes" | "historico" | "recebimentos">("dashboard");
+  const [tab, setTab] = useState<"dashboard" | "itens" | "movimentacoes" | "historico" | "recebimentos" | "requisicoes">("dashboard");
 
   const canWrite = role === "admin" || role === "procurement";
 
@@ -69,6 +82,7 @@ export default function AlmoxarifadoPage() {
     { key: "itens", label: "Itens / Materiais" },
     { key: "movimentacoes", label: "Entrada / Saída" },
     { key: "recebimentos", label: "Recebimentos de Compras" },
+    { key: "requisicoes", label: "Requisições de Compra" },
     { key: "historico", label: "Histórico" },
   ] as const;
 
@@ -78,6 +92,8 @@ export default function AlmoxarifadoPage() {
       <p className="muted">Controle de estoque de materiais e suprimentos.</p>
 
       {msg && <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>{msg}</div>}
+
+      <AlertaBanner />
 
       <nav style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {TABS.map((t) => (
@@ -92,6 +108,7 @@ export default function AlmoxarifadoPage() {
       {tab === "itens" && <ItensTab setMsg={setMsg} canWrite={canWrite} />}
       {tab === "movimentacoes" && <MovimentacaoTab setMsg={setMsg} canWrite={canWrite} />}
       {tab === "recebimentos" && <RecebimentosTab setMsg={setMsg} canWrite={canWrite} />}
+      {tab === "requisicoes" && <RequisicaoTab setMsg={setMsg} canWrite={canWrite} />}
       {tab === "historico" && <HistoricoTab setMsg={setMsg} />}
     </main>
   );
@@ -675,6 +692,291 @@ function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
         <span>Pág {page} · Total: {recs?.total || 0}</span>
         <button className="btn" disabled={(recs?.items?.length || 0) < 20} onClick={() => setPage((p) => p + 1)}>Próxima</button>
       </div>
+    </section>
+  );
+}
+
+
+// ── Alerta Banner ─────────────────────────────────────────────────────────────
+
+function AlertaBanner() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    authJson("/almoxarifado/alertas?status=aberto&size=1")
+      .then((d: Paged<Alerta>) => setCount(d.total))
+      .catch(() => {});
+  }, []);
+
+  if (!count) return null;
+
+  return (
+    <div style={{
+      background: "#fff3cd", border: "1px solid #ffc107",
+      borderRadius: 6, padding: "8px 14px", marginBottom: 12,
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      <span style={{ fontSize: 18 }}>⚠️</span>
+      <span>
+        <strong>{count} item(ns) abaixo do estoque mínimo.</strong>
+        {" "}Acesse a aba <em>Requisições de Compra</em> para criar requisições de reposição.
+      </span>
+    </div>
+  );
+}
+
+
+// ── Requisições de Compra ─────────────────────────────────────────────────────
+
+const REQ_STATUS_CHIP: Record<string, string> = {
+  rascunho: "pendente",
+  aprovada: "pago",
+  vinculada: "pago",
+  cancelada: "baixado",
+};
+
+const ALERTA_STATUS_CHIP: Record<string, string> = {
+  aberto: "pendente",
+  em_processo: "pago",
+  resolvido: "baixado",
+};
+
+function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+  const [reqs, setReqs] = useState<Paged<RequisicaoCompra> | null>(null);
+  const [alertas, setAlertas] = useState<Paged<Alerta> | null>(null);
+  const [tabInner, setTabInner] = useState<"alertas" | "requisicoes">("alertas");
+  const [page, setPage] = useState(1);
+  const [fStatus, setFStatus] = useState("");
+  const [fItemId, setFItemId] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  // Formulário nova requisição
+  const [fItemReq, setFItemReq] = useState("");
+  const [fDeptId, setFDeptId] = useState("");
+  const [fAlertaId, setFAlertaId] = useState("");
+  const [fQtd, setFQtd] = useState("");
+  const [fJustif, setFJustif] = useState("");
+  const [fProcId, setFProcId] = useState("");
+  const [linkingReqId, setLinkingReqId] = useState<number | null>(null);
+
+  const loadAlertas = async () => {
+    try {
+      const qs = new URLSearchParams({ page: "1", size: "50", status: "aberto" }).toString();
+      setAlertas(await authJson(`/almoxarifado/alertas?${qs}`));
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const loadReqs = async () => {
+    try {
+      const p = new URLSearchParams({ page: String(page), size: "20" });
+      if (fStatus) p.set("status", fStatus);
+      if (fItemId) p.set("item_id", fItemId);
+      setReqs(await authJson(`/almoxarifado/requisicoes?${p}`));
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  useEffect(() => { loadAlertas(); loadReqs(); }, [page]);
+
+  const handleCreateReq = async (ev: FormEvent) => {
+    ev.preventDefault();
+    try {
+      await authJson("/almoxarifado/requisicoes", {
+        method: "POST",
+        body: JSON.stringify({
+          item_id: +fItemReq,
+          departamento_id: fDeptId ? +fDeptId : null,
+          alerta_id: fAlertaId ? +fAlertaId : null,
+          quantidade_sugerida: +fQtd,
+          justificativa: fJustif,
+        }),
+      });
+      setMsg("Requisição criada com sucesso.");
+      setCreating(false);
+      setFItemReq(""); setFDeptId(""); setFAlertaId(""); setFQtd(""); setFJustif("");
+      loadReqs(); loadAlertas();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleAprovar = async (id: number) => {
+    try {
+      await authJson(`/almoxarifado/requisicoes/${id}/aprovar`, { method: "POST" });
+      setMsg(`Requisição #${id} aprovada.`);
+      loadReqs();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleCancelar = async (id: number) => {
+    if (!confirm(`Cancelar requisição #${id}?`)) return;
+    try {
+      await authJson(`/almoxarifado/requisicoes/${id}/cancelar`, { method: "POST" });
+      setMsg(`Requisição #${id} cancelada.`);
+      loadReqs(); loadAlertas();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleVincular = async (id: number) => {
+    if (!fProcId) return;
+    try {
+      await authJson(`/almoxarifado/requisicoes/${id}/vincular-processo`,
+        { method: "POST", body: JSON.stringify({ processo_id: +fProcId }) });
+      setMsg(`Requisição #${id} vinculada ao processo ${fProcId}.`);
+      setLinkingReqId(null); setFProcId("");
+      loadReqs(); loadAlertas();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  const handleResolverAlerta = async (id: number) => {
+    if (!confirm(`Marcar alerta #${id} como resolvido manualmente?`)) return;
+    try {
+      await authJson(`/almoxarifado/alertas/${id}/resolver`, { method: "POST" });
+      setMsg(`Alerta #${id} resolvido.`);
+      loadAlertas();
+    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+  };
+
+  return (
+    <section className="section-stack">
+      <h2>Requisições de Compra e Alertas de Estoque</h2>
+      <p className="muted">
+        Alertas são gerados automaticamente quando uma saída deixa o saldo abaixo do mínimo.
+        A partir do alerta você pode criar uma requisição de compra e vinculá-la a um processo licitatório.
+      </p>
+
+      <nav style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button className={`tab-btn ${tabInner === "alertas" ? "active" : ""}`}
+          onClick={() => setTabInner("alertas")}>
+          ⚠️ Alertas {alertas?.total ? `(${alertas.total})` : ""}
+        </button>
+        <button className={`tab-btn ${tabInner === "requisicoes" ? "active" : ""}`}
+          onClick={() => setTabInner("requisicoes")}>
+          📋 Requisições {reqs?.total ? `(${reqs.total})` : ""}
+        </button>
+      </nav>
+
+      {tabInner === "alertas" && (
+        <div>
+          <h3>Alertas de Estoque Mínimo (Abertos)</h3>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Item</th><th>Saldo Atual</th><th>Mínimo</th><th>Criado em</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              {alertas?.items.length ? alertas.items.map((a) => (
+                <tr key={a.id}>
+                  <td>{a.id}</td>
+                  <td>{a.item_id}</td>
+                  <td style={{ color: a.saldo_no_momento <= 0 ? "#dc3545" : "#856404" }}>
+                    <strong>{a.saldo_no_momento}</strong>
+                  </td>
+                  <td>{a.estoque_minimo}</td>
+                  <td>{a.criado_em.slice(0, 10)}</td>
+                  <td><span className={`chip ${ALERTA_STATUS_CHIP[a.status] || "pendente"}`}>{a.status}</span></td>
+                  <td style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {canWrite && a.status === "aberto" && (
+                      <>
+                        <button className="btn" style={{ background: "#17a2b8", color: "white", fontSize: 12 }}
+                          onClick={() => { setFAlertaId(String(a.id)); setFItemReq(String(a.item_id)); setCreating(true); setTabInner("requisicoes"); }}>
+                          + Requisição
+                        </button>
+                        <button className="btn" style={{ background: "#6c757d", color: "white", fontSize: 12 }}
+                          onClick={() => handleResolverAlerta(a.id)}>
+                          ✓ Resolver
+                        </button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              )) : <tr><td colSpan={7} className="empty-state">Nenhum alerta aberto. Estoque dentro dos limites.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tabInner === "requisicoes" && (
+        <div>
+          <div className="toolbar" style={{ flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+            <input placeholder="ID Item" value={fItemId} onChange={(e) => setFItemId(e.target.value)} style={{ width: 90 }} />
+            <select value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+              <option value="">Todos status</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="aprovada">Aprovada</option>
+              <option value="vinculada">Vinculada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+            <button className="btn" onClick={() => { setPage(1); loadReqs(); }}>Filtrar</button>
+            {canWrite && <button className="btn" style={{ background: "#17a2b8", color: "white" }}
+              onClick={() => setCreating(!creating)}>
+              {creating ? "Cancelar" : "+ Nova Requisição"}
+            </button>}
+          </div>
+
+          {creating && canWrite && (
+            <div style={{ background: "#f0f8ff", border: "1px solid #bee5eb", borderRadius: 8, padding: 16, marginBottom: 12 }}>
+              <h3>Nova Requisição de Compra</h3>
+              <form className="form-grid" onSubmit={handleCreateReq}>
+                <label>ID Item *<input value={fItemReq} onChange={(e) => setFItemReq(e.target.value)} required /></label>
+                <label>ID Departamento<input value={fDeptId} onChange={(e) => setFDeptId(e.target.value)} placeholder="opcional" /></label>
+                <label>ID Alerta<input value={fAlertaId} onChange={(e) => setFAlertaId(e.target.value)} placeholder="opcional" /></label>
+                <label>Quantidade Sugerida *<input type="number" step="0.001" min="0.001" value={fQtd} onChange={(e) => setFQtd(e.target.value)} required /></label>
+                <label style={{ gridColumn: "1/-1" }}>Justificativa<input value={fJustif} onChange={(e) => setFJustif(e.target.value)} /></label>
+                <div style={{ display: "flex", gap: 8, gridColumn: "1/-1" }}>
+                  <button className="btn" type="submit" style={{ background: "#17a2b8", color: "white" }}>Criar Rascunho</button>
+                  <button className="btn" type="button" onClick={() => setCreating(false)}>Cancelar</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Item</th><th>Dept</th><th>Qtd Sug.</th><th>Alerta</th><th>Processo</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              {reqs?.items.length ? reqs.items.map((req) => (
+                <tr key={req.id}>
+                  <td>{req.id}</td>
+                  <td>{req.item_id}</td>
+                  <td>{req.departamento_id || "—"}</td>
+                  <td>{req.quantidade_sugerida}</td>
+                  <td>{req.alerta_id || "—"}</td>
+                  <td>{req.processo_id || "—"}</td>
+                  <td><span className={`chip ${REQ_STATUS_CHIP[req.status] || "pendente"}`}>{req.status}</span></td>
+                  <td style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {canWrite && req.status === "rascunho" && (
+                      <button className="btn" style={{ background: "#28a745", color: "white", fontSize: 12 }}
+                        onClick={() => handleAprovar(req.id)}>✓ Aprovar</button>
+                    )}
+                    {canWrite && req.status !== "cancelada" && req.status !== "vinculada" && (
+                      <button className="btn" style={{ background: "#dc3545", color: "white", fontSize: 12 }}
+                        onClick={() => handleCancelar(req.id)}>✗ Cancelar</button>
+                    )}
+                    {canWrite && (req.status === "rascunho" || req.status === "aprovada") && (
+                      linkingReqId === req.id ? (
+                        <span style={{ display: "flex", gap: 4 }}>
+                          <input placeholder="ID Processo" value={fProcId} style={{ width: 110 }}
+                            onChange={(e) => setFProcId(e.target.value)} />
+                          <button className="btn" style={{ background: "#17a2b8", color: "white", fontSize: 12 }}
+                            onClick={() => handleVincular(req.id)}>OK</button>
+                          <button className="btn" style={{ fontSize: 12 }}
+                            onClick={() => { setLinkingReqId(null); setFProcId(""); }}>×</button>
+                        </span>
+                      ) : (
+                        <button className="btn" style={{ fontSize: 12 }}
+                          onClick={() => setLinkingReqId(req.id)}>🔗 Vincular</button>
+                      )
+                    )}
+                  </td>
+                </tr>
+              )) : <tr><td colSpan={8} className="empty-state">Nenhuma requisição encontrada.</td></tr>}
+            </tbody>
+          </table>
+          <div className="pagination">
+            <button className="btn" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</button>
+            <span>Pág {page} · Total: {reqs?.total || 0}</span>
+            <button className="btn" disabled={(reqs?.items?.length || 0) < 20} onClick={() => setPage((p) => p + 1)}>Próxima</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

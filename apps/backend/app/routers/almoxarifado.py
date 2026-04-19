@@ -7,6 +7,7 @@ Cobre:
   - Saldo atual por item
   - Histórico de movimentações com filtros e exportação CSV
   - Recebimento de material vinculado a processo/contrato de compras
+  - Alertas de estoque mínimo e requisições de compra automáticas
 """
 
 import csv
@@ -20,6 +21,7 @@ from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
 from ..models import (
+    AlertaEstoqueMinimo,
     Commitment,
     Contract,
     Department,
@@ -28,11 +30,13 @@ from ..models import (
     MovimentacaoEstoque,
     ProcurementProcess,
     RecebimentoMaterial,
+    RequisicaoCompra,
     RoleEnum,
     User,
     Vendor,
 )
 from ..schemas import (
+    AlertaOut,
     ItemAlmoxarifadoCreate,
     ItemAlmoxarifadoOut,
     ItemAlmoxarifadoUpdate,
@@ -40,6 +44,9 @@ from ..schemas import (
     MovimentacaoOut,
     RecebimentoCreate,
     RecebimentoOut,
+    RequisicaoCompraCreate,
+    RequisicaoCompraOut,
+    RequisicaoCompraVincular,
 )
 
 router = APIRouter(prefix="/almoxarifado", tags=["almoxarifado"])
@@ -225,6 +232,28 @@ def registrar_movimentacao(
     db.flush()
     write_audit(db, user_id=current_user.id, entity="movimentacoes_estoque", entity_id=str(mov.id),
                 action=data.tipo, after_data={k: str(v) if isinstance(v, date) else v for k, v in data.model_dump().items()})
+
+    # Auto-gerar alerta de estoque mínimo quando saída deixa saldo abaixo do mínimo
+    if data.tipo == "saida" and item.estoque_minimo > 0 and item.estoque_atual < item.estoque_minimo:
+        alerta_aberto = db.query(AlertaEstoqueMinimo).filter(
+            AlertaEstoqueMinimo.item_id == item.id,
+            AlertaEstoqueMinimo.status == "aberto",
+        ).first()
+        if not alerta_aberto:
+            alerta = AlertaEstoqueMinimo(
+                item_id=item.id,
+                movimentacao_id=mov.id,
+                saldo_no_momento=item.estoque_atual,
+                estoque_minimo=item.estoque_minimo,
+                status="aberto",
+            )
+            db.add(alerta)
+            db.flush()
+            write_audit(db, user_id=current_user.id, entity="alertas_estoque_minimo",
+                        entity_id=str(alerta.id), action="create",
+                        after_data={"item_id": item.id, "saldo": item.estoque_atual,
+                                    "minimo": item.estoque_minimo})
+
     db.commit()
     db.refresh(mov)
     return mov
@@ -534,3 +563,218 @@ def get_recebimento(rec_id: int, db: Session = Depends(get_db), _: User = Depend
     if not rec:
         raise HTTPException(404, "Recebimento não encontrado.")
     return rec
+
+
+# ── Alertas de Estoque Mínimo ─────────────────────────────────────────────────
+
+@router.get("/alertas", response_model=None)
+def list_alertas(
+    item_id: int | None = None,
+    status: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista alertas de estoque mínimo com filtros."""
+    q = db.query(AlertaEstoqueMinimo)
+    if item_id:
+        q = q.filter(AlertaEstoqueMinimo.item_id == item_id)
+    if status:
+        q = q.filter(AlertaEstoqueMinimo.status == status)
+    q = q.order_by(AlertaEstoqueMinimo.id.desc())
+    return _paginate(q, page, size)
+
+
+@router.get("/alertas/{alerta_id}", response_model=AlertaOut)
+def get_alerta(alerta_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    alerta = db.get(AlertaEstoqueMinimo, alerta_id)
+    if not alerta:
+        raise HTTPException(404, "Alerta não encontrado.")
+    return alerta
+
+
+@router.post("/alertas/{alerta_id}/resolver", response_model=AlertaOut)
+def resolver_alerta(
+    alerta_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Marca alerta como resolvido (estoque reabastecido manualmente ou via recebimento)."""
+    from ..models import utc_now
+    alerta = db.get(AlertaEstoqueMinimo, alerta_id)
+    if not alerta:
+        raise HTTPException(404, "Alerta não encontrado.")
+    if alerta.status == "resolvido":
+        raise HTTPException(422, "Alerta já está resolvido.")
+    alerta.status = "resolvido"
+    alerta.resolvido_em = utc_now()
+    write_audit(db, user_id=current_user.id, entity="alertas_estoque_minimo",
+                entity_id=str(alerta.id), action="resolver", after_data={"status": "resolvido"})
+    db.commit()
+    db.refresh(alerta)
+    return alerta
+
+
+# ── Requisições de Compra ─────────────────────────────────────────────────────
+
+@router.post("/requisicoes", response_model=RequisicaoCompraOut, status_code=201)
+def criar_requisicao(
+    data: RequisicaoCompraCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Cria uma requisição/minuta de compra, opcionalmente vinculada a um alerta de estoque mínimo."""
+    item = db.get(ItemAlmoxarifado, data.item_id)
+    if not item:
+        raise HTTPException(404, "Item não encontrado.")
+    if not item.ativo:
+        raise HTTPException(422, "Item inativo.")
+    if data.departamento_id and not db.get(Department, data.departamento_id):
+        raise HTTPException(404, "Departamento não encontrado.")
+    if data.alerta_id:
+        alerta = db.get(AlertaEstoqueMinimo, data.alerta_id)
+        if not alerta:
+            raise HTTPException(404, "Alerta não encontrado.")
+        if alerta.item_id != data.item_id:
+            raise HTTPException(422, "Alerta pertence a item diferente.")
+        # Marca alerta como em processo
+        if alerta.status == "aberto":
+            alerta.status = "em_processo"
+    if data.quantidade_sugerida <= 0:
+        raise HTTPException(422, "Quantidade sugerida deve ser positiva.")
+
+    req = RequisicaoCompra(
+        item_id=data.item_id,
+        departamento_id=data.departamento_id,
+        alerta_id=data.alerta_id,
+        quantidade_sugerida=data.quantidade_sugerida,
+        justificativa=data.justificativa,
+        status="rascunho",
+        solicitante_id=current_user.id,
+    )
+    db.add(req)
+    db.flush()
+    write_audit(db, user_id=current_user.id, entity="requisicoes_compra",
+                entity_id=str(req.id), action="create",
+                after_data={"item_id": data.item_id, "quantidade_sugerida": data.quantidade_sugerida,
+                            "alerta_id": data.alerta_id})
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.post("/requisicoes/{req_id}/aprovar", response_model=RequisicaoCompraOut)
+def aprovar_requisicao(
+    req_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Aprova uma requisição de compra (muda status rascunho → aprovada)."""
+    req = db.get(RequisicaoCompra, req_id)
+    if not req:
+        raise HTTPException(404, "Requisição não encontrada.")
+    if req.status != "rascunho":
+        raise HTTPException(422, f"Requisição já está '{req.status}'.")
+    req.status = "aprovada"
+    write_audit(db, user_id=current_user.id, entity="requisicoes_compra",
+                entity_id=str(req.id), action="aprovar", after_data={"status": "aprovada"})
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.post("/requisicoes/{req_id}/cancelar", response_model=RequisicaoCompraOut)
+def cancelar_requisicao(
+    req_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Cancela uma requisição (rascunho ou aprovada)."""
+    req = db.get(RequisicaoCompra, req_id)
+    if not req:
+        raise HTTPException(404, "Requisição não encontrada.")
+    if req.status in ("cancelada", "vinculada"):
+        raise HTTPException(422, f"Requisição já está '{req.status}'.")
+    req.status = "cancelada"
+    # Se havia alerta em_processo e não há outra requisição ativa, reabre o alerta
+    if req.alerta_id:
+        outras = db.query(RequisicaoCompra).filter(
+            RequisicaoCompra.alerta_id == req.alerta_id,
+            RequisicaoCompra.id != req.id,
+            RequisicaoCompra.status.notin_(["cancelada"]),
+        ).first()
+        if not outras:
+            alerta = db.get(AlertaEstoqueMinimo, req.alerta_id)
+            if alerta and alerta.status == "em_processo":
+                alerta.status = "aberto"
+    write_audit(db, user_id=current_user.id, entity="requisicoes_compra",
+                entity_id=str(req.id), action="cancelar", after_data={"status": "cancelada"})
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.post("/requisicoes/{req_id}/vincular-processo", response_model=RequisicaoCompraOut)
+def vincular_processo(
+    req_id: int,
+    payload: RequisicaoCompraVincular,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement)),
+):
+    """Vincula uma requisição aprovada a um processo licitatório existente."""
+    req = db.get(RequisicaoCompra, req_id)
+    if not req:
+        raise HTTPException(404, "Requisição não encontrada.")
+    if req.status not in ("rascunho", "aprovada"):
+        raise HTTPException(422, f"Requisição não pode ser vinculada no status '{req.status}'.")
+    if not db.get(ProcurementProcess, payload.processo_id):
+        raise HTTPException(404, "Processo de compra não encontrado.")
+    req.processo_id = payload.processo_id
+    req.status = "vinculada"
+    # Marcar alerta como resolvido quando requisição é vinculada a processo
+    if req.alerta_id:
+        from ..models import utc_now
+        alerta = db.get(AlertaEstoqueMinimo, req.alerta_id)
+        if alerta and alerta.status in ("aberto", "em_processo"):
+            alerta.status = "resolvido"
+            alerta.resolvido_em = utc_now()
+    write_audit(db, user_id=current_user.id, entity="requisicoes_compra",
+                entity_id=str(req.id), action="vincular",
+                after_data={"processo_id": payload.processo_id, "status": "vinculada"})
+    db.commit()
+    db.refresh(req)
+    return req
+
+
+@router.get("/requisicoes", response_model=None)
+def list_requisicoes(
+    item_id: int | None = None,
+    departamento_id: int | None = None,
+    status: str | None = None,
+    alerta_id: int | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Lista requisições de compra com filtros e paginação."""
+    q = db.query(RequisicaoCompra)
+    if item_id:
+        q = q.filter(RequisicaoCompra.item_id == item_id)
+    if departamento_id:
+        q = q.filter(RequisicaoCompra.departamento_id == departamento_id)
+    if status:
+        q = q.filter(RequisicaoCompra.status == status)
+    if alerta_id:
+        q = q.filter(RequisicaoCompra.alerta_id == alerta_id)
+    q = q.order_by(RequisicaoCompra.id.desc())
+    return _paginate(q, page, size)
+
+
+@router.get("/requisicoes/{req_id}", response_model=RequisicaoCompraOut)
+def get_requisicao(req_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    req = db.get(RequisicaoCompra, req_id)
+    if not req:
+        raise HTTPException(404, "Requisição não encontrada.")
+    return req

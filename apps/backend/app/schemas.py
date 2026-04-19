@@ -851,3 +851,45 @@ class RecebimentoOut(BaseModel):
     itens: list[ItemRecebimentoOut] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Alerta de Estoque Mínimo + Requisição de Compra ───────────────────────────
+
+class AlertaOut(BaseModel):
+    id: int
+    item_id: int
+    movimentacao_id: int | None
+    saldo_no_momento: float
+    estoque_minimo: float
+    status: str
+    criado_em: datetime
+    resolvido_em: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RequisicaoCompraCreate(BaseModel):
+    item_id: int
+    departamento_id: int | None = None
+    alerta_id: int | None = None
+    quantidade_sugerida: float
+    justificativa: str = ""
+
+
+class RequisicaoCompraVincular(BaseModel):
+    processo_id: int
+
+
+class RequisicaoCompraOut(BaseModel):
+    id: int
+    item_id: int
+    departamento_id: int | None
+    alerta_id: int | None
+    processo_id: int | None
+    quantidade_sugerida: float
+    justificativa: str
+    status: str
+    solicitante_id: int | None
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)

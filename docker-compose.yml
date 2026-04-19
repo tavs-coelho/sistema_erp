@@ -24,6 +24,8 @@ services:
         condition: service_healthy
     volumes:
       - backend_data:/data
+    ports:
+      - "8000:8000"
 
   frontend:
     build: ./apps/frontend
@@ -31,9 +33,12 @@ services:
       NEXT_PUBLIC_API_URL: /api
     depends_on:
       - backend
+    ports:
+      - "3000:3000"
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     ports:
       - "80:80"
     volumes:

@@ -51,9 +51,20 @@ Fluxos:
 - Publicação em portal de transparência público
 - Auditoria de operações C/U/D nas ações do fluxo
 
-### ⏳ Não incluído neste recorte de entrega
-- Fase 3 completa (RH/folha e portal do servidor em fluxo fim a fim de demo)
-- Fase 4 completa (patrimônio em fluxo fim a fim de demo)
+### ✅ Fluxos validados adicionalmente neste ciclo (hardening)
+- RH/Servidor via API:
+  - login RH
+  - cadastro de servidor
+  - lançamento de evento de folha
+  - cálculo de folha mensal
+  - geração de holerite PDF
+  - login servidor e consulta/download de próprio holerite
+- Patrimônio via API:
+  - login patrimônio
+  - cadastro de bem com departamento/local/responsável
+  - transferência de bem com atualização de local/responsável
+  - histórico de movimentações
+  - relatório por departamento
 
 ## Seed demo (automático no startup)
 
@@ -86,8 +97,34 @@ Exemplos:
 2. Suba a stack:
    - `docker compose up --build`
 3. Acesse:
-   - Frontend (via Nginx): `http://localhost`
-   - API OpenAPI: `http://localhost/api/docs`
+    - Frontend (via Nginx): `http://localhost`
+    - Frontend (direto): `http://localhost:3000`
+    - Backend (direto): `http://localhost:8000`
+    - API OpenAPI: `http://localhost/api/docs`
+
+## Checklist de verificação de saúde (stack)
+
+- [ ] Nginx: `http://localhost`
+- [ ] Frontend (Next): `http://localhost:3000`
+- [ ] Backend (FastAPI): `http://localhost:8000/`
+- [ ] OpenAPI via Nginx: `http://localhost/api/docs`
+- [ ] OpenAPI direto: `http://localhost:8000/docs`
+- [ ] Login com usuários demo por perfil (senha padrão: `demo123`):
+  - `admin1`
+  - `accountant1`
+  - `hr1`
+  - `procurement1`
+  - `patrimony1`
+  - `employee1`
+  - `read_only1`
+
+Comandos rápidos:
+
+```bash
+curl -I http://localhost/                # rota protegida redireciona para /login
+curl http://localhost:8000/              # healthcheck backend
+curl -o /dev/null -w '%{http_code}\n' http://localhost/api/docs
+```
 
 ## Migrações
 
@@ -96,15 +133,23 @@ Alembic configurado em `/apps/backend/alembic`.
 No container backend, a migração roda automaticamente:
 - `alembic upgrade head`
 
-## Testes básicos
+Se precisar executar manualmente:
+- `docker compose exec backend alembic upgrade head`
+
+## Testes e validações
 
 Backend:
-- `cd apps/backend && pip install -r requirements.txt && pytest`
+- `cd apps/backend && pip install -r requirements.txt && pytest tests/test_auth.py`
+  - cobre: login sucesso/falha, RBAC, ciclo empenho→liquidação→pagamento, folha+holerite, patrimônio+movimentação
 
 Frontend:
 - `cd apps/frontend && npm ci && npm run lint && npm run build`
+  - smoke de navegação:
+    - login (`/login`)
+    - redirect de rota protegida (`/` sem cookie => `/login`)
+    - render de listas públicas (`/public`)
 
-## Passo a passo exato da demo (Fase 2)
+## Script exato de demo (validado)
 
 1. Suba a stack com `docker compose up --build`
 2. Acesse `http://localhost/login`
@@ -124,15 +169,27 @@ Frontend:
 7. Acesse `http://localhost/public` e confirme o empenho/pagamento exposto no portal público
 8. Acesse `http://localhost/api/docs` e consulte `GET /core/audit-logs` para validar os registros de auditoria
 
-## Screenshots (placeholder)
+### Demo rápida RH/Servidor (API)
+1. Login `hr1 / demo123` em `POST /auth/login`
+2. Criar servidor em `POST /hr/employees`
+3. Criar evento em `POST /hr/payroll-events`
+4. Calcular folha em `POST /hr/payroll/calculate`
+5. Login `employee1 / demo123` e consultar `GET /employee-portal/payslips`
+6. Baixar holerite em `GET /hr/payslips/{id}/pdf`
 
-- [ ] Login
-- [ ] Dashboard por perfil
-- [ ] Transparência pública
-- [ ] Folha com PDF
-- [ ] Patrimônio
+### Demo rápida Patrimônio (API)
+1. Login `patrimony1 / demo123`
+2. Criar bem em `POST /patrimony/assets`
+3. Transferir em `POST /patrimony/assets/{id}/transfer`
+4. Conferir histórico em `GET /patrimony/movements`
+5. Conferir relatório em `GET /patrimony/reports/by-department`
 
-## Lacunas conhecidas (MVP)
+## Screenshot
 
-- O recorte desta entrega prioriza Fase 1 + Fase 2.
-- Fases 3 e 4 permanecem fora do escopo de demonstração principal desta rodada.
+- Fluxo validado: https://github.com/user-attachments/assets/c2ae2c1c-da9f-4322-9b13-9149c3c3e6c0
+
+## Implementado vs parcial
+
+- **Implementado e validado ponta a ponta no frontend**: Fase 1 + Fase 2.
+- **Implementado e validado via API (sem tela dedicada de fluxo completo)**: RH/Servidor e Patrimônio.
+- Regras avançadas de domínio (fiscal/folha/patrimonial) seguem simplificadas para demo.

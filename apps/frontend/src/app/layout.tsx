@@ -9,7 +9,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <div className="app-shell">
+          <header className="app-header">
+            <strong>Sistema ERP Municipal</strong>
+          </header>
+          <div className="app-content">{children}</div>
+        </div>
+      </body>
     </html>
   );
 }

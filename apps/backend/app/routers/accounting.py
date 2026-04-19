@@ -2,14 +2,14 @@ import csv
 from datetime import date
 from io import StringIO
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import BudgetAllocation, Commitment, FundingSource, Payment, RevenueEntry, RoleEnum, User, Vendor
+from ..models import BudgetAllocation, Commitment, FundingSource, Liquidation, Payment, RevenueEntry, RoleEnum, User, Vendor
 from ..schemas import (
     BudgetAllocationCreate,
     BudgetAllocationOut,
@@ -125,6 +125,11 @@ def create_commitment(payload: CommitmentCreate, db: Session = Depends(get_db), 
 @router.post("/liquidate/{commitment_id}")
 def liquidate_commitment(commitment_id: int, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant))):
     commitment = db.get(Commitment, commitment_id)
+    if not commitment:
+        raise HTTPException(status_code=404, detail="Empenho não encontrado")
+    if commitment.status in {"liquidado", "pago"}:
+        return {"message": f"Empenho já está {commitment.status}"}
+    db.add(Liquidation(commitment_id=commitment.id, amount=commitment.amount))
     commitment.status = "liquidado"
     write_audit(db, user_id=current.id, action="update", entity="commitments", entity_id=str(commitment.id), after_data={"status": commitment.status})
     db.commit()

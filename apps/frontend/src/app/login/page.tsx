@@ -29,21 +29,24 @@ export default function LoginPage() {
   };
 
   return (
-    <main style={{ maxWidth: 420, margin: "64px auto", fontFamily: "Arial, sans-serif" }}>
-      <h1>Login - ERP Municipal</h1>
+    <main className="card" style={{ maxWidth: 460, margin: "40px auto", fontFamily: "Arial, sans-serif", display: "grid", gap: 12 }}>
+      <h1>Acesso ao ERP Municipal</h1>
+      <p className="muted">Entre com um usuário de demonstração para navegar pelos módulos.</p>
       <form onSubmit={submit} style={{ display: "grid", gap: 12 }}>
         <label>
           Usuário
-          <input value={username} onChange={(e) => setUsername(e.target.value)} required />
+          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
         </label>
         <label>
           Senha
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </label>
-        <button type="submit">Entrar</button>
+        <button type="submit" style={{ background: "#124e9c", color: "#fff", border: 0, borderRadius: 6, padding: "10px 14px", cursor: "pointer" }}>
+          Entrar
+        </button>
       </form>
       <p>{message}</p>
-      <small>Usuário demo: admin1 / demo123</small>
+      <small className="muted">Usuário demo: admin1 / demo123</small>
     </main>
   );
 }

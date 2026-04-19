@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -6,7 +6,7 @@ from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
 from ..models import Employee, PayrollEvent, Payslip, RoleEnum, User
-from ..schemas import EmployeeCreate, EmployeeOut, PayrollCalculationRequest
+from ..schemas import EmployeeCreate, EmployeeOut, PayrollCalculationRequest, PayrollEventCreate
 from ..services.payroll import build_simple_pdf
 
 router = APIRouter(prefix="/hr", tags=["hr"])
@@ -26,6 +26,40 @@ def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db), curr
     db.commit()
     db.refresh(employee)
     return employee
+
+
+@router.get("/payroll-events")
+def list_payroll_events(
+    month: str | None = None,
+    employee_id: int | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr, RoleEnum.read_only)),
+):
+    q = db.query(PayrollEvent)
+    if month:
+        q = q.filter(PayrollEvent.month == month)
+    if employee_id:
+        q = q.filter(PayrollEvent.employee_id == employee_id)
+    total = q.count()
+    items = q.order_by(PayrollEvent.id.desc()).offset((page - 1) * size).limit(size).all()
+    return {"total": total, "page": page, "size": size, "items": items}
+
+
+@router.post("/payroll-events")
+def create_payroll_event(
+    payload: PayrollEventCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.hr)),
+):
+    event = PayrollEvent(**payload.model_dump())
+    db.add(event)
+    db.flush()
+    write_audit(db, user_id=current.id, action="create", entity="payroll_events", entity_id=str(event.id), after_data=payload.model_dump())
+    db.commit()
+    db.refresh(event)
+    return event
 
 
 @router.post("/payroll/calculate")

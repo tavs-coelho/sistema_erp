@@ -162,3 +162,17 @@ class AssetCreate(BaseModel):
 
 class PayrollCalculationRequest(BaseModel):
     month: str
+
+
+class PayrollEventCreate(BaseModel):
+    employee_id: int
+    month: str
+    kind: str
+    description: str
+    value: float
+
+
+class AssetTransferRequest(BaseModel):
+    to_department_id: int
+    new_location: str | None = None
+    new_responsible_employee_id: int | None = None

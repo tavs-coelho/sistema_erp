@@ -55,21 +55,24 @@ const TRIBUTOS = ["IPTU", "ISS", "ITBI", "TAXA_LIXO", "TAXA_ILUMINACAO", "TAXA_O
 function Pagination({
   page,
   total,
+  itemsInPage,
   pageSize = 10,
   onPrev,
   onNext,
 }: {
   page: number;
   total: number;
+  itemsInPage?: number;
   pageSize?: number;
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const isLastPage = itemsInPage !== undefined ? itemsInPage < pageSize : page * pageSize >= total;
   return (
     <div className="pagination">
       <Button disabled={page <= 1} onClick={onPrev}>Anterior</Button>
       <span>Pág {page} · Total: {total}</span>
-      <Button disabled={total < pageSize} onClick={onNext}>Próxima</Button>
+      <Button disabled={isLastPage} onClick={onNext}>Próxima</Button>
     </div>
   );
 }
@@ -225,7 +228,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={4} className="empty-state">Nenhum empenho encontrado.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={empPage} total={empenhos?.total ?? 0} pageSize={empenhos?.items?.length}
+          <Pagination page={empPage} total={empenhos?.total ?? 0} itemsInPage={empenhos?.items?.length}
             onPrev={() => setEmpPage((p) => p - 1)} onNext={() => setEmpPage((p) => p + 1)} />
         </section>
       )}
@@ -252,7 +255,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={5} className="empty-state">Nenhum contrato encontrado.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={ctPage} total={contratos?.total ?? 0} pageSize={contratos?.items?.length}
+          <Pagination page={ctPage} total={contratos?.total ?? 0} itemsInPage={contratos?.items?.length}
             onPrev={() => setCtPage((p) => p - 1)} onNext={() => setCtPage((p) => p + 1)} />
         </section>
       )}
@@ -279,7 +282,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={3} className="empty-state">Nenhum processo encontrado.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={lcPage} total={licitacoes?.total ?? 0} pageSize={licitacoes?.items?.length}
+          <Pagination page={lcPage} total={licitacoes?.total ?? 0} itemsInPage={licitacoes?.items?.length}
             onPrev={() => setLcPage((p) => p - 1)} onNext={() => setLcPage((p) => p + 1)} />
         </section>
       )}
@@ -313,7 +316,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={7} className="empty-state">Nenhum convênio publicado encontrado.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={cvPage} total={convenios?.total ?? 0} pageSize={convenios?.items?.length}
+          <Pagination page={cvPage} total={convenios?.total ?? 0} itemsInPage={convenios?.items?.length}
             onPrev={() => setCvPage((p) => p - 1)} onNext={() => setCvPage((p) => p + 1)} />
         </section>
       )}
@@ -343,7 +346,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={5} className="empty-state">Nenhum registro de arrecadação encontrado.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={arPage} total={arrecadacao?.total ?? 0} pageSize={arrecadacao?.items?.length}
+          <Pagination page={arPage} total={arrecadacao?.total ?? 0} itemsInPage={arrecadacao?.items?.length}
             onPrev={() => setArPage((p) => p - 1)} onNext={() => setArPage((p) => p + 1)} />
         </section>
       )}
@@ -376,7 +379,7 @@ export default function PublicPage() {
               )) : <tr><td colSpan={7} className="empty-state">Nenhuma inscrição ativa encontrada.</td></tr>}
             </tbody>
           </table>
-          <Pagination page={dvPage} total={dividas?.total ?? 0} pageSize={dividas?.items?.length}
+          <Pagination page={dvPage} total={dividas?.total ?? 0} itemsInPage={dividas?.items?.length}
             onPrev={() => setDvPage((p) => p - 1)} onNext={() => setDvPage((p) => p + 1)} />
         </section>
       )}

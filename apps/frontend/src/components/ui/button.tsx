@@ -11,10 +11,10 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variantClass: Record<Variant, string> = {
-  primary: "btn btn-primary",
-  secondary: "btn",
-  ghost: "btn btn-ghost",
-  danger: "btn btn-danger",
+  primary: "btn-primary",
+  secondary: "",
+  ghost: "btn-ghost",
+  danger: "btn-danger",
 };
 
 const sizeClass: Record<Size, string> = {
@@ -24,5 +24,5 @@ const sizeClass: Record<Size, string> = {
 };
 
 export function Button({ className, variant = "secondary", size = "md", ...props }: Props) {
-  return <button className={cn(variantClass[variant], sizeClass[size], className)} {...props} />;
+  return <button className={cn("btn", variantClass[variant], sizeClass[size], className)} {...props} />;
 }

@@ -56,6 +56,7 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const currentLabel = visibleItems.find((item) => isItemActive(item.href))?.label || "Sistema ERP";
   const initials = theme.org_name
     .split(" ")
+    .filter(Boolean)
     .map((token) => token[0])
     .join("")
     .slice(0, 3)

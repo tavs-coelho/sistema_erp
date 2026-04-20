@@ -18,11 +18,18 @@ type MessageKind = "success" | "error" | "info";
 
 const QUICK_LINKS = [
   { href: "/fase-2", label: "1) Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
-  { href: "/public", label: "2) Transparência", roles: [] },
-  { href: "/rh", label: "3) RH e Folha", roles: ["admin", "hr", "read_only"] },
-  { href: "/portal-servidor", label: "4) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
-  { href: "/patrimonio", label: "5) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
-  { href: "/auditoria", label: "6) Auditoria", roles: ["admin", "read_only"] },
+  { href: "/orcamento", label: "2) Orçamento (PPA/LDO/LOA)", roles: ["admin", "accountant", "read_only"] },
+  { href: "/compras", label: "3) Compras e Contratos", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/protocolo", label: "4) Protocolo / Processos", roles: ["admin", "accountant", "procurement", "read_only"] },
+  { href: "/convenios", label: "5) Convênios", roles: ["admin", "accountant", "read_only"] },
+  { href: "/tributario", label: "6) Tributário", roles: ["admin", "accountant", "read_only"] },
+  { href: "/public", label: "7) Transparência", roles: [] },
+  { href: "/rh", label: "8) RH e Folha", roles: ["admin", "hr", "read_only"] },
+  { href: "/portal-servidor", label: "9) Portal do Servidor", roles: ["admin", "hr", "employee", "read_only"] },
+  { href: "/patrimonio", label: "10) Patrimônio", roles: ["admin", "patrimony", "read_only"] },
+  { href: "/almoxarifado", label: "11) Almoxarifado", roles: ["admin", "procurement", "read_only"] },
+  { href: "/auditoria", label: "11) Auditoria", roles: ["admin", "read_only"] },
+  { href: "/siconfi-siop", label: "12) SICONFI / SIOP", roles: ["admin", "accountant", "read_only"] },
 ];
 
 export default function Home() {

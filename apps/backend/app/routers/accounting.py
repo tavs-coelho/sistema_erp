@@ -3,13 +3,13 @@ from datetime import date
 from io import StringIO
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import BudgetAllocation, Commitment, FundingSource, Liquidation, Payment, RevenueEntry, RoleEnum, User, Vendor
+from ..models import BudgetAllocation, Commitment, FundingSource, Liquidation, LOAItem, Payment, RevenueEntry, RoleEnum, User, Vendor
 from ..schemas import (
     BudgetAllocationCreate,
     BudgetAllocationOut,
@@ -19,6 +19,7 @@ from ..schemas import (
     PaymentOut,
     VendorCreate,
     VendorOut,
+    VendorUpdate,
 )
 
 router = APIRouter(prefix="/accounting", tags=["accounting"])
@@ -116,6 +117,13 @@ def create_commitment(payload: CommitmentCreate, db: Session = Depends(get_db), 
     obj = Commitment(**payload.model_dump())
     db.add(obj)
     db.flush()
+    # ORC-05: atualiza executed_amount na dotação LOA vinculada (atomic to avoid race condition)
+    if payload.loa_item_id:
+        db.execute(
+            update(LOAItem)
+            .where(LOAItem.id == payload.loa_item_id)
+            .values(executed_amount=LOAItem.executed_amount + payload.amount)
+        )
     write_audit(db, user_id=current.id, action="create", entity="commitments", entity_id=str(obj.id), after_data=payload.model_dump())
     db.commit()
     db.refresh(obj)

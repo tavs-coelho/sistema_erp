@@ -1,12 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from .config import settings
 from .db import SessionLocal
-from .routers import accounting, auth, core, employee_portal, hr, patrimony, procurement, public
+from .limiter import limiter
+from .routers import accounting, almoxarifado, auth, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
 from .seed import seed_data
 
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,10 +26,26 @@ app.include_router(auth.router)
 app.include_router(core.router)
 app.include_router(accounting.router)
 app.include_router(procurement.router)
+app.include_router(budget.router)
+app.include_router(protocolo.router)
+app.include_router(convenios.router)
+app.include_router(tributario.router)
+app.include_router(almoxarifado.router)
+app.include_router(frota.router)
+app.include_router(relatorios.router)
+app.include_router(rreo_rgf.router)
+app.include_router(conciliacao.router)
+for r in nfse_itbi.all_routers:
+    app.include_router(r)
 app.include_router(public.router)
 app.include_router(hr.router)
+app.include_router(ponto.router)
 app.include_router(employee_portal.router)
 app.include_router(patrimony.router)
+app.include_router(depreciacao.router)
+app.include_router(integracao_ponto_folha.router)
+app.include_router(siconfi_siop.router)
+app.include_router(siconfi_xml.router)
 
 
 @app.get("/")

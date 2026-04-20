@@ -1,13 +1,14 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
+from ..limiter import limiter as _limiter
 from ..models import PasswordResetToken, User
 from ..deps import get_current_user
 from ..schemas import AuthMeResponse, LoginRequest, PasswordResetConfirm, PasswordResetRequest, RefreshRequest, TokenResponse
@@ -22,10 +23,30 @@ def me(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@_limiter.limit(settings.login_rate_limit)
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == payload.username).first()
     if not user or not verify_password(payload.password, user.hashed_password):
+        # Audit failed login attempt (user_id may be None if username not found)
+        write_audit(
+            db,
+            user_id=user.id if user else None,
+            action="login_failure",
+            entity="users",
+            entity_id=payload.username,
+            after_data={"username": payload.username, "ip": request.client.host if request.client else "unknown"},
+        )
+        db.commit()
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    write_audit(
+        db,
+        user_id=user.id,
+        action="login",
+        entity="users",
+        entity_id=str(user.id),
+        after_data={"username": user.username, "ip": request.client.host if request.client else "unknown"},
+    )
+    db.commit()
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id, user.role.value),
@@ -54,7 +75,16 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/logout")
-def logout():
+def logout(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    write_audit(
+        db,
+        user_id=current_user.id,
+        action="logout",
+        entity="users",
+        entity_id=str(current_user.id),
+        after_data={"username": current_user.username, "ip": request.client.host if request.client else "unknown"},
+    )
+    db.commit()
     return {"message": "Logout efetuado"}
 
 

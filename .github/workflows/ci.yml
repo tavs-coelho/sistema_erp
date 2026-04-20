@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  backend-test:
+    name: Backend — lint + testes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/backend/requirements.txt
+
+      - name: Instalar dependências
+        working-directory: apps/backend
+        run: pip install -r requirements.txt
+
+      - name: Executar testes (pytest)
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: "sqlite:///./test.db"
+        run: pytest tests/ -v --tb=short
+
+  frontend-lint-build:
+    name: Frontend — lint + build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: apps/frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: apps/frontend
+        run: npm run lint
+
+      - name: Build de produção
+        working-directory: apps/frontend
+        run: npm run build
+
+  docker-compose-validate:
+    name: Docker Compose — validação de sintaxe
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar sintaxe do docker-compose.yml
+        run: docker compose config --quiet

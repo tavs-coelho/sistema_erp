@@ -186,7 +186,7 @@ export default function ComprasPage() {
   };
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
+    <main className="module-page">
       <h1>Módulo de Compras e Contratos</h1>
       <p className="muted">Processos licitatórios, contratos, aditivos e alertas de vencimento.</p>
 
@@ -204,9 +204,9 @@ export default function ComprasPage() {
 
       {/* ─── KPI de contratos vencendo ─── */}
       {expiring.length > 0 && (
-        <div className="card" style={{ borderLeft: "4px solid #e09a00", background: "#fff8e6" }}>
+        <div className="card card-warn">
           <h2>⚠ Contratos vencendo em 90 dias ({expiring.length})</h2>
-          <ul style={{ marginLeft: 16, marginTop: 8 }}>
+          <ul className="list-indent">
             {expiring.map((c) => (
               <li key={c.id}>
                 <strong>{c.number}</strong> — vence em <strong>{c.end_date}</strong> · R$ {c.amount.toFixed(2)}
@@ -216,7 +216,7 @@ export default function ComprasPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+      <div className="auto-grid-lg">
 
         {/* ─── Novo processo ─── */}
         <section className="card">
@@ -297,9 +297,9 @@ export default function ComprasPage() {
           </form>
 
           {addenda.length > 0 && (
-            <div style={{ marginTop: 8 }}>
+            <div className="mt-2">
               <p className="muted">Aditivos do contrato selecionado:</p>
-              <ul style={{ marginLeft: 16 }}>
+              <ul className="list-indent">
                 {addenda.map((a) => (
                   <li key={a.id}>{a.description} · R$ {a.amount_delta >= 0 ? "+" : ""}{a.amount_delta.toFixed(2)}</li>
                 ))}

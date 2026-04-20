@@ -451,6 +451,177 @@ textarea:focus {
   padding-top: 12px;
 }
 
+/* ── Wave 3 utility classes ─────────────────────────────────────────────── */
+
+/* Responsive auto-fit grids */
+.auto-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.auto-grid-lg {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+}
+
+.auto-grid-sm {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Form spanning the full grid width */
+.grid-full {
+  grid-column: 1 / -1;
+}
+
+/* Warning / alert card (amber) */
+.card-warn {
+  border-left: 4px solid #e09a00;
+  background: #fff8e6;
+}
+
+/* Indented list (replaces style={{ marginLeft:16, marginTop:8 }}) */
+.list-indent {
+  list-style: disc;
+  margin-left: 1.25rem;
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Multi-field form grid */
+.form-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+/* Extra-small button for inline table actions */
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-xs:hover {
+  background: color-mix(in srgb, var(--theme-primary) 8%, #fff);
+}
+
+/* Code-like table cell (barcode, long strings) */
+.td-code {
+  font-size: 11px;
+  max-width: 200px;
+  word-break: break-all;
+}
+
+/* Narrow number inputs */
+.input-narrow {
+  width: 100px;
+}
+
+.input-narrow-sm {
+  width: 70px;
+}
+
+/* Inline label with flex gap (De: / Até: labels in toolbars) */
+.label-inline {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Danger KPI card */
+.kpi-danger {
+  border-left: 4px solid #e53e3e;
+}
+
+.kpi-value-danger {
+  color: #e53e3e;
+}
+
+/* Status count row (lançamentos por status) */
+.stat-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.stat-item {
+  text-align: center;
+  min-width: 100px;
+}
+
+.stat-count {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* Hint text (small helper paragraph above a button) */
+.text-hint {
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+/* Total/summary line (bold totals below a table) */
+.total-line {
+  margin: 12px 0;
+  font-weight: 600;
+}
+
+/* Wrap-enabled toolbar variant */
+.toolbar-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Section with top margin */
+.section-top {
+  margin-top: 12px;
+}
+
+/* Small top margin utility */
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+/* Summary element cursor */
+.summary-toggle {
+  cursor: pointer;
+}
+
+/* Tab strip (replaces inline borderBottom toolbar) */
+.tab-strip-border {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+  gap: 0;
+  margin-top: 12px;
+}
+
 .notice,
 .alert,
 .toast {

@@ -258,7 +258,7 @@ export default function TributarioPage() {
   ] as const;
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
+    <main className="module-page">
       <h1>Módulo Tributário / Arrecadação Municipal</h1>
       <p className="muted">Gestão de contribuintes, cadastro imobiliário, lançamentos (IPTU/ISS/ITBI), guias e dívida ativa.</p>
 
@@ -271,14 +271,9 @@ export default function TributarioPage() {
       </div>
 
       {/* Tabs */}
-      <div className="toolbar" style={{ borderBottom: "2px solid var(--border)", paddingBottom: 0, gap: 0, marginTop: 12 }}>
+      <div className="toolbar tab-strip-border">
         {TABS.map((t) => (
-          <button key={t.key} className="btn" style={{
-            borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-            borderBottom: tab === t.key ? "3px solid var(--primary)" : "3px solid transparent",
-            background: tab === t.key ? "var(--primary-soft)" : "#fff",
-            fontWeight: tab === t.key ? 700 : 400,
-          }} onClick={() => setTab(t.key)}>
+          <button key={t.key} className={`tab-btn${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -287,24 +282,24 @@ export default function TributarioPage() {
       {/* ─── Dashboard ─────────────────────────────────────────────────────── */}
       {tab === "dashboard" && dash && (
         <section className="section-stack">
-          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
+          <div className="kpi-grid section-top">
             <div className="card kpi-card"><p className="muted">Contribuintes ativos</p><p className="kpi-value">{dash.total_contribuintes_ativos}</p></div>
             <div className="card kpi-card"><p className="muted">Imóveis cadastrados</p><p className="kpi-value">{dash.total_imoveis_ativos}</p></div>
             <div className="card kpi-card"><p className="muted">Valor em aberto</p><p className="kpi-value">{fmt(dash.valor_aberto)}</p></div>
             <div className="card kpi-card"><p className="muted">Arrecadado (pago)</p><p className="kpi-value">{fmt(dash.valor_arrecadado)}</p></div>
             <div className="card kpi-card"><p className="muted">Dívida ativa</p><p className="kpi-value">{fmt(dash.valor_divida_ativa)}</p></div>
-            <div className="card kpi-card" style={{ borderLeft: dash.lancamentos_vencidos_abertos > 0 ? "4px solid #e53e3e" : undefined }}>
+            <div className={`card kpi-card${dash.lancamentos_vencidos_abertos > 0 ? " kpi-danger" : ""}`}>
               <p className="muted">Vencidos em aberto</p>
-              <p className="kpi-value" style={{ color: dash.lancamentos_vencidos_abertos > 0 ? "#e53e3e" : undefined }}>{dash.lancamentos_vencidos_abertos}</p>
+              <p className={`kpi-value${dash.lancamentos_vencidos_abertos > 0 ? " kpi-value-danger" : ""}`}>{dash.lancamentos_vencidos_abertos}</p>
             </div>
           </div>
-          <div className="card" style={{ marginTop: 12 }}>
+          <div className="card mt-2">
             <h2>Lançamentos por status</h2>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            <div className="stat-row">
               {Object.entries(dash.lancamentos_por_status).map(([s, c]) => (
-                <div key={s} style={{ textAlign: "center", minWidth: 100 }}>
+                <div key={s} className="stat-item">
                   <span className={`chip ${CHIP_LANC[s] || "empenhado"}`}>{s.replace("_", " ")}</span>
-                  <p style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{c}</p>
+                  <p className="stat-count">{c}</p>
                 </div>
               ))}
             </div>
@@ -314,7 +309,7 @@ export default function TributarioPage() {
 
       {/* ─── Contribuintes ──────────────────────────────────────────────────── */}
       {tab === "contribuintes" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           {/* Formulário */}
           <section className="card">
             <h2>Cadastrar contribuinte</h2>
@@ -329,7 +324,7 @@ export default function TributarioPage() {
                 </select>
               </label>
               <label className="field-group">Município<input value={cMunicipio} onChange={(e) => setCMunicipio(e.target.value)} /></label>
-              <label className="field-group">UF<input value={cUf} maxLength={2} onChange={(e) => setCUf(e.target.value)} style={{ width: 60 }} /></label>
+              <label className="field-group">UF<input value={cUf} maxLength={2} onChange={(e) => setCUf(e.target.value)} className="input-narrow-sm" /></label>
               <button className="btn btn-primary" type="submit">Cadastrar</button>
             </form>
           </section>
@@ -337,7 +332,7 @@ export default function TributarioPage() {
           {/* Lista */}
           <section className="card section-stack">
             <div className="toolbar">
-              <input value={cSearch} onChange={(e) => setCSearch(e.target.value)} placeholder="Buscar nome ou CPF/CNPJ" style={{ flex: 1 }} />
+              <input value={cSearch} onChange={(e) => setCSearch(e.target.value)} placeholder="Buscar nome ou CPF/CNPJ" className="flex-1" />
               <button className="btn" onClick={() => { setCPage(1); loadContribuintes().catch(() => {}); }}>Buscar</button>
             </div>
             <table>
@@ -366,10 +361,10 @@ export default function TributarioPage() {
 
       {/* ─── Imóveis ──────────────────────────────────────────────────────── */}
       {tab === "imoveis" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Cadastrar imóvel</h2>
-            <form onSubmit={submitImovel} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <form onSubmit={submitImovel} className="form-grid">
               <label className="field-group">ID do Contribuinte<input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} required /></label>
               <label className="field-group">Inscrição cadastral<input value={iInscricao} onChange={(e) => setIInscricao(e.target.value)} required /></label>
               <label className="field-group">Logradouro<input value={iLogradouro} onChange={(e) => setILogradouro(e.target.value)} required /></label>
@@ -384,7 +379,7 @@ export default function TributarioPage() {
               <label className="field-group">Área terreno (m²)<input type="number" value={iAreaT} onChange={(e) => setIAreaT(Number(e.target.value))} /></label>
               <label className="field-group">Área construída (m²)<input type="number" value={iAreaC} onChange={(e) => setIAreaC(Number(e.target.value))} /></label>
               <label className="field-group">Valor venal (R$)<input type="number" value={iValorV} onChange={(e) => setIValorV(Number(e.target.value))} /></label>
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div className="grid-full">
                 <button className="btn btn-primary" type="submit">Cadastrar imóvel</button>
               </div>
             </form>
@@ -392,7 +387,7 @@ export default function TributarioPage() {
 
           <section className="card section-stack">
             <div className="toolbar">
-              <input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do contribuinte" style={{ flex: 1 }} />
+              <input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do contribuinte" className="flex-1" />
               <button className="btn" onClick={() => { setIPage(1); loadImoveis().catch(() => {}); }}>Filtrar</button>
             </div>
             <table>
@@ -420,10 +415,10 @@ export default function TributarioPage() {
 
       {/* ─── Lançamentos ──────────────────────────────────────────────────── */}
       {tab === "lancamentos" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Novo lançamento tributário</h2>
-            <form onSubmit={submitLancamento} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <form onSubmit={submitLancamento} className="form-grid">
               <label className="field-group">ID Contribuinte<input type="number" value={lContribId} onChange={(e) => setLContribId(e.target.value ? Number(e.target.value) : "")} required /></label>
               <label className="field-group">ID Imóvel (opcional)<input type="number" value={lImovelId} onChange={(e) => setLImovelId(e.target.value ? Number(e.target.value) : "")} /></label>
               <label className="field-group">
@@ -439,8 +434,8 @@ export default function TributarioPage() {
               <label className="field-group">Multa<input type="number" step="0.01" value={lMulta} onChange={(e) => setLMulta(Number(e.target.value))} /></label>
               <label className="field-group">Desconto<input type="number" step="0.01" value={lDesconto} onChange={(e) => setLDesconto(Number(e.target.value))} /></label>
               <label className="field-group">Vencimento<input type="date" value={lVencimento} onChange={(e) => setLVencimento(e.target.value)} required /></label>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>
+              <div className="grid-full">
+                <p className="text-hint">
                   Total estimado: {fmt(Math.max(0, lPrincipal + lJuros + lMulta - lDesconto))}
                 </p>
                 <button className="btn btn-primary" type="submit">Lançar tributo</button>
@@ -472,7 +467,7 @@ export default function TributarioPage() {
                     <td><span className={`chip ${CHIP_LANC[l.status] || "empenhado"}`}>{l.status}</span></td>
                     <td>
                       {l.status === "aberto" && (
-                        <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={() => emitirGuia(l.id)}>Emitir</button>
+                        <button className="btn-xs" onClick={() => emitirGuia(l.id)}>Emitir</button>
                       )}
                     </td>
                   </tr>
@@ -490,7 +485,7 @@ export default function TributarioPage() {
 
       {/* ─── Guias ────────────────────────────────────────────────────────── */}
       {tab === "guias" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Baixar guia (registrar pagamento)</h2>
             <form onSubmit={baixarGuia} className="section-stack">
@@ -511,7 +506,7 @@ export default function TributarioPage() {
 
           <section className="card section-stack">
             <div className="toolbar">
-              <input type="number" value={gLancamentoId} onChange={(e) => setGLancamentoId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do lançamento" style={{ flex: 1 }} />
+              <input type="number" value={gLancamentoId} onChange={(e) => setGLancamentoId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do lançamento" className="flex-1" />
               <button className="btn" onClick={() => { setGPage(1); loadGuias().catch(() => {}); }}>Filtrar</button>
             </div>
             <table>
@@ -520,7 +515,7 @@ export default function TributarioPage() {
               {(guias?.items || []).length > 0 ? guias!.items.map((g) => (
                 <tr key={g.id}>
                   <td>{g.id}</td>
-                  <td style={{ fontSize: 11, maxWidth: 200, wordBreak: "break-all" }}>{g.codigo_barras}</td>
+                  <td className="td-code">{g.codigo_barras}</td>
                   <td>{fmt(g.valor)}</td>
                   <td>{g.vencimento}</td>
                   <td><span className={`chip ${CHIP_GUIA[g.status] || "empenhado"}`}>{g.status}</span></td>
@@ -540,7 +535,7 @@ export default function TributarioPage() {
 
       {/* ─── Dívida Ativa ─────────────────────────────────────────────────── */}
       {tab === "divida" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Inscrever em dívida ativa</h2>
             <form onSubmit={inscreverDivida} className="section-stack">
@@ -648,12 +643,12 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
   };
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
+    <section className="section-stack section-top">
       {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Alíquotas IPTU por Uso</h2>
       <div className="toolbar">
         <label>Exercício:</label>
-        <input type="number" value={exercicio} onChange={(e) => setExercicio(+e.target.value)} style={{ width: 100 }} />
+        <input type="number" value={exercicio} onChange={(e) => setExercicio(+e.target.value)} className="input-narrow" />
       </div>
       <table>
         <thead><tr><th>Exercício</th><th>Uso</th><th>Alíquota (%)</th><th>Descrição</th><th>Ação</th></tr></thead>
@@ -670,7 +665,7 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
         </tbody>
       </table>
       <details open>
-        <summary style={{ cursor: "pointer", marginBottom: 8 }}>Cadastrar nova alíquota</summary>
+        <summary className="summary-toggle mb-2">Cadastrar nova alíquota</summary>
         <form className="form-grid" onSubmit={handleCreate}>
           <label>Uso
             <select value={uso} onChange={(e) => setUso(e.target.value)}>
@@ -692,7 +687,7 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
       <p className="muted">Gera lançamentos de IPTU para todos os imóveis ativos com alíquota configurada para o exercício.</p>
       <form className="form-grid" onSubmit={handleGerarIPTU}>
         <label>Exercício
-          <input type="number" value={gerarExercicio} onChange={(e) => setGerarExercicio(+e.target.value)} style={{ width: 100 }} />
+          <input type="number" value={gerarExercicio} onChange={(e) => setGerarExercicio(+e.target.value)} className="input-narrow" />
         </label>
         <label>Vencimento
           <input type="date" value={gerarVenc} onChange={(e) => setGerarVenc(e.target.value)} required />
@@ -759,11 +754,11 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
+    <section className="section-stack section-top">
       {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Parcelamentos de Dívida Ativa</h2>
       <div className="toolbar">
-        <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} style={{ width: 200 }} />
+        <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} className="input-narrow" />
         <button className="btn" onClick={load}>Buscar</button>
       </div>
       <table>
@@ -784,7 +779,7 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       </table>
 
       {selected && (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-2">
           <h3>Parcelas do Parcelamento #{selected.id}</h3>
           <table>
             <thead><tr><th>#</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Pagamento</th><th>Ação</th></tr></thead>
@@ -805,8 +800,8 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       )}
 
       <details>
-        <summary style={{ cursor: "pointer", marginTop: 16 }}>Criar novo parcelamento</summary>
-        <form className="form-grid" onSubmit={handleCreate} style={{ marginTop: 8 }}>
+        <summary className="summary-toggle mt-4">Criar novo parcelamento</summary>
+        <form className="form-grid mt-2" onSubmit={handleCreate}>
           <label>ID da Dívida Ativa *
             <input value={dividaId} onChange={(e) => setDividaId(e.target.value)} required />
           </label>
@@ -866,24 +861,24 @@ function RelatorioArrecadacaoTab() {
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
+    <section className="section-stack section-top">
       {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Relatório Consolidado de Arrecadação</h2>
-      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8 }}>
+      <div className="toolbar-wrap">
         <select value={tributo} onChange={(e) => setTributo(e.target.value)}>
           <option value="">Todos os tributos</option>
           {["IPTU","ISS","ITBI","TAXA_LIXO","TAXA_ILUMINACAO","TAXA_OBRAS"].map((t) => <option key={t}>{t}</option>)}
         </select>
-        <input type="number" placeholder="Exercício" value={exercicio} onChange={(e) => setExercicio(e.target.value)} style={{ width: 110 }} />
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
+        <input type="number" placeholder="Exercício" value={exercicio} onChange={(e) => setExercicio(e.target.value)} className="input-narrow" />
+        <label className="label-inline">De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
+        <label className="label-inline">Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
         <button className="btn" onClick={load}>Filtrar</button>
         <a className="btn" href={csvHref()} target="_blank" rel="noreferrer">Exportar CSV</a>
       </div>
 
       {data && (
         <>
-          <div style={{ margin: "12px 0", fontWeight: 600 }}>
+          <div className="total-line">
             Total arrecadado: {fmtBRL(data.total_arrecadado)}
           </div>
           <table>

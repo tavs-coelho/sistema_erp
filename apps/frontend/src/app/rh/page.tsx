@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { authDownload, authJson, readCookie } from "@/lib/auth";
 
+type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
 type Department = { id: number; name: string };
 type Employee = { id: number; name: string; cpf: string; job_title: string; employment_type: string; base_salary: number; department_id: number };
 type PayrollEvent = { id: number; employee_id: number; month: string; kind: string; description: string; value: number };
@@ -35,7 +36,7 @@ export default function RhPage() {
   const [feriasFim, setFeriasFim] = useState("");
   const [feriasFracao, setFeriasFracao] = useState(1);
 
-("Servidor RH Demo");
+  const [employeeName, setEmployeeName] = useState("Servidor RH Demo");
   const [employeeCpf, setEmployeeCpf] = useState("999.888.777-66");
   const [employeeJobTitle, setEmployeeJobTitle] = useState("Analista Administrativo");
   const [employeeType, setEmployeeType] = useState("Efetivo");
@@ -191,7 +192,7 @@ export default function RhPage() {
       <h1>Módulo RH e Folha</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong> | <a href="/portal-servidor">Portal do servidor</a></p>
       {status && <p className={status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{status}</strong></p>}
-      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+      <div className="auto-grid">
         <section className="card">
           <h2>1) Cadastrar servidor</h2>
           <form onSubmit={createEmployee} className="section-stack">
@@ -222,7 +223,7 @@ export default function RhPage() {
             <label className="field-group">Valor<input type="number" value={eventValue} onChange={(e) => setEventValue(Number(e.target.value))} placeholder="Valor" required /></label>
             <button className="btn btn-primary" type="submit">Salvar evento</button>
           </form>
-          <button className="btn" style={{ marginTop: 8 }} onClick={calculatePayroll}>3) Calcular folha mensal</button>
+          <button className="btn mt-2" onClick={calculatePayroll}>3) Calcular folha mensal</button>
         </section>
       </div>
 

@@ -162,7 +162,7 @@ export default function Fase2Page() {
   };
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
+    <main className="module-page">
       <h1>Fluxo demonstrável — Fase 2</h1>
       <p>Admin: departamento → fornecedor → dotação → empenho → liquidação → pagamento.</p>
       <p className="muted">Cenário seeded para busca rápida: <strong>Fornecedor Demo Integrado</strong> e <strong>EMP-DEMO-001</strong>.</p>
@@ -182,7 +182,7 @@ export default function Fase2Page() {
         Carregar / atualizar listas
       </button>
 
-      <section style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+      <section className="auto-grid section-top">
         <form onSubmit={submitDepartment} className="card section-stack">
           <h2>1) Criar departamento</h2>
           <label className="field-group">Nome do departamento
@@ -274,7 +274,7 @@ export default function Fase2Page() {
             }, 0);
           }}
         />
-        <ul style={{ marginLeft: 18 }}>
+        <ul className="list-indent">
           {(vendors?.items || []).length > 0 ? (vendors?.items || []).map((v) => <li key={v.id}>{v.name} ({v.document})</li>) : <li className="empty-state">Nenhum fornecedor encontrado.</li>}
         </ul>
       </section>
@@ -299,7 +299,7 @@ export default function Fase2Page() {
         </select>
         </label>
         <a className="btn" href={`${API_URL}/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank">Exportar CSV</a>
-        <table style={{ marginTop: 8 }}>
+        <table className="mt-2">
           <thead>
             <tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>
           </thead>

@@ -5,6 +5,8 @@ Endpoints:
   PUT  /branding        — admin-only, updates branding settings
 """
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,19 @@ _DEFAULTS = {
     "app_title": "Sistema ERP Municipal",
 }
 
+# ---------------------------------------------------------------------------
+# Simple in-process cache with TTL (avoids a DB round-trip on every page load)
+# ---------------------------------------------------------------------------
+_CACHE_TTL = 300  # seconds
+_cache: BrandingOut | None = None
+_cache_ts: float = 0.0
+
+
+def _invalidate_cache() -> None:
+    global _cache, _cache_ts
+    _cache = None
+    _cache_ts = 0.0
+
 
 def _get_or_create(db: Session) -> TenantBranding:
     """Return the single branding row (id=1), creating it with defaults if absent."""
@@ -44,8 +59,17 @@ def get_branding(db: Session = Depends(get_db)):
 
     Returns the current branding configuration so the frontend can apply
     theme colours, org name, logo and title on every page load.
+    Responses are cached in-process for up to 5 minutes to avoid repeated
+    database round-trips on every page navigation.
     """
-    return _get_or_create(db)
+    global _cache, _cache_ts
+    now = time.monotonic()
+    if _cache is not None and (now - _cache_ts) < _CACHE_TTL:
+        return _cache
+    row = _get_or_create(db)
+    _cache = BrandingOut.model_validate(row)
+    _cache_ts = now
+    return _cache
 
 
 @router.put("", response_model=BrandingOut)
@@ -75,4 +99,5 @@ def update_branding(
     )
     db.commit()
     db.refresh(row)
+    _invalidate_cache()
     return row

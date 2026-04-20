@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useTheme } from "@/components/theme-provider";
-import { readCookie } from "@/lib/auth";
+import { API_URL, authToken, readCookie } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 
 type Session = { username: string; role: string };
@@ -34,6 +34,91 @@ const NAV_ITEMS = [
   { href: "/branding", label: "Identidade Visual", roles: ["admin"] },
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];
+
+// ---------------------------------------------------------------------------
+// Notification bell — polls the SSE endpoint on mount and every 60 s
+// ---------------------------------------------------------------------------
+
+type SseEvent = { type: string; message: string; id: number };
+
+function NotificationBell() {
+  const [alerts, setAlerts] = useState<SseEvent[]>([]);
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const fetchAlerts = () => {
+    const token = authToken();
+    if (!token) return;
+    const es = new EventSource(`${API_URL}/core/events?token=${encodeURIComponent(token)}`);
+    const collected: SseEvent[] = [];
+
+    const handler = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as SseEvent;
+        if (data?.message) collected.push(data);
+      } catch { /* ignore */ }
+    };
+
+    es.addEventListener("estoque_baixo", handler);
+    es.addEventListener("contrato_vencendo", handler);
+    es.addEventListener("heartbeat", () => {
+      es.close();
+      setAlerts(collected);
+    });
+    es.onerror = () => { es.close(); };
+  };
+
+  useEffect(() => {
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60_000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={dropdownRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm notification-bell"
+        onClick={() => setOpen((p) => !p)}
+        aria-label={`Alertas${alerts.length > 0 ? ` (${alerts.length})` : ""}`}
+        title="Alertas do sistema"
+      >
+        🔔
+        {alerts.length > 0 && (
+          <span className="notification-badge">{alerts.length > 9 ? "9+" : alerts.length}</span>
+        )}
+      </button>
+      {open && (
+        <div className="notification-dropdown">
+          <strong className="notification-title">Alertas</strong>
+          {alerts.length === 0 ? (
+            <p className="notification-empty">Nenhum alerta no momento.</p>
+          ) : (
+            <ul className="notification-list">
+              {alerts.map((a, i) => (
+                <li key={i} className={`notification-item ${a.type}`}>
+                  {a.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -110,6 +195,7 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
           </div>
           <div className="topbar-right">
             <span className="demo-badge">Ambiente de Demonstração</span>
+            <NotificationBell />
             <button
               type="button"
               className="btn btn-ghost btn-sm"

@@ -1,12 +1,17 @@
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import json
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
 from ..deps import get_current_user, require_roles
-from ..models import Attachment, AuditLog, Department, FiscalYear, RoleEnum, User
+from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Department, FiscalYear, RoleEnum, User
 from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
@@ -164,3 +169,108 @@ def upload_attachment(
     write_audit(db, user_id=current.id, action="create", entity="attachments", entity_id=str(att.id), after_data={"file": safe_name})
     db.commit()
     return {"id": att.id, "file_name": att.file_name}
+
+
+# ---------------------------------------------------------------------------
+# Server-Sent Events: real-time alert stream
+# ---------------------------------------------------------------------------
+
+def _build_events(db: Session) -> list[dict]:
+    """Collect actionable alerts from the database."""
+    events: list[dict] = []
+
+    # Low-stock alerts (open)
+    low_stock = (
+        db.query(AlertaEstoqueMinimo)
+        .filter(AlertaEstoqueMinimo.status == "aberto")
+        .order_by(AlertaEstoqueMinimo.id.desc())
+        .limit(20)
+        .all()
+    )
+    for alerta in low_stock:
+        events.append(
+            {
+                "type": "estoque_baixo",
+                "message": f"Estoque baixo: {alerta.item.nome if alerta.item else alerta.item_id} "
+                           f"({alerta.saldo_no_momento:.0f} / mín {alerta.estoque_minimo:.0f})",
+                "id": alerta.id,
+            }
+        )
+
+    # Contracts expiring within the next 30 days
+    today = date.today()
+    soon = today + timedelta(days=30)
+    expiring = (
+        db.query(Contract)
+        .filter(Contract.status == "vigente", Contract.end_date >= today, Contract.end_date <= soon)
+        .order_by(Contract.end_date)
+        .limit(10)
+        .all()
+    )
+    for contract in expiring:
+        days_left = (contract.end_date - today).days
+        events.append(
+            {
+                "type": "contrato_vencendo",
+                "message": f"Contrato {contract.number} vence em {days_left} dia(s) ({contract.end_date.isoformat()})",
+                "id": contract.id,
+            }
+        )
+
+    return events
+
+
+async def _event_generator(request: Request, db: Session):
+    """Yield SSE-formatted messages then close."""
+    events = _build_events(db)
+    if not events:
+        # Send a heartbeat so the client knows the connection is alive
+        yield "event: heartbeat\ndata: {}\n\n"
+        return
+
+    for ev in events:
+        if await request.is_disconnected():
+            break
+        yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+
+    # Final heartbeat to signal end of initial batch
+    yield "event: heartbeat\ndata: {}\n\n"
+
+
+@router.get("/events")
+def sse_events(
+    request: Request,
+    token: str = Query(..., description="JWT access token (EventSource cannot send headers)"),
+    db: Session = Depends(get_db),
+):
+    """Server-Sent Events stream of operational alerts.
+
+    Accepts the JWT via ``?token=`` query parameter because the browser
+    ``EventSource`` API does not support custom request headers.
+
+    Delivers the current snapshot of open low-stock alerts and contracts
+    expiring within 30 days, then closes.  Clients should reconnect
+    periodically (e.g. every 60 s) to poll for new events without holding
+    a long-lived connection.
+    """
+    # Validate the JWT manually (EventSource cannot send Authorization header)
+    credentials_exc = HTTPException(status_code=401, detail="Token inválido")
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        if payload.get("type") != "access":
+            raise credentials_exc
+        user_id = int(payload.get("sub", 0))
+    except (JWTError, ValueError, TypeError) as exc:
+        raise credentials_exc from exc
+    user = db.get(User, user_id)
+    if not user:
+        raise credentials_exc
+
+    return StreamingResponse(
+        _event_generator(request, db),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

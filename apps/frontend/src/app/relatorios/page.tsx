@@ -70,6 +70,14 @@ export default function RelatoriosPage() {
             {t.label}
           </button>
         ))}
+        <Button
+          className="btn-export no-print"
+          style={{ marginLeft: "auto" }}
+          onClick={() => window.print()}
+          title="Salvar como PDF ou imprimir"
+        >
+          🖨️ Imprimir / PDF
+        </Button>
       </nav>
 
       {tab === "veiculo" && <CustoPorVeiculoTab />}

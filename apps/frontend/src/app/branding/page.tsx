@@ -12,6 +12,18 @@ import {
   wcagLevel,
 } from "@/lib/theme";
 
+/** Strict hex-color validator — only allows #rrggbb (6-digit) strings. */
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Returns the colour only if it matches the strict #rrggbb format, otherwise
+ * returns the fallback. Used before interpolating user-supplied values into
+ * inline CSS to prevent XSS via crafted colour strings.
+ */
+function safeHex(color: string, fallback: string): string {
+  return HEX_RE.test(color) ? color : fallback;
+}
+
 // ── Contrast badge ────────────────────────────────────────────────────────────
 
 function ContrastBadge({ ratio, level }: { ratio: number; level: ContrastLevel }) {
@@ -46,7 +58,7 @@ function ColorField({
   contrastAgainst?: string;
   contrastLabel?: string;
 }) {
-  const isValid = /^#[0-9a-fA-F]{6}$/.test(value);
+  const isValid = HEX_RE.test(value);
   const ratio = isValid && contrastAgainst ? contrastRatio(value, contrastAgainst) : null;
   const level: ContrastLevel | null = ratio !== null ? wcagLevel(ratio) : null;
 
@@ -57,7 +69,7 @@ function ColorField({
         <input
           id={id}
           type="color"
-          value={isValid ? value : "#1d4ed8"}
+          value={safeHex(value, "#1d4ed8")}
           onChange={(e) => onChange(e.target.value)}
           style={{ width: 48, height: 38, padding: 2, cursor: "pointer", borderRadius: 8, border: "1px solid var(--border)" }}
         />
@@ -84,10 +96,9 @@ function ColorField({
 // ── Preview panel ─────────────────────────────────────────────────────────────
 
 function BrandPreview({ draft }: { draft: BrandingTheme }) {
-  const isValidHex = (c: string) => /^#[0-9a-fA-F]{6}$/.test(c);
-  const primary = isValidHex(draft.primary_color) ? draft.primary_color : "#1d4ed8";
-  const secondary = isValidHex(draft.secondary_color) ? draft.secondary_color : "#0f172a";
-  const accent = isValidHex(draft.accent_color) ? draft.accent_color : "#0ea5e9";
+  const primary = safeHex(draft.primary_color, "#1d4ed8");
+  const secondary = safeHex(draft.secondary_color, "#0f172a");
+  const accent = safeHex(draft.accent_color, "#0ea5e9");
 
   const initials = draft.org_name
     .split(" ")
@@ -267,13 +278,13 @@ export default function BrandingPage() {
   };
 
   // Contrast summaries
-  const primaryVsWhite = /^#[0-9a-fA-F]{6}$/.test(draft.primary_color)
+  const primaryVsWhite = HEX_RE.test(draft.primary_color)
     ? contrastRatio(draft.primary_color, "#ffffff")
     : null;
-  const secondaryVsWhite = /^#[0-9a-fA-F]{6}$/.test(draft.secondary_color)
+  const secondaryVsWhite = HEX_RE.test(draft.secondary_color)
     ? contrastRatio(draft.secondary_color, "#ffffff")
     : null;
-  const accentVsWhite = /^#[0-9a-fA-F]{6}$/.test(draft.accent_color)
+  const accentVsWhite = HEX_RE.test(draft.accent_color)
     ? contrastRatio(draft.accent_color, "#ffffff")
     : null;
   const anyFail = [primaryVsWhite, secondaryVsWhite, accentVsWhite].some(
@@ -406,7 +417,7 @@ export default function BrandingPage() {
                         width: 16,
                         height: 16,
                         borderRadius: 4,
-                        background: /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#ccc",
+                        background: safeHex(color, "#cccccc"),
                         border: "1px solid var(--border)",
                         verticalAlign: "middle",
                         marginRight: 6,

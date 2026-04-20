@@ -4,7 +4,7 @@ import re
 
 from .models import RoleEnum
 
-_HEX_RE = re.compile(r"^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$")
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$")
 
 
 class BrandingOut(BaseModel):
@@ -34,7 +34,7 @@ class BrandingUpdate(BaseModel):
     def validate_hex_color(cls, v: str | None) -> str | None:
         if v is None:
             return v
-        if not _HEX_RE.match(v):
+        if not _HEX_COLOR_RE.match(v):
             raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb ou #rgb). Recebido: {v!r}")
         return v.lower()
 

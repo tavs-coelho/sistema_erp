@@ -2,9 +2,8 @@ from pathlib import Path
 import json
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
@@ -192,7 +191,7 @@ def _build_events(db: Session) -> list[dict]:
         events.append(
             {
                 "type": "estoque_baixo",
-                "message": f"Estoque baixo: {alerta.item.nome if alerta.item else alerta.item_id} "
+                "message": f"Estoque baixo: {alerta.item.descricao if alerta.item else alerta.item_id} "
                            f"({alerta.saldo_no_momento:.0f} / mín {alerta.estoque_minimo:.0f})",
                 "id": alerta.id,
             }
@@ -322,32 +321,20 @@ async def _event_generator(request: Request, db: Session):
 @router.get("/events")
 def sse_events(
     request: Request,
-    token: str = Query(..., description="JWT access token (EventSource cannot send headers)"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """Server-Sent Events stream of operational alerts.
 
-    Accepts the JWT via ``?token=`` query parameter because the browser
-    ``EventSource`` API does not support custom request headers.
+    The JWT is validated via the standard ``Authorization: Bearer <token>``
+    header.  Use ``fetch`` with ``ReadableStream`` on the frontend instead of
+    ``EventSource`` so the header can be sent.
 
     Delivers the current snapshot of open low-stock alerts and contracts
     expiring within 30 days, then closes.  Clients should reconnect
     periodically (e.g. every 60 s) to poll for new events without holding
     a long-lived connection.
     """
-    # Validate the JWT manually (EventSource cannot send Authorization header)
-    credentials_exc = HTTPException(status_code=401, detail="Token inválido")
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        if payload.get("type") != "access":
-            raise credentials_exc
-        user_id = int(payload.get("sub", 0))
-    except (JWTError, ValueError, TypeError) as exc:
-        raise credentials_exc from exc
-    user = db.get(User, user_id)
-    if not user:
-        raise credentials_exc
-
     return StreamingResponse(
         _event_generator(request, db),
         media_type="text/event-stream",

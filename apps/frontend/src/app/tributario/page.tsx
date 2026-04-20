@@ -177,7 +177,7 @@ export default function TributarioPage() {
 
   const submitImovel = async (e: FormEvent) => {
     e.preventDefault();
-    if (!iContribId) toast("Informe o ID do contribuinte.", "error"); return;
+    if (!iContribId) { toast("Informe o ID do contribuinte.", "error"); return; }
     try {
       await authJson("/tributario/imoveis", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -192,7 +192,7 @@ export default function TributarioPage() {
 
   const submitLancamento = async (e: FormEvent) => {
     e.preventDefault();
-    if (!lContribId) toast("Informe o ID do contribuinte.", "error"); return;
+    if (!lContribId) { toast("Informe o ID do contribuinte.", "error"); return; }
     try {
       await authJson("/tributario/lancamentos", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -220,7 +220,7 @@ export default function TributarioPage() {
 
   const baixarGuia = async (e: FormEvent) => {
     e.preventDefault();
-    if (!gBaixaId) toast("Selecione a guia.", "error"); return;
+    if (!gBaixaId) { toast("Selecione a guia.", "error"); return; }
     try {
       const qs = new URLSearchParams({ data_pagamento: gDataPagamento || new Date().toISOString().slice(0, 10) });
       if (gBanco) qs.set("banco", gBanco);
@@ -233,7 +233,7 @@ export default function TributarioPage() {
 
   const inscreverDivida = async (e: FormEvent) => {
     e.preventDefault();
-    if (!daLancId) toast("Informe o ID do lançamento.", "error"); return;
+    if (!daLancId) { toast("Informe o ID do lançamento.", "error"); return; }
     try {
       await authJson("/tributario/divida-ativa", {
         method: "POST", headers: { "Content-Type": "application/json" },

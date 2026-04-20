@@ -46,26 +46,40 @@ function NotificationBell() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const fetchAlerts = () => {
+  const fetchAlerts = async () => {
     const token = authToken();
     if (!token) return;
-    const es = new EventSource(`${API_URL}/core/events?token=${encodeURIComponent(token)}`);
     const collected: SseEvent[] = [];
-
-    const handler = (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as SseEvent;
-        if (data?.message) collected.push(data);
-      } catch { /* ignore */ }
-    };
-
-    es.addEventListener("estoque_baixo", handler);
-    es.addEventListener("contrato_vencendo", handler);
-    es.addEventListener("heartbeat", () => {
-      es.close();
-      setAlerts(collected);
-    });
-    es.onerror = () => { es.close(); };
+    try {
+      const res = await fetch(`${API_URL}/core/events`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok || !res.body) return;
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let eventType = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            try {
+              const data = JSON.parse(line.slice(5).trim()) as SseEvent;
+              if (eventType === "heartbeat") { reader.cancel(); break; }
+              if (data?.message) collected.push(data);
+            } catch { /* ignore */ }
+            eventType = "";
+          }
+        }
+      }
+    } catch { /* ignore network errors */ }
+    setAlerts(collected);
   };
 
   useEffect(() => {

@@ -91,7 +91,7 @@ export default function Fase2Page() {
   const submitDepartment = async (e: FormEvent) => {
     e.preventDefault();
     const res = await fetch(`${API_URL}/core/departments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ name: departmentName }) });
-    if (!res.ok) toast("Falha ao criar departamento", "error"); return;
+    if (!res.ok) { toast("Falha ao criar departamento", "error"); return; }
     toast("Departamento criado");
     await loadCore();
   };
@@ -103,7 +103,7 @@ export default function Fase2Page() {
       headers: authHeaders,
       body: JSON.stringify({ name: vendorName, document: vendorDocument }),
     });
-    if (!res.ok) toast("Falha ao criar fornecedor", "error"); return;
+    if (!res.ok) { toast("Falha ao criar fornecedor", "error"); return; }
     toast("Fornecedor criado");
     await loadVendors();
   };
@@ -120,7 +120,7 @@ export default function Fase2Page() {
         fiscal_year_id: selectedFiscalYear,
       }),
     });
-    if (!res.ok) toast("Falha ao criar dotação", "error"); return;
+    if (!res.ok) { toast("Falha ao criar dotação", "error"); return; }
     toast("Dotação orçamentária criada");
   };
 
@@ -138,14 +138,14 @@ export default function Fase2Page() {
         vendor_id: selectedVendorId,
       }),
     });
-    if (!res.ok) toast("Falha ao criar empenho", "error"); return;
+    if (!res.ok) { toast("Falha ao criar empenho", "error"); return; }
     toast("Empenho criado");
     await loadCommitments();
   };
 
   const liquidateCommitment = async (id: number) => {
     const res = await fetch(`${API_URL}/accounting/liquidate/${id}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) toast("Falha ao liquidar empenho", "error"); return;
+    if (!res.ok) { toast("Falha ao liquidar empenho", "error"); return; }
     toast(`Empenho ${id} liquidado`);
     await loadCommitments();
   };
@@ -157,7 +157,7 @@ export default function Fase2Page() {
       headers: authHeaders,
       body: JSON.stringify({ commitment_id: paymentCommitmentId, amount: Number(paymentAmount), payment_date: paymentDate }),
     });
-    if (!res.ok) toast("Falha ao registrar pagamento", "error"); return;
+    if (!res.ok) { toast("Falha ao registrar pagamento", "error"); return; }
     toast("Pagamento registrado");
     await Promise.all([loadCommitments(), loadPayments()]);
   };

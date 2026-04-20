@@ -1,8 +1,11 @@
-"""Multi-tenancy: add subdomain to tenant_branding, tenant_id to users
+"""Multi-tenancy: add tenant_id to users
 
 Revision ID: 0006_multi_tenancy
-Revises: 0005_iptu_parcelamento
+Revises: 0018
 Create Date: 2026-04-20
+
+Note: the tenant_branding table (including the subdomain column) is created by
+revision 0018_tenant_branding which this migration must follow.
 """
 
 from alembic import op
@@ -10,19 +13,12 @@ import sqlalchemy as sa
 
 
 revision = "0006_multi_tenancy"
-down_revision = "0005_iptu_parcelamento"
+down_revision = "0018"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Add subdomain slug to the tenant registry table
-    op.add_column(
-        "tenant_branding",
-        sa.Column("subdomain", sa.String(80), nullable=True, unique=True),
-    )
-    op.create_index("ix_tenant_branding_subdomain", "tenant_branding", ["subdomain"])
-
     # Scope each user to a tenant (NULL → default tenant id=1)
     op.add_column(
         "users",
@@ -39,5 +35,3 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_users_tenant_id", table_name="users")
     op.drop_column("users", "tenant_id")
-    op.drop_index("ix_tenant_branding_subdomain", table_name="tenant_branding")
-    op.drop_column("tenant_branding", "subdomain")

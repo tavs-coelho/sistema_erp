@@ -152,7 +152,7 @@ export default function OrcamentoPage() {
 
   const createProgram = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedPpa) toast("Selecione um PPA.", "error"); return;
+    if (!selectedPpa) { toast("Selecione um PPA.", "error"); return; }
     try {
       await authJson(`/budget/ppas/${selectedPpa}/programs`, {
         method: "POST",
@@ -194,7 +194,7 @@ export default function OrcamentoPage() {
 
   const createGoal = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedLdo) toast("Selecione uma LDO.", "error"); return;
+    if (!selectedLdo) { toast("Selecione uma LDO.", "error"); return; }
     try {
       await authJson(`/budget/ldos/${selectedLdo}/goals`, {
         method: "POST",
@@ -241,7 +241,7 @@ export default function OrcamentoPage() {
 
   const createItem = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedLoa) toast("Selecione uma LOA.", "error"); return;
+    if (!selectedLoa) { toast("Selecione uma LOA.", "error"); return; }
     try {
       await authJson(`/budget/loas/${selectedLoa}/items`, {
         method: "POST",

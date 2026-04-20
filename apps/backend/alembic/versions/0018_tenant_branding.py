@@ -28,6 +28,7 @@ def upgrade() -> None:
         sa.Column("accent_color", sa.String(9), nullable=False, server_default="#0ea5e9"),
         sa.Column("favicon_url", sa.String(500), nullable=False, server_default="/favicon.ico"),
         sa.Column("app_title", sa.String(200), nullable=False, server_default="Sistema ERP Municipal"),
+        sa.Column("subdomain", sa.String(80), nullable=True, unique=True),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
@@ -36,6 +37,7 @@ def upgrade() -> None:
             onupdate=sa.func.now(),
         ),
     )
+    op.create_index("ix_tenant_branding_subdomain", "tenant_branding", ["subdomain"])
     # Insert the default row so GET /branding always returns a result without
     # requiring a migration-time upsert from application code.
     op.execute(
@@ -45,4 +47,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_index("ix_tenant_branding_subdomain", table_name="tenant_branding")
     op.drop_table("tenant_branding")

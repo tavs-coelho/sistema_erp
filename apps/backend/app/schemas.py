@@ -36,8 +36,11 @@ class BrandingUpdate(BaseModel):
         if v is None:
             return v
         if not _HEX_COLOR_RE.match(v):
-            raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb ou #rgb). Recebido: {v!r}")
-        return v.lower()
+            raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb). Recebido: {v!r}")
+        normalized = v.lower()
+        if len(normalized) == 4:
+            normalized = "#" + "".join(ch * 2 for ch in normalized[1:])
+        return normalized
 
 
 class TenantCreate(BaseModel):

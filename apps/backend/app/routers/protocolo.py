@@ -1,6 +1,5 @@
 """Router de Protocolo e Processos Administrativos."""
 
-import os
 import uuid
 from pathlib import Path
 
@@ -9,6 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
+from ..config import settings
 from ..db import get_db
 from ..deps import get_current_user, require_roles
 from ..models import Attachment, Protocolo, TramitacaoProtocolo, RoleEnum, User
@@ -22,10 +22,6 @@ from ..schemas import (
 
 router = APIRouter(prefix="/protocolo", tags=["protocolo"])
 
-# Pasta de upload local — pode ser substituída por S3 via config
-UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/tmp/ged_uploads"))
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
 # Tipos de arquivo permitidos
 ALLOWED_MIME = {
     "application/pdf",
@@ -37,7 +33,17 @@ ALLOWED_MIME = {
 }
 MAX_UPLOAD_MB = 10
 
-router = APIRouter(prefix="/protocolo", tags=["protocolo"])
+
+def _upload_dir() -> Path:
+    """Return the upload directory, creating it on first use.
+
+    Deferred to call time (rather than import time) to avoid side effects
+    in restricted environments and to honour the centralised ``settings``
+    value instead of reading the env-var directly.
+    """
+    d = Path(settings.upload_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 # Status válidos para transições
 VALID_TRANSITIONS: dict[str, list[str]] = {
@@ -248,7 +254,7 @@ def upload_anexo(
     # Salva com nome único para evitar colisões
     ext = Path(file.filename or "file").suffix
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    dest = UPLOAD_DIR / unique_name
+    dest = _upload_dir() / unique_name
     dest.write_bytes(contents)
 
     attachment = Attachment(

@@ -293,7 +293,10 @@ def add_loa_item(
         raise HTTPException(status_code=404, detail="LOA não encontrada")
     item = LOAItem(loa_id=loa_id, **payload.model_dump())
     db.add(item)
-    loa.total_expenditure += payload.authorized_amount
+    if payload.category == "despesa":
+        loa.total_expenditure += payload.authorized_amount
+    else:
+        loa.total_revenue = (loa.total_revenue or 0.0) + payload.authorized_amount
     db.flush()
     write_audit(db, user_id=current.id, action="create", entity="loa_items", entity_id=str(item.id), after_data={"loa_id": loa_id, "action_code": item.action_code})
     db.commit()
@@ -338,7 +341,10 @@ def update_loa_item(
     if payload.authorized_amount is not None:
         delta = payload.authorized_amount - before_amount
         item.authorized_amount = payload.authorized_amount
-        loa.total_expenditure += delta
+        if item.category == "despesa":
+            loa.total_expenditure += delta
+        else:
+            loa.total_revenue = (loa.total_revenue or 0.0) + delta
     if payload.executed_amount is not None:
         item.executed_amount = payload.executed_amount
     write_audit(db, user_id=current.id, action="update", entity="loa_items", entity_id=str(item.id), after_data=payload.model_dump(exclude_none=True))

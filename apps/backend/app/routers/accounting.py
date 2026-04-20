@@ -3,7 +3,7 @@ from datetime import date
 from io import StringIO
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
@@ -117,11 +117,13 @@ def create_commitment(payload: CommitmentCreate, db: Session = Depends(get_db), 
     obj = Commitment(**payload.model_dump())
     db.add(obj)
     db.flush()
-    # ORC-05: atualiza executed_amount na dotação LOA vinculada
+    # ORC-05: atualiza executed_amount na dotação LOA vinculada (atomic to avoid race condition)
     if payload.loa_item_id:
-        loa_item = db.get(LOAItem, payload.loa_item_id)
-        if loa_item:
-            loa_item.executed_amount = round(loa_item.executed_amount + payload.amount, 2)
+        db.execute(
+            update(LOAItem)
+            .where(LOAItem.id == payload.loa_item_id)
+            .values(executed_amount=LOAItem.executed_amount + payload.amount)
+        )
     write_audit(db, user_id=current.id, action="create", entity="commitments", entity_id=str(obj.id), after_data=payload.model_dump())
     db.commit()
     db.refresh(obj)

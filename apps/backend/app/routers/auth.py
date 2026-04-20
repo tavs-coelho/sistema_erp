@@ -3,22 +3,18 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from jose import JWTError, jwt
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
+from ..limiter import limiter as _limiter
 from ..models import PasswordResetToken, User
 from ..deps import get_current_user
 from ..schemas import AuthMeResponse, LoginRequest, PasswordResetConfirm, PasswordResetRequest, RefreshRequest, TokenResponse
 from ..security import create_access_token, create_refresh_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-# Per-router limiter instance (shares state with app.state.limiter via get_remote_address)
-_limiter = Limiter(key_func=get_remote_address)
 
 
 @router.get("/me", response_model=AuthMeResponse)

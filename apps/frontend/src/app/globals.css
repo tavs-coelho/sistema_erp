@@ -932,3 +932,8 @@ code {
 :root[data-color-scheme="dark"] .chip.pendente,:root[data-color-scheme="dark"] .chip.liquidado,:root[data-color-scheme="dark"] .chip.empenhado,:root[data-color-scheme="dark"] .chip.cancelado,:root[data-color-scheme="dark"] .chip.update { background: color-mix(in srgb,#92400e 22%,var(--surface)); color:#fde68a; border-color:#92400e; }
 :root[data-color-scheme="dark"] .chip.baixado,:root[data-color-scheme="dark"] .chip.delete,:root[data-color-scheme="dark"] .chip.desconto { background: color-mix(in srgb,#9f1239 22%,var(--surface)); color:#fecdd3; border-color:#9f1239; }
 :root[data-color-scheme="dark"] .skeleton { background: linear-gradient(110deg, var(--surface-soft) 8%, var(--surface) 18%, var(--surface-soft) 33%); background-size: 200% 100%; }
+
+/* ── Dashboard chart card (spans full row) ──────────────────────────────── */
+.kpi-chart-card {
+  grid-column: 1 / -1;
+}

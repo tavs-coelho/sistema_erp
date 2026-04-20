@@ -33,7 +33,7 @@ export default function LoginPage() {
     clearSessionCookies();
     setSessionCookies(data.role, username);
     toast("Login realizado com sucesso", "success");
-    window.location.href = "/";
+    window.location.href = data.must_change_password ? "/trocar-senha" : "/";
   };
 
   return (

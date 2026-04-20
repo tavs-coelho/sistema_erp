@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { DashboardChart } from "@/components/ui/dashboard-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { API_URL, authJson, clearSessionCookies } from "@/lib/auth";
@@ -153,6 +154,20 @@ export default function Home() {
           <p className="muted">Empenhos publicados</p>
           <p>Pagamentos publicados: <strong>{publicPayments?.total ?? "—"}</strong></p>
           <p className="muted">Registros internos de empenho/pagamento aparecem automaticamente no portal.</p>
+        </Card>
+
+        <Card className="kpi-chart-card">
+          <h2>Resumo financeiro</h2>
+          <p className="muted">Empenhado · Pago · Receita</p>
+          {loading ? (
+            <Skeleton style={{ height: 220, marginTop: 12 }} />
+          ) : (
+            <DashboardChart
+              empenhado={dashboard?.total_empenhado ?? 0}
+              pago={dashboard?.total_pago ?? 0}
+              receita={dashboard?.total_receita ?? 0}
+            />
+          )}
         </Card>
 
         <Card>

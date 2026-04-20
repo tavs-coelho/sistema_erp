@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 type PPA = { id: number; period_start: number; period_end: number; description: string; status: string };
@@ -18,8 +19,7 @@ function messageFrom(error: unknown) {
 }
 
 export default function OrcamentoPage() {
-  const [status, setStatus] = useState("");
-  const isError = status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha");
+  const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"ppa" | "ldo" | "loa">("ppa");
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
@@ -111,7 +111,7 @@ export default function OrcamentoPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      Promise.all([loadFiscalYears(), loadPPAs(), loadLDOs(), loadLOAs()]).catch((e) => setStatus(messageFrom(e)));
+      Promise.all([loadFiscalYears(), loadPPAs(), loadLDOs(), loadLOAs()]).catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
   }, []);
@@ -143,25 +143,25 @@ export default function OrcamentoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ period_start: Number(ppaStart), period_end: Number(ppaEnd), description: ppaDesc }),
       });
-      setStatus("PPA criado.");
+      toast("PPA criado.");
       await loadPPAs();
       setSelectedPpa(data.id);
       setPpaPrograms([]);
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const createProgram = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedPpa) return setStatus("Selecione um PPA.");
+    if (!selectedPpa) { toast("Selecione um PPA.", "error"); return; }
     try {
       await authJson(`/budget/ppas/${selectedPpa}/programs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: progCode, name: progName, objective: progObjective, estimated_amount: Number(progAmount) }),
       });
-      setStatus("Programa adicionado ao PPA.");
+      toast("Programa adicionado ao PPA.");
       await loadPPAPrograms(Number(selectedPpa));
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const approvePPA = async (id: number) => {
@@ -171,9 +171,9 @@ export default function OrcamentoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "aprovado" }),
       });
-      setStatus("PPA aprovado.");
+      toast("PPA aprovado.");
       await loadPPAs();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   // LDO actions
@@ -185,25 +185,25 @@ export default function OrcamentoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fiscal_year_id: Number(ldoFyId), description: ldoDesc }),
       });
-      setStatus("LDO criada.");
+      toast("LDO criada.");
       await loadLDOs();
       setSelectedLdo(data.id);
       setLdoGoals([]);
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const createGoal = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedLdo) return setStatus("Selecione uma LDO.");
+    if (!selectedLdo) { toast("Selecione uma LDO.", "error"); return; }
     try {
       await authJson(`/budget/ldos/${selectedLdo}/goals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: goalCode, description: goalDesc, category: goalCategory }),
       });
-      setStatus("Meta/diretriz adicionada.");
+      toast("Meta/diretriz adicionada.");
       await loadLDOGoals(Number(selectedLdo));
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const approveLDO = async (id: number) => {
@@ -213,9 +213,9 @@ export default function OrcamentoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "aprovado" }),
       });
-      setStatus("LDO aprovada.");
+      toast("LDO aprovada.");
       await loadLDOs();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   // LOA actions
@@ -232,16 +232,16 @@ export default function OrcamentoPage() {
           total_revenue: Number(loaRevenue),
         }),
       });
-      setStatus("LOA criada.");
+      toast("LOA criada.");
       await loadLOAs();
       setSelectedLoa(data.id);
       setLoaItems([]); setLoaSummary(null);
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const createItem = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedLoa) return setStatus("Selecione uma LOA.");
+    if (!selectedLoa) { toast("Selecione uma LOA.", "error"); return; }
     try {
       await authJson(`/budget/loas/${selectedLoa}/items`, {
         method: "POST",
@@ -256,10 +256,10 @@ export default function OrcamentoPage() {
           authorized_amount: Number(itemAmount),
         }),
       });
-      setStatus("Dotação adicionada à LOA.");
+      toast("Dotação adicionada à LOA.");
       await loadLOAItems(Number(selectedLoa));
       await loadLOASummary(Number(selectedLoa));
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const approveLOA = async (id: number) => {
@@ -269,9 +269,9 @@ export default function OrcamentoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "aprovado" }),
       });
-      setStatus("LOA aprovada.");
+      toast("LOA aprovada.");
       await loadLOAs();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   return (
@@ -279,9 +279,6 @@ export default function OrcamentoPage() {
       <h1>Planejamento Orçamentário</h1>
       <p className="muted">PPA · LDO · LOA — ciclo integrado de planejamento e execução orçamentária.</p>
 
-      {status && (
-        <p className={isError ? "notice error" : "notice"}><strong>{status}</strong></p>
-      )}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>

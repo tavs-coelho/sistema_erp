@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
@@ -18,8 +19,7 @@ function messageFrom(error: unknown) {
 }
 
 export default function ComprasPage() {
-  const [status, setStatus] = useState("");
-  const isError = status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha");
+  const { toast } = useToast();
 
   // Processos
   const [processes, setProcesses] = useState<ListResponse<Process> | null>(null);
@@ -94,7 +94,7 @@ export default function ComprasPage() {
     try {
       await Promise.all([loadProcesses(), loadContracts(), loadVendors(), loadExpiring()]);
     } catch (e) {
-      setStatus(messageFrom(e));
+      toast(messageFrom(e), "error");
     }
   };
 
@@ -108,7 +108,7 @@ export default function ComprasPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadProcesses().catch((e) => setStatus(messageFrom(e)));
+      loadProcesses().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,7 +116,7 @@ export default function ComprasPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadContracts().catch((e) => setStatus(messageFrom(e)));
+      loadContracts().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,18 +130,18 @@ export default function ComprasPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ number: procNumber, object_description: procDescription, status: "aberto" }),
       });
-      setStatus("Processo licitatório criado.");
+      toast("Processo licitatório criado.");
       setProcNumber(""); setProcDescription("");
       await loadProcesses();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const awardProcess = async (id: number) => {
     try {
       await authJson(`/procurement/processes/${id}/award`, { method: "POST" });
-      setStatus(`Processo ${id} homologado.`);
+      toast(`Processo ${id} homologado.`);
       await loadProcesses();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const createContract = async (e: FormEvent) => {
@@ -160,10 +160,10 @@ export default function ComprasPage() {
           status: "vigente",
         }),
       });
-      setStatus("Contrato criado.");
+      toast("Contrato criado.");
       setCtNumber("");
       await loadContracts();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const handleSelectContract = async (id: number | "") => {
@@ -174,27 +174,21 @@ export default function ComprasPage() {
 
   const addAddendumSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedContractId) return setStatus("Selecione um contrato.");
+    if (!selectedContractId) { toast("Selecione um contrato.", "error"); return; }
     try {
       const qs = new URLSearchParams({ description: addDescription, amount_delta: String(addAmountDelta) });
       await authJson(`/procurement/contracts/${selectedContractId}/addenda?${qs}`, { method: "POST" });
-      setStatus("Aditivo registrado.");
+      toast("Aditivo registrado.");
       setAddDescription(""); setAddAmountDelta(0);
       await loadAddenda(Number(selectedContractId));
       await loadContracts();
-    } catch (er) { setStatus(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
+    <main className="module-page">
       <h1>Módulo de Compras e Contratos</h1>
       <p className="muted">Processos licitatórios, contratos, aditivos e alertas de vencimento.</p>
-
-      {status && (
-        <p className={isError ? "notice error" : "notice"}>
-          <strong>{status}</strong>
-        </p>
-      )}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>
@@ -204,9 +198,9 @@ export default function ComprasPage() {
 
       {/* ─── KPI de contratos vencendo ─── */}
       {expiring.length > 0 && (
-        <div className="card" style={{ borderLeft: "4px solid #e09a00", background: "#fff8e6" }}>
+        <div className="card card-warn">
           <h2>⚠ Contratos vencendo em 90 dias ({expiring.length})</h2>
-          <ul style={{ marginLeft: 16, marginTop: 8 }}>
+          <ul className="list-indent">
             {expiring.map((c) => (
               <li key={c.id}>
                 <strong>{c.number}</strong> — vence em <strong>{c.end_date}</strong> · R$ {c.amount.toFixed(2)}
@@ -216,7 +210,7 @@ export default function ComprasPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+      <div className="auto-grid-lg">
 
         {/* ─── Novo processo ─── */}
         <section className="card">
@@ -297,9 +291,9 @@ export default function ComprasPage() {
           </form>
 
           {addenda.length > 0 && (
-            <div style={{ marginTop: 8 }}>
+            <div className="mt-2">
               <p className="muted">Aditivos do contrato selecionado:</p>
-              <ul style={{ marginLeft: 16 }}>
+              <ul className="list-indent">
                 {addenda.map((a) => (
                   <li key={a.id}>{a.description} · R$ {a.amount_delta >= 0 ? "+" : ""}{a.amount_delta.toFixed(2)}</li>
                 ))}
@@ -321,7 +315,7 @@ export default function ComprasPage() {
           <select value={procStatusFilter} onChange={(e) => setProcStatusFilter(e.target.value)}>
             {PROCESS_STATUSES.map((s) => <option key={s} value={s}>{s || "Todos os status"}</option>)}
           </select>
-          <button className="btn" onClick={() => { setProcPage(1); loadProcesses().catch((e) => setStatus(messageFrom(e))); }}>
+          <button className="btn" onClick={() => { setProcPage(1); loadProcesses().catch((e) => toast(messageFrom(e), "error")); }}>
             Filtrar
           </button>
         </div>
@@ -362,7 +356,7 @@ export default function ComprasPage() {
           <select value={contractStatusFilter} onChange={(e) => setContractStatusFilter(e.target.value)}>
             {CONTRACT_STATUSES.map((s) => <option key={s} value={s}>{s || "Todos os status"}</option>)}
           </select>
-          <button className="btn" onClick={() => { setContractPage(1); loadContracts().catch((e) => setStatus(messageFrom(e))); }}>
+          <button className="btn" onClick={() => { setContractPage(1); loadContracts().catch((e) => toast(messageFrom(e), "error")); }}>
             Filtrar
           </button>
         </div>

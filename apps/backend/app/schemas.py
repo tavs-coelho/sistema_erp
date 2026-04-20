@@ -1,7 +1,72 @@
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+import re
 
 from .models import RoleEnum
+
+_HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$")
+
+
+class BrandingOut(BaseModel):
+    id: int
+    subdomain: str | None = None
+    org_name: str
+    logo_url: str
+    primary_color: str
+    secondary_color: str
+    accent_color: str
+    favicon_url: str
+    app_title: str
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BrandingUpdate(BaseModel):
+    org_name: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    secondary_color: str | None = None
+    accent_color: str | None = None
+    favicon_url: str | None = None
+    app_title: str | None = None
+
+    @field_validator("primary_color", "secondary_color", "accent_color", mode="before")
+    @classmethod
+    def validate_hex_color(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not _HEX_COLOR_RE.match(v):
+            raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb). Recebido: {v!r}")
+        normalized = v.lower()
+        if len(normalized) == 4:
+            normalized = "#" + "".join(ch * 2 for ch in normalized[1:])
+        return normalized
+
+
+class TenantCreate(BaseModel):
+    subdomain: str
+    org_name: str = "Prefeitura Municipal"
+    primary_color: str = "#1d4ed8"
+    secondary_color: str = "#0f172a"
+    accent_color: str = "#0ea5e9"
+    app_title: str = "Sistema ERP Municipal"
+
+    @field_validator("subdomain")
+    @classmethod
+    def validate_subdomain(cls, v: str) -> str:
+        import re as _re
+        if not _re.match(r"^[a-z0-9]([a-z0-9\-]{0,62}[a-z0-9])?$", v):
+            raise ValueError("Subdomínio inválido. Use apenas letras minúsculas, números e hífens.")
+        return v.lower()
+
+
+class TenantOut(BaseModel):
+    id: int
+    subdomain: str | None = None
+    org_name: str
+    app_title: str
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 class TokenResponse(BaseModel):

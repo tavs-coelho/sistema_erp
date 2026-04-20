@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson, authDownload } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -73,8 +74,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function ConciliacaoPage() {
   const [tab, setTab] = useState<"dashboard" | "lancamentos" | "contas">("dashboard");
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
 
   return (
     <main className="module-page" style={{ padding: 16 }}>
@@ -83,31 +83,26 @@ export default function ConciliacaoPage() {
         Cruzamento entre extratos bancários e os pagamentos/receitas registrados no ERP.
       </p>
 
-      {msg && (
-        <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>
-          {msg}
-        </div>
-      )}
-
       <nav style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {(["dashboard", "lancamentos", "contas"] as const).map((t) => (
           <button key={t} className={`tab-btn ${tab === t ? "active" : ""}`}
-            onClick={() => { setTab(t); setMsg(""); }}>
+            onClick={() => { setTab(t); }}>
             {t === "dashboard" ? "Dashboard" : t === "lancamentos" ? "Lançamentos / Extrato" : "Contas Bancárias"}
           </button>
         ))}
       </nav>
 
-      {tab === "dashboard" && <DashboardTab setMsg={setMsg} />}
-      {tab === "lancamentos" && <LancamentosTab setMsg={setMsg} />}
-      {tab === "contas" && <ContasTab setMsg={setMsg} />}
+      {tab === "dashboard" && <DashboardTab />}
+      {tab === "lancamentos" && <LancamentosTab />}
+      {tab === "contas" && <ContasTab />}
     </main>
   );
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-function DashboardTab({ setMsg }: { setMsg: (m: string) => void }) {
+function DashboardTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<Dashboard | null>(null);
   const [contaId, setContaId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -119,8 +114,7 @@ function DashboardTab({ setMsg }: { setMsg: (m: string) => void }) {
     try {
       const qs = contaId ? `?conta_id=${contaId}` : "";
       setData(await authJson(`/banco/dashboard${qs}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -130,9 +124,9 @@ function DashboardTab({ setMsg }: { setMsg: (m: string) => void }) {
       const qs = contaId ? `?conta_id=${contaId}` : "";
       const res = await authJson(`/banco/conciliacao/auto${qs}`, { method: "POST" });
       setAutoResult(res);
-      setMsg("✅ Conciliação automática concluída.");
+      toast("✅ Conciliação automática concluída.");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setAutoLoading(false);
   };
 
@@ -228,7 +222,8 @@ function DashboardTab({ setMsg }: { setMsg: (m: string) => void }) {
 
 // ── Lançamentos ───────────────────────────────────────────────────────────────
 
-function LancamentosTab({ setMsg }: { setMsg: (m: string) => void }) {
+function LancamentosTab() {
+  const { toast } = useToast();
   const [items, setItems] = useState<Lancamento[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -255,8 +250,7 @@ function LancamentosTab({ setMsg }: { setMsg: (m: string) => void }) {
       const d = await authJson(url);
       setItems(d.items);
       setTotal(d.total);
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -266,7 +260,7 @@ function LancamentosTab({ setMsg }: { setMsg: (m: string) => void }) {
       if (filterStatus) url += `&status=${filterStatus}`;
       if (filterConta) url += `&conta_id=${filterConta}`;
       await authDownload(url, "conciliacao.csv");
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
   const handleCriar = async () => {
@@ -280,19 +274,19 @@ function LancamentosTab({ setMsg }: { setMsg: (m: string) => void }) {
         documento_ref: form.documento_ref,
       }).toString();
       await authJson(`/banco/lancamentos?${qs}`, { method: "POST" });
-      setMsg("✅ Lançamento criado.");
+      toast("✅ Lançamento criado.");
       setShowForm(false);
       setForm({ conta_id: "", data_lancamento: "", tipo: "debito", valor: "", descricao: "", documento_ref: "" });
       load(1);
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleIgnorar = async (id: number) => {
     try {
       await authJson(`/banco/lancamentos/${id}/ignorar?obs=Ignorado pelo usuário`, { method: "PATCH" });
-      setMsg("✅ Lançamento ignorado.");
+      toast("✅ Lançamento ignorado.");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(1); }, [filterStatus, filterTipo, filterConta]);
@@ -430,7 +424,8 @@ function LancamentosTab({ setMsg }: { setMsg: (m: string) => void }) {
 
 // ── Contas ────────────────────────────────────────────────────────────────────
 
-function ContasTab({ setMsg }: { setMsg: (m: string) => void }) {
+function ContasTab() {
+  const { toast } = useToast();
   const [contas, setContas] = useState<ContaBancaria[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -444,8 +439,7 @@ function ContasTab({ setMsg }: { setMsg: (m: string) => void }) {
     try {
       const d = await authJson("/banco/contas?size=50");
       setContas(d.items);
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -461,17 +455,17 @@ function ContasTab({ setMsg }: { setMsg: (m: string) => void }) {
         data_saldo_inicial: form.data_saldo_inicial,
       }).toString();
       await authJson(`/banco/contas?${qs}`, { method: "POST" });
-      setMsg("✅ Conta criada.");
+      toast("✅ Conta criada.");
       setShowForm(false);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const toggleAtiva = async (c: ContaBancaria) => {
     try {
       await authJson(`/banco/contas/${c.id}?ativa=${!c.ativa}`, { method: "PATCH" });
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, []);

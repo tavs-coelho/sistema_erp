@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { useToast } from "@/components/ui/toast";
 import { authDownload, authJson, readCookie } from "@/lib/auth";
 
+type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
 type Department = { id: number; name: string };
 type Employee = { id: number; name: string; cpf: string; job_title: string; employment_type: string; base_salary: number; department_id: number };
 type PayrollEvent = { id: number; employee_id: number; month: string; kind: string; description: string; value: number };
@@ -21,7 +23,7 @@ function messageFrom(error: unknown) {
 
 export default function RhPage() {
   const [role] = useState(() => readCookie("role"));
-  const [status, setStatus] = useState("");
+  const { toast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [events, setEvents] = useState<ListResponse<PayrollEvent> | null>(null);
@@ -35,7 +37,7 @@ export default function RhPage() {
   const [feriasFim, setFeriasFim] = useState("");
   const [feriasFracao, setFeriasFracao] = useState(1);
 
-("Servidor RH Demo");
+  const [employeeName, setEmployeeName] = useState("Servidor RH Demo");
   const [employeeCpf, setEmployeeCpf] = useState("999.888.777-66");
   const [employeeJobTitle, setEmployeeJobTitle] = useState("Analista Administrativo");
   const [employeeType, setEmployeeType] = useState("Efetivo");
@@ -92,7 +94,7 @@ export default function RhPage() {
     try {
       await Promise.all([loadDepartments(), loadEmployees(), loadEvents(), loadPayslips(), loadFerias()]);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Falha ao carregar dados de RH");
+      toast(error instanceof Error ? error.message : "Falha ao carregar dados de RH", "error");
     }
   };
 
@@ -106,7 +108,7 @@ export default function RhPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadEmployees().catch((e) => setStatus(messageFrom(e)));
+      loadEmployees().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +116,7 @@ export default function RhPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadEvents().catch((e) => setStatus(messageFrom(e)));
+      loadEvents().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,7 +124,7 @@ export default function RhPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadPayslips().catch((e) => setStatus(messageFrom(e)));
+      loadPayslips().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -143,10 +145,10 @@ export default function RhPage() {
           department_id: Number(employeeDepartment),
         }),
       });
-      setStatus("Servidor cadastrado com sucesso.");
+      toast("Servidor cadastrado com sucesso.");
       await loadEmployees();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao cadastrar servidor");
+      toast(error instanceof Error ? error.message : "Erro ao cadastrar servidor", "error");
     }
   };
 
@@ -164,10 +166,10 @@ export default function RhPage() {
           value: Number(eventValue),
         }),
       });
-      setStatus("Evento de folha criado.");
+      toast("Evento de folha criado.");
       await loadEvents();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao criar evento");
+      toast(error instanceof Error ? error.message : "Erro ao criar evento", "error");
     }
   };
 
@@ -178,11 +180,11 @@ export default function RhPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month: eventMonth }),
       });
-      setStatus(`${data.message}. Holerites criados: ${data.created}`);
+      toast(`${data.message}. Holerites criados: ${data.created}`);
       setPayslipFilterMonth(eventMonth);
       await loadPayslips();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Erro ao calcular folha");
+      toast(error instanceof Error ? error.message : "Erro ao calcular folha", "error");
     }
   };
 
@@ -190,8 +192,7 @@ export default function RhPage() {
     <main className="module-page">
       <h1>Módulo RH e Folha</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong> | <a href="/portal-servidor">Portal do servidor</a></p>
-      {status && <p className={status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{status}</strong></p>}
-      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+      <div className="auto-grid">
         <section className="card">
           <h2>1) Cadastrar servidor</h2>
           <form onSubmit={createEmployee} className="section-stack">
@@ -222,7 +223,7 @@ export default function RhPage() {
             <label className="field-group">Valor<input type="number" value={eventValue} onChange={(e) => setEventValue(Number(e.target.value))} placeholder="Valor" required /></label>
             <button className="btn btn-primary" type="submit">Salvar evento</button>
           </form>
-          <button className="btn" style={{ marginTop: 8 }} onClick={calculatePayroll}>3) Calcular folha mensal</button>
+          <button className="btn mt-2" onClick={calculatePayroll}>3) Calcular folha mensal</button>
         </section>
       </div>
 
@@ -234,7 +235,7 @@ export default function RhPage() {
             onChange={(e) => setEmployeeSearch(e.target.value)}
             placeholder="Buscar por nome"
           />
-          <button className="btn" onClick={() => { setEmployeePage(1); loadEmployees().catch((e) => setStatus(messageFrom(e))); }}>Buscar</button>
+          <button className="btn" onClick={() => { setEmployeePage(1); loadEmployees().catch((e) => toast(messageFrom(e), "error")); }}>Buscar</button>
         </div>
         <table>
           <thead><tr><th>Nome</th><th>CPF</th><th>Cargo</th><th>Salário</th></tr></thead>
@@ -259,7 +260,7 @@ export default function RhPage() {
         <h2>Eventos de folha (filtro e paginação)</h2>
         <div className="toolbar">
           <input value={eventFilterMonth} onChange={(e) => setEventFilterMonth(e.target.value)} placeholder="Mês (YYYY-MM)" />
-          <button className="btn" onClick={() => { setEventPage(1); loadEvents().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setEventPage(1); loadEvents().catch((e) => toast(messageFrom(e), "error")); }}>Filtrar</button>
         </div>
         <table>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
@@ -286,7 +287,7 @@ export default function RhPage() {
         <h2>Resultados de folha (holerites gerados)</h2>
         <div className="toolbar">
           <input value={payslipFilterMonth} onChange={(e) => setPayslipFilterMonth(e.target.value)} placeholder="Mês (YYYY-MM)" />
-          <button className="btn" onClick={() => { setPayslipPage(1); loadPayslips().catch((e) => setStatus(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setPayslipPage(1); loadPayslips().catch((e) => toast(messageFrom(e), "error")); }}>Filtrar</button>
         </div>
         <table>
           <thead><tr><th>ID</th><th>Servidor</th><th>Mês</th><th>Bruto</th><th>Descontos</th><th>Líquido</th><th>Ação</th></tr></thead>
@@ -296,7 +297,7 @@ export default function RhPage() {
                 <tr key={row.id}>
                   <td>{row.id}</td><td>{row.employee_id}</td><td>{row.month}</td>
                   <td>R$ {row.gross_amount.toFixed(2)}</td><td>R$ {row.deductions.toFixed(2)}</td><td>R$ {row.net_amount.toFixed(2)}</td>
-                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${row.id}/pdf`, `holerite-${row.id}.pdf`).catch((e) => toast(messageFrom(e), "error"))}>Baixar PDF</button></td>
                 </tr>
               ))
             ) : (
@@ -328,10 +329,10 @@ export default function RhPage() {
                   fracao: feriasFracao,
                 }),
               });
-              setStatus("Férias programadas com sucesso.");
+              toast("Férias programadas com sucesso.");
               await loadFerias();
             } catch (error) {
-              setStatus(messageFrom(error));
+              toast(messageFrom(error), "error");
             }
           }} className="form-row">
             <label>Servidor ID
@@ -354,7 +355,7 @@ export default function RhPage() {
               </select>
             </label>
             <button className="btn" type="submit">Programar</button>
-            <button className="btn" type="button" onClick={() => loadFerias().catch((e) => setStatus(messageFrom(e)))}>
+            <button className="btn" type="button" onClick={() => loadFerias().catch((e) => toast(messageFrom(e), "error"))}>
               Atualizar
             </button>
           </form>
@@ -390,7 +391,7 @@ export default function RhPage() {
                           try {
                             await authJson(`/hr/ferias/${f.id}`, { method: "PATCH", body: JSON.stringify({ status: "aprovada" }) });
                             await loadFerias();
-                          } catch (error) { setStatus(messageFrom(error)); }
+                          } catch (error) { toast(messageFrom(error), "error"); }
                         }}>Aprovar</button>
                         {" "}
                         <button className="btn btn-sm btn-danger" onClick={async () => {
@@ -398,7 +399,7 @@ export default function RhPage() {
                           try {
                             await authJson(`/hr/ferias/${f.id}`, { method: "DELETE" });
                             await loadFerias();
-                          } catch (error) { setStatus(messageFrom(error)); }
+                          } catch (error) { toast(messageFrom(error), "error"); }
                         }}>Cancelar</button>
                       </>
                     )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ const anoAtual = new Date().getFullYear();
 
 export default function SiconfiSiopPage() {
   const [tab, setTab] = useState<"dashboard" | "config" | "finbra" | "rreo" | "rgf" | "siop" | "exportar" | "historico" | "xml">("dashboard");
-  const [msg, setMsg] = useState("");
+  const { toast } = useToast();
   const [exercicio, setExercicio] = useState(String(anoAtual));
 
   // Dashboard
@@ -132,7 +133,7 @@ export default function SiconfiSiopPage() {
       setDash(d);
       const v = await authJson(`/siconfi/validar?exercicio=${exercicio}`);
       setValidacao(v);
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadConfig() {
@@ -151,7 +152,7 @@ export default function SiconfiSiopPage() {
         setCfgRespCargo(d.responsavel_cargo);
         setCfgRespCpf(d.responsavel_cpf);
       }
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadHistorico() {
@@ -161,7 +162,7 @@ export default function SiconfiSiopPage() {
       if (histFiltroTipo) params.set("tipo", histFiltroTipo);
       const d = await authJson(`/siconfi/exportacoes?${params}`);
       setHistorico(d);
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, exercicio]);
@@ -172,7 +173,6 @@ export default function SiconfiSiopPage() {
 
   async function saveConfig(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/siconfi/config", {
         method: "POST",
@@ -182,46 +182,46 @@ export default function SiconfiSiopPage() {
           responsavel_nome: cfgRespNome, responsavel_cargo: cfgRespCargo, responsavel_cpf: cfgRespCpf,
         }),
       });
-      setMsg("Configuração salva com sucesso.");
+      toast("Configuração salva com sucesso.");
       loadConfig();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadFinbra() {
-    setMsg(""); setFinbraData(null);
+    setFinbraData(null);
     try { setFinbraData(await authJson(`/siconfi/finbra?exercicio=${exercicio}`)); }
-    catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadRreo() {
-    setMsg(""); setRreoData(null);
+    setRreoData(null);
     try { setRreoData(await authJson(`/siconfi/rreo?exercicio=${exercicio}&bimestre=${rreoBimestre}`)); }
-    catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadRgf() {
-    setMsg(""); setRgfData(null);
+    setRgfData(null);
     try { setRgfData(await authJson(`/siconfi/rgf?exercicio=${exercicio}&quadrimestre=${rgfQuad}`)); }
-    catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadSiop() {
-    setMsg(""); setSiopData(null);
+    setSiopData(null);
     try { setSiopData(await authJson(`/siconfi/siop-programas?exercicio=${exercicio}`)); }
-    catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function exportar(e: FormEvent) {
     e.preventDefault();
-    setMsg(""); setExpResult(null);
+    setExpResult(null);
     try {
       const body: Record<string, unknown> = { tipo: expTipo, exercicio: Number(exercicio) };
       if (expPeriodo) body.periodo = expPeriodo;
       const d = await authJson("/siconfi/exportar", { method: "POST", body: JSON.stringify(body) });
       setExpResult(d);
-      setMsg(`Exportação gerada: ID ${d.id} · status ${d.status}`);
+      toast(`Exportação gerada: ID ${d.id} · status ${d.status}`);
       if (tab === "historico") loadHistorico();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -241,15 +241,15 @@ export default function SiconfiSiopPage() {
 
   async function gerarXml(e: React.FormEvent) {
     e.preventDefault();
-    setMsg(""); setXmlResult(null); setXmlLoading(true);
+    setXmlResult(null); setXmlLoading(true);
     try {
       const params = new URLSearchParams({ exercicio });
       if (xmlTipo === "rreo") params.set("bimestre", xmlBimestre);
       if (xmlTipo === "rgf") params.set("quadrimestre", xmlQuad);
       const d = await authJson(`/siconfi/xml/${xmlTipo}?${params}`);
       setXmlResult(d);
-      setMsg(d.valido ? "✓ XML válido — pronto para export." : `⚠ XML gerado com ${d.erros_xsd?.length ?? 0} erro(s)`);
-    } catch (err) { setMsg("Erro: " + messageFrom(err)); }
+      toast(d.valido ? "✓ XML válido — pronto para export." : `⚠ XML gerado com ${d.erros_xsd?.length ?? 0} erro(s)`, d.valido ? undefined : "error");
+    } catch (err) { toast("Erro: " + messageFrom(err), "error"); }
     finally { setXmlLoading(false); }
   }
 
@@ -269,7 +269,7 @@ export default function SiconfiSiopPage() {
       if (xmlHistValido) params.set("valido", xmlHistValido);
       const d = await authJson(`/siconfi/xml/historico?${params}`);
       setXmlHistorico(d);
-    } catch (err) { setMsg("Erro: " + messageFrom(err)); }
+    } catch (err) { toast("Erro: " + messageFrom(err), "error"); }
   }
 
   useEffect(() => { if (tab === "xml") loadXmlHistorico(); }, [tab, xmlHistPage, xmlHistFiltro, xmlHistValido, exercicio]);
@@ -301,7 +301,6 @@ export default function SiconfiSiopPage() {
           className="form-input" style={{ width: 110 }} />
       </div>
 
-      {msg && <div className="message">{msg}</div>}
 
       {/* Tabs */}
       <div className="tabs">

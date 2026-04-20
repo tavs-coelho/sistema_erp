@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson, authDownload, readCookie } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -71,8 +72,7 @@ const CHIP: Record<string, string> = { entrada: "pago", saida: "pendente" };
 
 export default function AlmoxarifadoPage() {
   const [role] = useState(() => readCookie("role"));
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "itens" | "movimentacoes" | "historico" | "recebimentos" | "requisicoes">("dashboard");
 
   const canWrite = role === "admin" || role === "procurement";
@@ -91,25 +91,23 @@ export default function AlmoxarifadoPage() {
       <h1>Almoxarifado</h1>
       <p className="muted">Controle de estoque de materiais e suprimentos.</p>
 
-      {msg && <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>{msg}</div>}
-
       <AlertaBanner />
 
       <nav style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {TABS.map((t) => (
           <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`}
-            onClick={() => { setTab(t.key); setMsg(""); }}>
+            onClick={() => { setTab(t.key); }}>
             {t.label}
           </button>
         ))}
       </nav>
 
       {tab === "dashboard" && <DashboardTab />}
-      {tab === "itens" && <ItensTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "movimentacoes" && <MovimentacaoTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "recebimentos" && <RecebimentosTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "requisicoes" && <RequisicaoTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "historico" && <HistoricoTab setMsg={setMsg} />}
+      {tab === "itens" && <ItensTab canWrite={canWrite} />}
+      {tab === "movimentacoes" && <MovimentacaoTab canWrite={canWrite} />}
+      {tab === "recebimentos" && <RecebimentosTab canWrite={canWrite} />}
+      {tab === "requisicoes" && <RequisicaoTab canWrite={canWrite} />}
+      {tab === "historico" && <HistoricoTab />}
     </main>
   );
 }
@@ -153,7 +151,8 @@ function DashboardTab() {
 
 // ── Itens ─────────────────────────────────────────────────────────────────────
 
-function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function ItensTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [itens, setItens] = useState<Paged<Item> | null>(null);
   const [search, setSearch] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -177,7 +176,7 @@ function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite:
       if (categoria) qs.set("categoria", categoria);
       if (apenasAbaixo) qs.set("abaixo_minimo", "true");
       setItens(await authJson(`/almoxarifado/itens?${qs}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, [page, categoria, apenasAbaixo]);
@@ -189,8 +188,8 @@ function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite:
         codigo: fCodigo, descricao: fDescricao, unidade: fUnidade, categoria: fCategoria,
         localizacao: fLocalizacao, estoque_minimo: +fEstoqueMin, valor_unitario: +fValorUnit,
       })});
-      setMsg("Item cadastrado."); setFCodigo(""); setFDescricao(""); setFLocalizacao(""); load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+      toast("Item cadastrado."); setFCodigo(""); setFDescricao(""); setFLocalizacao(""); load();
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleUpdate = async (ev: FormEvent) => {
@@ -202,15 +201,15 @@ function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite:
         localizacao: editing.localizacao, estoque_minimo: editing.estoque_minimo,
         valor_unitario: editing.valor_unitario, ativo: editing.ativo,
       })});
-      setMsg("Item atualizado."); setEditing(null); load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+      toast("Item atualizado."); setEditing(null); load();
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleSaldo = async (id: number) => {
     try {
       const s: Saldo = await authJson(`/almoxarifado/saldo/${id}`);
       alert(`Saldo: ${s.estoque_atual} ${s.unidade}\nValor em estoque: ${fmtBRL(s.valor_estoque)}\n${s.abaixo_minimo ? "⚠️ ABAIXO DO MÍNIMO" : "✅ Estoque OK"}`);
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (
@@ -227,7 +226,7 @@ function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite:
           Só abaixo do mínimo
         </label>
         <button className="btn" onClick={load}>Buscar</button>
-        <button className="btn" onClick={() => authDownload("/almoxarifado/itens?export=csv", "itens_almoxarifado.csv").catch(() => setMsg("Erro ao exportar"))}>
+        <button className="btn" onClick={() => authDownload("/almoxarifado/itens?export=csv", "itens_almoxarifado.csv").catch(() => toast("Erro ao exportar", "error"))}>
           Exportar CSV
         </button>
       </div>
@@ -322,7 +321,8 @@ function ItensTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite:
 
 // ── Entrada / Saída ───────────────────────────────────────────────────────────
 
-function MovimentacaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function MovimentacaoTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [tipo, setTipo] = useState<"entrada" | "saida">("entrada");
   const [itemId, setItemId] = useState("");
   const [quantidade, setQuantidade] = useState("");
@@ -351,10 +351,10 @@ function MovimentacaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
           documento_ref: docRef, observacoes: obs,
         }),
       });
-      setMsg(`${tipo === "entrada" ? "Entrada" : "Saída"} registrada. Saldo atual: ${r.saldo_pos}`);
+      toast(`${tipo === "entrada" ? "Entrada" : "Saída"} registrada. Saldo atual: ${r.saldo_pos}`);
       setQuantidade(""); setDocRef(""); setObs("");
       loadSaldo(itemId);
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   if (!canWrite) return <p className="muted">Acesso restrito a administradores e compras.</p>;
@@ -402,7 +402,8 @@ function MovimentacaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
 
 // ── Histórico ─────────────────────────────────────────────────────────────────
 
-function HistoricoTab({ setMsg }: { setMsg: (m: string) => void }) {
+function HistoricoTab() {
+  const { toast } = useToast();
   const [movs, setMovs] = useState<Paged<Movimentacao> | null>(null);
   const [fItemId, setFItemId] = useState("");
   const [fTipo, setFTipo] = useState("");
@@ -424,7 +425,7 @@ function HistoricoTab({ setMsg }: { setMsg: (m: string) => void }) {
   const load = async () => {
     try {
       setMovs(await authJson(`/almoxarifado/movimentacoes?${buildQS()}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const exportCSV = () => {
@@ -435,7 +436,7 @@ function HistoricoTab({ setMsg }: { setMsg: (m: string) => void }) {
     if (fInicio) p.set("data_inicio", fInicio);
     if (fFim) p.set("data_fim", fFim);
     p.set("export", "csv");
-    authDownload(`/almoxarifado/movimentacoes?${p.toString()}`, "movimentacoes.csv").catch(() => setMsg("Erro ao exportar"));
+    authDownload(`/almoxarifado/movimentacoes?${p.toString()}`, "movimentacoes.csv").catch(() => toast("Erro ao exportar", "error"));
   };
 
   useEffect(() => { load(); }, [page]);
@@ -499,7 +500,8 @@ const STATUS_CHIP: Record<string, string> = {
   recusado: "baixado",
 };
 
-function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function RecebimentosTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [recs, setRecs] = useState<Paged<Recebimento> | null>(null);
   const [fProcesso, setFProcesso] = useState("");
   const [fContrato, setFContrato] = useState("");
@@ -534,7 +536,7 @@ function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
   const load = async () => {
     try {
       setRecs(await authJson(`/almoxarifado/recebimentos?${buildQS()}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, [page]);
@@ -562,21 +564,21 @@ function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
           })),
         }),
       });
-      setMsg("Recebimento registrado (pendente de confirmação).");
+      toast("Recebimento registrado (pendente de confirmação).");
       setCreating(false);
       setFProcId(""); setFContratoId(""); setFNF(""); setFObs("");
       setFItens([{ item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" }]);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleConfirmar = async (id: number) => {
     if (!confirm(`Confirmar recebimento #${id}?\nIsso criará entradas de estoque para cada item.`)) return;
     try {
       await authJson(`/almoxarifado/recebimentos/${id}/confirmar`, { method: "POST" });
-      setMsg(`Recebimento #${id} confirmado — estoques atualizados.`);
+      toast(`Recebimento #${id} confirmado — estoques atualizados.`);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleRecusar = async (id: number) => {
@@ -584,9 +586,9 @@ function RecebimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; ca
     if (motivo === null) return;
     try {
       await authJson(`/almoxarifado/recebimentos/${id}/recusar?motivo=${encodeURIComponent(motivo)}`, { method: "POST" });
-      setMsg(`Recebimento #${id} recusado.`);
+      toast(`Recebimento #${id} recusado.`);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (
@@ -741,7 +743,8 @@ const ALERTA_STATUS_CHIP: Record<string, string> = {
   resolvido: "baixado",
 };
 
-function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function RequisicaoTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [reqs, setReqs] = useState<Paged<RequisicaoCompra> | null>(null);
   const [alertas, setAlertas] = useState<Paged<Alerta> | null>(null);
   const [tabInner, setTabInner] = useState<"alertas" | "requisicoes">("alertas");
@@ -763,7 +766,7 @@ function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canW
     try {
       const qs = new URLSearchParams({ page: "1", size: "50", status: "aberto" }).toString();
       setAlertas(await authJson(`/almoxarifado/alertas?${qs}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const loadReqs = async () => {
@@ -772,7 +775,7 @@ function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canW
       if (fStatus) p.set("status", fStatus);
       if (fItemId) p.set("item_id", fItemId);
       setReqs(await authJson(`/almoxarifado/requisicoes?${p}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { loadAlertas(); loadReqs(); }, [page]);
@@ -790,28 +793,28 @@ function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canW
           justificativa: fJustif,
         }),
       });
-      setMsg("Requisição criada com sucesso.");
+      toast("Requisição criada com sucesso.");
       setCreating(false);
       setFItemReq(""); setFDeptId(""); setFAlertaId(""); setFQtd(""); setFJustif("");
       loadReqs(); loadAlertas();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleAprovar = async (id: number) => {
     try {
       await authJson(`/almoxarifado/requisicoes/${id}/aprovar`, { method: "POST" });
-      setMsg(`Requisição #${id} aprovada.`);
+      toast(`Requisição #${id} aprovada.`);
       loadReqs();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleCancelar = async (id: number) => {
     if (!confirm(`Cancelar requisição #${id}?`)) return;
     try {
       await authJson(`/almoxarifado/requisicoes/${id}/cancelar`, { method: "POST" });
-      setMsg(`Requisição #${id} cancelada.`);
+      toast(`Requisição #${id} cancelada.`);
       loadReqs(); loadAlertas();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleVincular = async (id: number) => {
@@ -819,19 +822,19 @@ function RequisicaoTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canW
     try {
       await authJson(`/almoxarifado/requisicoes/${id}/vincular-processo`,
         { method: "POST", body: JSON.stringify({ processo_id: +fProcId }) });
-      setMsg(`Requisição #${id} vinculada ao processo ${fProcId}.`);
+      toast(`Requisição #${id} vinculada ao processo ${fProcId}.`);
       setLinkingReqId(null); setFProcId("");
       loadReqs(); loadAlertas();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleResolverAlerta = async (id: number) => {
     if (!confirm(`Marcar alerta #${id} como resolvido manualmente?`)) return;
     try {
       await authJson(`/almoxarifado/alertas/${id}/resolver`, { method: "POST" });
-      setMsg(`Alerta #${id} resolvido.`);
+      toast(`Alerta #${id} resolvido.`);
       loadAlertas();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (

@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { authJson, authDownload } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/cn";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -42,8 +45,6 @@ const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice
 
 export default function RelatoriosPage() {
   const [tab, setTab] = useState<"veiculo" | "departamento">("veiculo");
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const TABS = [
     { key: "veiculo", label: "Custo por Veículo" },
@@ -51,36 +52,44 @@ export default function RelatoriosPage() {
   ] as const;
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
-      <h1>Relatórios Operacionais</h1>
-      <p className="muted">
-        Custos consolidados de frota cruzando abastecimentos, manutenções e peças do almoxarifado.
-      </p>
+    <main className="module-page">
+      <div>
+        <h1>Relatórios Operacionais</h1>
+        <p className="muted">
+          Custos consolidados de frota cruzando abastecimentos, manutenções e peças do almoxarifado.
+        </p>
+      </div>
 
-      {msg && (
-        <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>
-          {msg}
-        </div>
-      )}
-
-      <nav style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <nav className="tab-strip">
         {TABS.map((t) => (
-          <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`}
-            onClick={() => { setTab(t.key); setMsg(""); }}>
+          <button
+            key={t.key}
+            className={cn("tab-btn", tab === t.key && "active")}
+            onClick={() => { setTab(t.key); }}
+          >
             {t.label}
           </button>
         ))}
+        <Button
+          className="btn-export no-print"
+          style={{ marginLeft: "auto" }}
+          onClick={() => window.print()}
+          title="Salvar como PDF ou imprimir"
+        >
+          🖨️ Imprimir / PDF
+        </Button>
       </nav>
 
-      {tab === "veiculo" && <CustoPorVeiculoTab setMsg={setMsg} />}
-      {tab === "departamento" && <CustoPorDepartamentoTab setMsg={setMsg} />}
+      {tab === "veiculo" && <CustoPorVeiculoTab />}
+      {tab === "departamento" && <CustoPorDepartamentoTab />}
     </main>
   );
 }
 
 // ── Custo por Veículo ─────────────────────────────────────────────────────────
 
-function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
+function CustoPorVeiculoTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RelResponse<VeiculoRow> | null>(null);
   const [loading, setLoading] = useState(false);
   const [fInicio, setFInicio] = useState(firstOfYear);
@@ -101,8 +110,7 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/relatorios/frota/custo-por-veiculo?${buildParams()}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -112,10 +120,10 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
         `/relatorios/frota/custo-por-veiculo?${buildParams()}&export=csv`,
         `custo_por_veiculo_${fInicio || "inicio"}_${fFim || "fim"}.csv`
       );
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];
   const totais = data?.totais;
@@ -123,33 +131,31 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
   return (
     <section className="section-stack">
       <h2>Custo por Veículo</h2>
-      <p className="muted" style={{ fontSize: 13 }}>
+      <p className="muted text-sm">
         Composição: abastecimento + serviço de manutenção + peças/insumos do almoxarifado.
       </p>
 
-      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-          De <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)}
-            style={{ width: 140 }} />
+      <div className="toolbar">
+        <label className="field-group" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          De <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)} style={{ width: 140 }} />
         </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-          Até <input type="date" value={fFim} onChange={(e) => setFim(e.target.value)}
-            style={{ width: 140 }} />
+        <label className="field-group" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          Até <input type="date" value={fFim} onChange={(e) => setFim(e.target.value)} style={{ width: 140 }} />
         </label>
         <input placeholder="ID Veículo" value={fVeiculoId} style={{ width: 100 }}
           onChange={(e) => setFVeiculoId(e.target.value)} />
         <input placeholder="ID Departamento" value={fDeptId} style={{ width: 120 }}
           onChange={(e) => setFDeptId(e.target.value)} />
-        <button className="btn" onClick={load} disabled={loading}>
+        <Button onClick={load} disabled={loading}>
           {loading ? "Carregando..." : "Gerar"}
-        </button>
-        <button className="btn" style={{ background: "#28a745", color: "white" }} onClick={exportCsv}>
+        </Button>
+        <Button className="btn-export" onClick={exportCsv}>
           ⬇ CSV
-        </button>
+        </Button>
       </div>
 
       {totais && (
-        <div className="kpi-grid" style={{ marginBottom: 12 }}>
+        <div className="kpi-grid">
           <div className="kpi-card">
             <span className="kpi-label">Total Geral</span>
             <span className="kpi-value">{fmtBRL(totais.total_geral)}</span>
@@ -177,29 +183,27 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
         <thead>
           <tr>
             <th>Placa</th><th>Descrição</th><th>Tipo</th><th>Dept</th>
-            <th>Abast. (qtd)</th><th>Litros</th><th>Custo Abast.</th>
-            <th>Manut. (qtd)</th><th>Custo Serviço</th>
-            <th>Peças (qtd)</th><th>Custo Peças</th>
-            <th><strong>Custo Total</strong></th>
+            <th className="text-right">Abast.</th><th className="text-right">Litros</th><th className="text-right">Custo Abast.</th>
+            <th className="text-right">Manut.</th><th className="text-right">Custo Serviço</th>
+            <th className="text-right">Peças</th><th className="text-right">Custo Peças</th>
+            <th className="text-right"><strong>Custo Total</strong></th>
           </tr>
         </thead>
         <tbody>
           {rows.length ? rows.map((r) => (
             <tr key={r.veiculo_id}>
               <td><strong>{r.placa}</strong></td>
-              <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{r.descricao}</td>
+              <td className="td-truncate">{r.descricao}</td>
               <td>{r.tipo}</td>
               <td>{r.departamento_id || "—"}</td>
-              <td style={{ textAlign: "right" }}>{r.n_abastecimentos}</td>
-              <td style={{ textAlign: "right" }}>{r.total_litros.toLocaleString("pt-BR")} L</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_abastecimento)}</td>
-              <td style={{ textAlign: "right" }}>{r.n_manutencoes}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_manutencao_servico)}</td>
-              <td style={{ textAlign: "right" }}>{r.n_pecas_almoxarifado}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_pecas_almoxarifado)}</td>
-              <td style={{ textAlign: "right" }}>
-                <strong>{fmtBRL(r.custo_total)}</strong>
-              </td>
+              <td className="text-right">{r.n_abastecimentos}</td>
+              <td className="text-right">{r.total_litros.toLocaleString("pt-BR")} L</td>
+              <td className="text-right">{fmtBRL(r.custo_abastecimento)}</td>
+              <td className="text-right">{r.n_manutencoes}</td>
+              <td className="text-right">{fmtBRL(r.custo_manutencao_servico)}</td>
+              <td className="text-right">{r.n_pecas_almoxarifado}</td>
+              <td className="text-right">{fmtBRL(r.custo_pecas_almoxarifado)}</td>
+              <td className="text-right"><strong>{fmtBRL(r.custo_total)}</strong></td>
             </tr>
           )) : (
             <tr><td colSpan={12} className="empty-state">Nenhum dado encontrado para o período.</td></tr>
@@ -207,14 +211,14 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
         </tbody>
         {rows.length > 0 && totais && (
           <tfoot>
-            <tr style={{ fontWeight: "bold", background: "#e9ecef" }}>
-              <td colSpan={6}>Totais</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_abastecimento)}</td>
+            <tr>
+              <td colSpan={6}><strong>Totais</strong></td>
+              <td className="text-right">{fmtBRL(totais.total_abastecimento)}</td>
               <td></td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_manutencao_servico)}</td>
+              <td className="text-right">{fmtBRL(totais.total_manutencao_servico)}</td>
               <td></td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_pecas_almoxarifado)}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_geral)}</td>
+              <td className="text-right">{fmtBRL(totais.total_pecas_almoxarifado)}</td>
+              <td className="text-right">{fmtBRL(totais.total_geral)}</td>
             </tr>
           </tfoot>
         )}
@@ -225,7 +229,8 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
 
 // ── Custo por Departamento ────────────────────────────────────────────────────
 
-function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
+function CustoPorDepartamentoTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RelResponse<DeptRow> | null>(null);
   const [loading, setLoading] = useState(false);
   const [fInicio, setFInicio] = useState(firstOfYear);
@@ -244,8 +249,7 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/relatorios/frota/custo-por-departamento?${buildParams()}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -255,10 +259,10 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
         `/relatorios/frota/custo-por-departamento?${buildParams()}&export=csv`,
         `custo_por_departamento_${fInicio || "inicio"}_${fFim || "fim"}.csv`
       );
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];
   const totais = data?.totais;
@@ -266,32 +270,30 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
   return (
     <section className="section-stack">
       <h2>Custo por Departamento</h2>
-      <p className="muted" style={{ fontSize: 13 }}>
+      <p className="muted text-sm">
         Composição: abastecimento + serviço de manutenção + peças/insumos do almoxarifado
         atribuídos ao departamento.
       </p>
 
-      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-          De <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)}
-            style={{ width: 140 }} />
+      <div className="toolbar">
+        <label className="field-group" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          De <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)} style={{ width: 140 }} />
         </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-          Até <input type="date" value={fFim} onChange={(e) => setFim(e.target.value)}
-            style={{ width: 140 }} />
+        <label className="field-group" style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          Até <input type="date" value={fFim} onChange={(e) => setFim(e.target.value)} style={{ width: 140 }} />
         </label>
         <input placeholder="ID Departamento" value={fDeptId} style={{ width: 120 }}
           onChange={(e) => setFDeptId(e.target.value)} />
-        <button className="btn" onClick={load} disabled={loading}>
+        <Button onClick={load} disabled={loading}>
           {loading ? "Carregando..." : "Gerar"}
-        </button>
-        <button className="btn" style={{ background: "#28a745", color: "white" }} onClick={exportCsv}>
+        </Button>
+        <Button className="btn-export" onClick={exportCsv}>
           ⬇ CSV
-        </button>
+        </Button>
       </div>
 
       {totais && (
-        <div className="kpi-grid" style={{ marginBottom: 12 }}>
+        <div className="kpi-grid">
           <div className="kpi-card">
             <span className="kpi-label">Total Geral</span>
             <span className="kpi-value">{fmtBRL(totais.total_geral)}</span>
@@ -319,26 +321,28 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
         <thead>
           <tr>
             <th>Departamento</th>
-            <th>Abast. (qtd)</th><th>Litros</th><th>Custo Abast.</th>
-            <th>Manut. (qtd)</th><th>Custo Serviço</th>
-            <th>Peças (qtd)</th><th>Custo Peças</th>
-            <th><strong>Custo Total</strong></th>
+            <th className="text-right">Abast.</th><th className="text-right">Litros</th><th className="text-right">Custo Abast.</th>
+            <th className="text-right">Manut.</th><th className="text-right">Custo Serviço</th>
+            <th className="text-right">Peças</th><th className="text-right">Custo Peças</th>
+            <th className="text-right"><strong>Custo Total</strong></th>
           </tr>
         </thead>
         <tbody>
           {rows.length ? rows.map((r, i) => (
             <tr key={i}>
-              <td><strong>{r.departamento_nome}</strong><br /><span style={{ color: "#6c757d", fontSize: 12 }}>id={r.departamento_id ?? "—"}</span></td>
-              <td style={{ textAlign: "right" }}>{r.n_abastecimentos}</td>
-              <td style={{ textAlign: "right" }}>{r.total_litros.toLocaleString("pt-BR")} L</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_abastecimento)}</td>
-              <td style={{ textAlign: "right" }}>{r.n_manutencoes}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_manutencao_servico)}</td>
-              <td style={{ textAlign: "right" }}>{r.n_pecas_almoxarifado}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(r.custo_pecas_almoxarifado)}</td>
-              <td style={{ textAlign: "right" }}>
-                <strong>{fmtBRL(r.custo_total)}</strong>
+              <td>
+                <strong>{r.departamento_nome}</strong>
+                <br />
+                <span className="muted text-xs">id={r.departamento_id ?? "—"}</span>
               </td>
+              <td className="text-right">{r.n_abastecimentos}</td>
+              <td className="text-right">{r.total_litros.toLocaleString("pt-BR")} L</td>
+              <td className="text-right">{fmtBRL(r.custo_abastecimento)}</td>
+              <td className="text-right">{r.n_manutencoes}</td>
+              <td className="text-right">{fmtBRL(r.custo_manutencao_servico)}</td>
+              <td className="text-right">{r.n_pecas_almoxarifado}</td>
+              <td className="text-right">{fmtBRL(r.custo_pecas_almoxarifado)}</td>
+              <td className="text-right"><strong>{fmtBRL(r.custo_total)}</strong></td>
             </tr>
           )) : (
             <tr><td colSpan={9} className="empty-state">Nenhum dado encontrado para o período.</td></tr>
@@ -346,15 +350,15 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
         </tbody>
         {rows.length > 0 && totais && (
           <tfoot>
-            <tr style={{ fontWeight: "bold", background: "#e9ecef" }}>
-              <td>Totais</td>
+            <tr>
+              <td><strong>Totais</strong></td>
               <td></td><td></td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_abastecimento)}</td>
+              <td className="text-right">{fmtBRL(totais.total_abastecimento)}</td>
               <td></td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_manutencao_servico)}</td>
+              <td className="text-right">{fmtBRL(totais.total_manutencao_servico)}</td>
               <td></td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_pecas_almoxarifado)}</td>
-              <td style={{ textAlign: "right" }}>{fmtBRL(totais.total_geral)}</td>
+              <td className="text-right">{fmtBRL(totais.total_pecas_almoxarifado)}</td>
+              <td className="text-right">{fmtBRL(totais.total_geral)}</td>
             </tr>
           </tfoot>
         )}

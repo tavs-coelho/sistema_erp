@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 type AuditItem = {
@@ -16,10 +17,10 @@ type AuditItem = {
 type UserItem = { id: number; username: string; role: string };
 
 export default function AuditoriaPage() {
+  const { toast } = useToast();
   const [items, setItems] = useState<AuditItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("");
   const [actionFilter, setActionFilter] = useState("");
   const [entityFilter, setEntityFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
@@ -60,11 +61,10 @@ export default function AuditoriaPage() {
           return true;
         });
         setItems(filtered);
-        setStatus("");
       } catch (error) {
         if (!active) return;
         setItems([]);
-        setStatus(error instanceof Error ? error.message : "Falha ao carregar auditoria");
+        toast(error instanceof Error ? error.message : "Falha ao carregar auditoria", "error");
       } finally {
         if (active) setLoading(false);
       }
@@ -78,7 +78,7 @@ export default function AuditoriaPage() {
     <main className="module-page">
       <h1>Auditoria</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{profile.role || "carregando..."}</strong> · Usuário: <strong suppressHydrationWarning>{profile.username || "carregando..."}</strong></p>
-      {status ? <p className="notice error">{status}</p> : null}
+
       {loading ? <p className="notice">Carregando eventos de auditoria...</p> : null}
 
       <section className="card section-stack">

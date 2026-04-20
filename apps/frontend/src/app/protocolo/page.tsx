@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
@@ -25,8 +26,7 @@ const ACOES = ["encaminhado", "deferido", "indeferido", "arquivado", "devolvido"
 function messageFrom(e: unknown) { return e instanceof Error ? e.message : "Falha na operação"; }
 
 export default function ProtocoloPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
 
   const [tab, setTab] = useState<"lista" | "novo" | "tramitar">("lista");
 
@@ -88,13 +88,13 @@ export default function ProtocoloPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      Promise.all([loadProtocolos(), loadStats(), loadDepts()]).catch((e) => setMsg(messageFrom(e)));
+      Promise.all([loadProtocolos(), loadStats(), loadDepts()]).catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const t = setTimeout(() => { loadProtocolos().catch((e) => setMsg(messageFrom(e))); }, 0);
+    const t = setTimeout(() => { loadProtocolos().catch((e) => toast(messageFrom(e), "error")); }, 0);
     return () => clearTimeout(t);
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -117,28 +117,28 @@ export default function ProtocoloPage() {
           destino_department_id: destDeptId || null,
         }),
       });
-      setMsg(`Protocolo ${numero} registrado.`);
+      toast(`Protocolo ${numero} registrado.`);
       setNumero(""); setAssunto(""); setInteressado(""); setInteressadoDoc(""); setPrazo("");
       await loadProtocolos(); await loadStats();
       setTab("lista");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const submitTramitacao = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedProt) return setMsg("Selecione um protocolo.");
+    if (!selectedProt) { toast("Selecione um protocolo.", "error"); return; }
     try {
       await authJson(`/protocolo/protocolos/${selectedProt}/tramitar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ para_department_id: paraDeptId, acao, despacho }),
       });
-      setMsg(`Protocolo ${selectedProt} — ação "${acao}" registrada.`);
+      toast(`Protocolo ${selectedProt} — ação "${acao}" registrada.`);
       setDespacho("");
       await loadTramitacoes(Number(selectedProt));
       await loadProtocolos();
       await loadStats();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const deptName = (id: number | null) => departments.find((d) => d.id === id)?.name || (id ? String(id) : "—");
@@ -155,8 +155,6 @@ export default function ProtocoloPage() {
     <main className="module-page" style={{ padding: 16 }}>
       <h1>Protocolo e Processos Administrativos</h1>
       <p className="muted">Registro, tramitação e acompanhamento de processos administrativos municipais.</p>
-
-      {msg && <p className={isError ? "notice error" : "notice"}><strong>{msg}</strong></p>}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>
@@ -200,7 +198,7 @@ export default function ProtocoloPage() {
             <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)}>
               {TIPOS.map((t) => <option key={t} value={t}>{t || "Todos os tipos"}</option>)}
             </select>
-            <button className="btn" onClick={() => { setPage(1); loadProtocolos().catch((e) => setMsg(messageFrom(e))); }}>
+            <button className="btn" onClick={() => { setPage(1); loadProtocolos().catch((e) => toast(messageFrom(e), "error")); }}>
               Filtrar
             </button>
           </div>

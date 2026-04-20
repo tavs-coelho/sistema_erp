@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson, authDownload } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -59,8 +60,6 @@ const thisQuadrimestre = Math.min(3, Math.floor((new Date().getMonth()) / 4) + 1
 
 export default function LRFPage() {
   const [tab, setTab] = useState<"rreo" | "rgf">("rreo");
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   return (
     <main className="module-page" style={{ padding: 16 }}>
@@ -69,30 +68,25 @@ export default function LRFPage() {
         Relatórios da Lei de Responsabilidade Fiscal — base legal: LRF art. 52-55.
       </p>
 
-      {msg && (
-        <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>
-          {msg}
-        </div>
-      )}
-
       <nav style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {(["rreo", "rgf"] as const).map((t) => (
           <button key={t} className={`tab-btn ${tab === t ? "active" : ""}`}
-            onClick={() => { setTab(t); setMsg(""); }}>
+            onClick={() => { setTab(t); }}>
             {t === "rreo" ? "RREO (art. 52-53)" : "RGF (art. 55)"}
           </button>
         ))}
       </nav>
 
-      {tab === "rreo" && <RREOTab setMsg={setMsg} />}
-      {tab === "rgf" && <RGFTab setMsg={setMsg} />}
+      {tab === "rreo" && <RREOTab />}
+      {tab === "rgf" && <RGFTab />}
     </main>
   );
 }
 
 // ── RREO ──────────────────────────────────────────────────────────────────────
 
-function RREOTab({ setMsg }: { setMsg: (m: string) => void }) {
+function RREOTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RREOResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [ano, setAno] = useState(String(thisYear));
@@ -102,8 +96,7 @@ function RREOTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/lrf/rreo?ano=${ano}&bimestre=${bimestre}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -111,7 +104,7 @@ function RREOTab({ setMsg }: { setMsg: (m: string) => void }) {
     try {
       await authDownload(`/lrf/rreo?ano=${ano}&bimestre=${bimestre}&export=csv`,
         `rreo_${ano}_bim${bimestre}.csv`);
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, []);
@@ -212,7 +205,8 @@ function RREOTab({ setMsg }: { setMsg: (m: string) => void }) {
 
 // ── RGF ───────────────────────────────────────────────────────────────────────
 
-function RGFTab({ setMsg }: { setMsg: (m: string) => void }) {
+function RGFTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RGFResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [ano, setAno] = useState(String(thisYear));
@@ -222,8 +216,7 @@ function RGFTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/lrf/rgf?ano=${ano}&quadrimestre=${quad}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -231,7 +224,7 @@ function RGFTab({ setMsg }: { setMsg: (m: string) => void }) {
     try {
       await authDownload(`/lrf/rgf?ano=${ano}&quadrimestre=${quad}&export=csv`,
         `rgf_${ano}_quad${quad}.csv`);
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, []);

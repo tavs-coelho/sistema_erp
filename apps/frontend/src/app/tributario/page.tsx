@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,8 +38,7 @@ const CHIP_GUIA: Record<string, string> = { emitida: "empenhado", paga: "pago", 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TributarioPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "contribuintes" | "imoveis" | "lancamentos" | "guias" | "divida" | "aliquotas" | "parcelamentos" | "relatorio">("dashboard");
 
   // Dashboard
@@ -101,7 +101,7 @@ export default function TributarioPage() {
   const [daValorAt, setDaValorAt] = useState(0);
 
   // Loaders
-  const loadDash = async () => { try { setDash(await authJson("/tributario/dashboard")); } catch (e) { setMsg(messageFrom(e)); } };
+  const loadDash = async () => { try { setDash(await authJson("/tributario/dashboard")); } catch (e) { toast(messageFrom(e), "error"); } };
   const loadContribuintes = async () => {
     const qs = new URLSearchParams({ page: String(cPage), size: "8" });
     if (cSearch) qs.set("search", cSearch);
@@ -133,7 +133,7 @@ export default function TributarioPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       Promise.all([loadDash(), loadContribuintes(), loadLancamentos(), loadGuias(), loadDividas()]).catch((e) =>
-        setMsg(messageFrom(e))
+        toast(messageFrom(e), "error")
       );
     }, 0);
     return () => clearTimeout(t);
@@ -168,31 +168,31 @@ export default function TributarioPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpf_cnpj: cpfCnpj, nome: cNome, tipo: cTipo, municipio: cMunicipio, uf: cUf }),
       });
-      setMsg(`Contribuinte ${cNome} cadastrado.`);
+      toast(`Contribuinte ${cNome} cadastrado.`);
       setCpfCnpj(""); setCNome(""); setCMunicipio(""); setCUf("");
       await loadContribuintes(); await loadDash();
       setTab("contribuintes");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const submitImovel = async (e: FormEvent) => {
     e.preventDefault();
-    if (!iContribId) return setMsg("Informe o ID do contribuinte.");
+    if (!iContribId) { toast("Informe o ID do contribuinte.", "error"); return; }
     try {
       await authJson("/tributario/imoveis", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ inscricao: iInscricao, contribuinte_id: iContribId, logradouro: iLogradouro, numero: iNumero, bairro: iBairro, area_terreno: iAreaT, area_construida: iAreaC, valor_venal: iValorV, uso: iUso }),
       });
-      setMsg(`Imóvel ${iInscricao} cadastrado.`);
+      toast(`Imóvel ${iInscricao} cadastrado.`);
       setIInscricao(""); setILogradouro(""); setINumero(""); setIBairro(""); setIAreaT(0); setIAreaC(0); setIValorV(0);
       await loadImoveis(); await loadDash();
       setTab("imoveis");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const submitLancamento = async (e: FormEvent) => {
     e.preventDefault();
-    if (!lContribId) return setMsg("Informe o ID do contribuinte.");
+    if (!lContribId) { toast("Informe o ID do contribuinte.", "error"); return; }
     try {
       await authJson("/tributario/lancamentos", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -203,46 +203,46 @@ export default function TributarioPage() {
           vencimento: lVencimento,
         }),
       });
-      setMsg(`Lançamento ${lTributo} registrado.`);
+      toast(`Lançamento ${lTributo} registrado.`);
       setLPrincipal(0); setLJuros(0); setLMulta(0); setLDesconto(0);
       await loadLancamentos(); await loadDash();
       setTab("lancamentos");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const emitirGuia = async (lancId: number) => {
     try {
       const guia = await authJson(`/tributario/lancamentos/${lancId}/emitir-guia`, { method: "POST" });
-      setMsg(`Guia emitida: ${guia.codigo_barras}`);
+      toast(`Guia emitida: ${guia.codigo_barras}`);
       await loadGuias(); await loadLancamentos();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const baixarGuia = async (e: FormEvent) => {
     e.preventDefault();
-    if (!gBaixaId) return setMsg("Selecione a guia.");
+    if (!gBaixaId) { toast("Selecione a guia.", "error"); return; }
     try {
       const qs = new URLSearchParams({ data_pagamento: gDataPagamento || new Date().toISOString().slice(0, 10) });
       if (gBanco) qs.set("banco", gBanco);
       await authJson(`/tributario/guias/${gBaixaId}/baixar?${qs}`, { method: "POST" });
-      setMsg("Pagamento registrado.");
+      toast("Pagamento registrado.");
       setGBaixaId(""); setGDataPagamento(""); setGBanco("");
       await loadGuias(); await loadLancamentos(); await loadDash();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const inscreverDivida = async (e: FormEvent) => {
     e.preventDefault();
-    if (!daLancId) return setMsg("Informe o ID do lançamento.");
+    if (!daLancId) { toast("Informe o ID do lançamento.", "error"); return; }
     try {
       await authJson("/tributario/divida-ativa", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lancamento_id: daLancId, numero_inscricao: daNumeroInsc, data_inscricao: daDataInsc, valor_atualizado: daValorAt }),
       });
-      setMsg(`Inscrição ${daNumeroInsc} realizada em dívida ativa.`);
+      toast(`Inscrição ${daNumeroInsc} realizada em dívida ativa.`);
       setDaLancId(""); setDaNumeroInsc(""); setDaValorAt(0);
       await loadDividas(); await loadLancamentos(); await loadDash();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const TABS = [
@@ -258,11 +258,9 @@ export default function TributarioPage() {
   ] as const;
 
   return (
-    <main className="module-page" style={{ padding: 16 }}>
+    <main className="module-page">
       <h1>Módulo Tributário / Arrecadação Municipal</h1>
       <p className="muted">Gestão de contribuintes, cadastro imobiliário, lançamentos (IPTU/ISS/ITBI), guias e dívida ativa.</p>
-
-      {msg && <p className={isError ? "notice error" : "notice"}><strong>{msg}</strong></p>}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>
@@ -271,14 +269,9 @@ export default function TributarioPage() {
       </div>
 
       {/* Tabs */}
-      <div className="toolbar" style={{ borderBottom: "2px solid var(--border)", paddingBottom: 0, gap: 0, marginTop: 12 }}>
+      <div className="toolbar tab-strip-border">
         {TABS.map((t) => (
-          <button key={t.key} className="btn" style={{
-            borderBottomLeftRadius: 0, borderBottomRightRadius: 0,
-            borderBottom: tab === t.key ? "3px solid var(--primary)" : "3px solid transparent",
-            background: tab === t.key ? "var(--primary-soft)" : "#fff",
-            fontWeight: tab === t.key ? 700 : 400,
-          }} onClick={() => setTab(t.key)}>
+          <button key={t.key} className={`tab-btn${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -287,24 +280,24 @@ export default function TributarioPage() {
       {/* ─── Dashboard ─────────────────────────────────────────────────────── */}
       {tab === "dashboard" && dash && (
         <section className="section-stack">
-          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginTop: 12 }}>
+          <div className="kpi-grid section-top">
             <div className="card kpi-card"><p className="muted">Contribuintes ativos</p><p className="kpi-value">{dash.total_contribuintes_ativos}</p></div>
             <div className="card kpi-card"><p className="muted">Imóveis cadastrados</p><p className="kpi-value">{dash.total_imoveis_ativos}</p></div>
             <div className="card kpi-card"><p className="muted">Valor em aberto</p><p className="kpi-value">{fmt(dash.valor_aberto)}</p></div>
             <div className="card kpi-card"><p className="muted">Arrecadado (pago)</p><p className="kpi-value">{fmt(dash.valor_arrecadado)}</p></div>
             <div className="card kpi-card"><p className="muted">Dívida ativa</p><p className="kpi-value">{fmt(dash.valor_divida_ativa)}</p></div>
-            <div className="card kpi-card" style={{ borderLeft: dash.lancamentos_vencidos_abertos > 0 ? "4px solid #e53e3e" : undefined }}>
+            <div className={`card kpi-card${dash.lancamentos_vencidos_abertos > 0 ? " kpi-danger" : ""}`}>
               <p className="muted">Vencidos em aberto</p>
-              <p className="kpi-value" style={{ color: dash.lancamentos_vencidos_abertos > 0 ? "#e53e3e" : undefined }}>{dash.lancamentos_vencidos_abertos}</p>
+              <p className={`kpi-value${dash.lancamentos_vencidos_abertos > 0 ? " kpi-value-danger" : ""}`}>{dash.lancamentos_vencidos_abertos}</p>
             </div>
           </div>
-          <div className="card" style={{ marginTop: 12 }}>
+          <div className="card mt-2">
             <h2>Lançamentos por status</h2>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            <div className="stat-row">
               {Object.entries(dash.lancamentos_por_status).map(([s, c]) => (
-                <div key={s} style={{ textAlign: "center", minWidth: 100 }}>
+                <div key={s} className="stat-item">
                   <span className={`chip ${CHIP_LANC[s] || "empenhado"}`}>{s.replace("_", " ")}</span>
-                  <p style={{ fontSize: 24, fontWeight: 700, marginTop: 4 }}>{c}</p>
+                  <p className="stat-count">{c}</p>
                 </div>
               ))}
             </div>
@@ -314,7 +307,7 @@ export default function TributarioPage() {
 
       {/* ─── Contribuintes ──────────────────────────────────────────────────── */}
       {tab === "contribuintes" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           {/* Formulário */}
           <section className="card">
             <h2>Cadastrar contribuinte</h2>
@@ -329,7 +322,7 @@ export default function TributarioPage() {
                 </select>
               </label>
               <label className="field-group">Município<input value={cMunicipio} onChange={(e) => setCMunicipio(e.target.value)} /></label>
-              <label className="field-group">UF<input value={cUf} maxLength={2} onChange={(e) => setCUf(e.target.value)} style={{ width: 60 }} /></label>
+              <label className="field-group">UF<input value={cUf} maxLength={2} onChange={(e) => setCUf(e.target.value)} className="input-narrow-sm" /></label>
               <button className="btn btn-primary" type="submit">Cadastrar</button>
             </form>
           </section>
@@ -337,7 +330,7 @@ export default function TributarioPage() {
           {/* Lista */}
           <section className="card section-stack">
             <div className="toolbar">
-              <input value={cSearch} onChange={(e) => setCSearch(e.target.value)} placeholder="Buscar nome ou CPF/CNPJ" style={{ flex: 1 }} />
+              <input value={cSearch} onChange={(e) => setCSearch(e.target.value)} placeholder="Buscar nome ou CPF/CNPJ" className="flex-1" />
               <button className="btn" onClick={() => { setCPage(1); loadContribuintes().catch(() => {}); }}>Buscar</button>
             </div>
             <table>
@@ -366,10 +359,10 @@ export default function TributarioPage() {
 
       {/* ─── Imóveis ──────────────────────────────────────────────────────── */}
       {tab === "imoveis" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Cadastrar imóvel</h2>
-            <form onSubmit={submitImovel} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <form onSubmit={submitImovel} className="form-grid">
               <label className="field-group">ID do Contribuinte<input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} required /></label>
               <label className="field-group">Inscrição cadastral<input value={iInscricao} onChange={(e) => setIInscricao(e.target.value)} required /></label>
               <label className="field-group">Logradouro<input value={iLogradouro} onChange={(e) => setILogradouro(e.target.value)} required /></label>
@@ -384,7 +377,7 @@ export default function TributarioPage() {
               <label className="field-group">Área terreno (m²)<input type="number" value={iAreaT} onChange={(e) => setIAreaT(Number(e.target.value))} /></label>
               <label className="field-group">Área construída (m²)<input type="number" value={iAreaC} onChange={(e) => setIAreaC(Number(e.target.value))} /></label>
               <label className="field-group">Valor venal (R$)<input type="number" value={iValorV} onChange={(e) => setIValorV(Number(e.target.value))} /></label>
-              <div style={{ gridColumn: "1 / -1" }}>
+              <div className="grid-full">
                 <button className="btn btn-primary" type="submit">Cadastrar imóvel</button>
               </div>
             </form>
@@ -392,7 +385,7 @@ export default function TributarioPage() {
 
           <section className="card section-stack">
             <div className="toolbar">
-              <input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do contribuinte" style={{ flex: 1 }} />
+              <input type="number" value={iContribId} onChange={(e) => setIContribId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do contribuinte" className="flex-1" />
               <button className="btn" onClick={() => { setIPage(1); loadImoveis().catch(() => {}); }}>Filtrar</button>
             </div>
             <table>
@@ -420,10 +413,10 @@ export default function TributarioPage() {
 
       {/* ─── Lançamentos ──────────────────────────────────────────────────── */}
       {tab === "lancamentos" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Novo lançamento tributário</h2>
-            <form onSubmit={submitLancamento} style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+            <form onSubmit={submitLancamento} className="form-grid">
               <label className="field-group">ID Contribuinte<input type="number" value={lContribId} onChange={(e) => setLContribId(e.target.value ? Number(e.target.value) : "")} required /></label>
               <label className="field-group">ID Imóvel (opcional)<input type="number" value={lImovelId} onChange={(e) => setLImovelId(e.target.value ? Number(e.target.value) : "")} /></label>
               <label className="field-group">
@@ -439,8 +432,8 @@ export default function TributarioPage() {
               <label className="field-group">Multa<input type="number" step="0.01" value={lMulta} onChange={(e) => setLMulta(Number(e.target.value))} /></label>
               <label className="field-group">Desconto<input type="number" step="0.01" value={lDesconto} onChange={(e) => setLDesconto(Number(e.target.value))} /></label>
               <label className="field-group">Vencimento<input type="date" value={lVencimento} onChange={(e) => setLVencimento(e.target.value)} required /></label>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <p style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>
+              <div className="grid-full">
+                <p className="text-hint">
                   Total estimado: {fmt(Math.max(0, lPrincipal + lJuros + lMulta - lDesconto))}
                 </p>
                 <button className="btn btn-primary" type="submit">Lançar tributo</button>
@@ -472,7 +465,7 @@ export default function TributarioPage() {
                     <td><span className={`chip ${CHIP_LANC[l.status] || "empenhado"}`}>{l.status}</span></td>
                     <td>
                       {l.status === "aberto" && (
-                        <button className="btn" style={{ padding: "2px 8px", fontSize: 12 }} onClick={() => emitirGuia(l.id)}>Emitir</button>
+                        <button className="btn-xs" onClick={() => emitirGuia(l.id)}>Emitir</button>
                       )}
                     </td>
                   </tr>
@@ -490,7 +483,7 @@ export default function TributarioPage() {
 
       {/* ─── Guias ────────────────────────────────────────────────────────── */}
       {tab === "guias" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Baixar guia (registrar pagamento)</h2>
             <form onSubmit={baixarGuia} className="section-stack">
@@ -511,7 +504,7 @@ export default function TributarioPage() {
 
           <section className="card section-stack">
             <div className="toolbar">
-              <input type="number" value={gLancamentoId} onChange={(e) => setGLancamentoId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do lançamento" style={{ flex: 1 }} />
+              <input type="number" value={gLancamentoId} onChange={(e) => setGLancamentoId(e.target.value ? Number(e.target.value) : "")} placeholder="Filtrar por ID do lançamento" className="flex-1" />
               <button className="btn" onClick={() => { setGPage(1); loadGuias().catch(() => {}); }}>Filtrar</button>
             </div>
             <table>
@@ -520,7 +513,7 @@ export default function TributarioPage() {
               {(guias?.items || []).length > 0 ? guias!.items.map((g) => (
                 <tr key={g.id}>
                   <td>{g.id}</td>
-                  <td style={{ fontSize: 11, maxWidth: 200, wordBreak: "break-all" }}>{g.codigo_barras}</td>
+                  <td className="td-code">{g.codigo_barras}</td>
                   <td>{fmt(g.valor)}</td>
                   <td>{g.vencimento}</td>
                   <td><span className={`chip ${CHIP_GUIA[g.status] || "empenhado"}`}>{g.status}</span></td>
@@ -540,7 +533,7 @@ export default function TributarioPage() {
 
       {/* ─── Dívida Ativa ─────────────────────────────────────────────────── */}
       {tab === "divida" && (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))" }}>
+        <div className="auto-grid-lg">
           <section className="card">
             <h2>Inscrever em dívida ativa</h2>
             <form onSubmit={inscreverDivida} className="section-stack">
@@ -586,10 +579,10 @@ export default function TributarioPage() {
       )}
 
       {/* ── Alíquotas IPTU ──────────────────────────────────────────────── */}
-      {tab === "aliquotas" && <AliquotasTab msg={msg} setMsg={setMsg} />}
+      {tab === "aliquotas" && <AliquotasTab />}
 
       {/* ── Parcelamentos ───────────────────────────────────────────────── */}
-      {tab === "parcelamentos" && <ParcelamentosTab msg={msg} setMsg={setMsg} />}
+      {tab === "parcelamentos" && <ParcelamentosTab />}
 
       {/* ── Relatório de Arrecadação ─────────────────────────────────────── */}
       {tab === "relatorio" && <RelatorioArrecadacaoTab />}
@@ -602,7 +595,8 @@ export default function TributarioPage() {
 
 type Aliquota = { id: number; exercicio: number; uso: string; aliquota: number; descricao: string };
 
-function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+function AliquotasTab() {
+  const { toast } = useToast();
   const [exercicio, setExercicio] = useState(new Date().getFullYear());
   const [gerarExercicio, setGerarExercicio] = useState(new Date().getFullYear());
   const [gerarVenc, setGerarVenc] = useState(`${new Date().getFullYear()}-03-31`);
@@ -610,13 +604,12 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
   const [uso, setUso] = useState("residencial");
   const [aliquota, setAliquota] = useState("");
   const [descricao, setDescricao] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const load = async () => {
     try {
       const d = await authJson(`/tributario/aliquotas-iptu?exercicio=${exercicio}`);
       setAliquotas(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   useEffect(() => { load(); }, [exercicio]);
@@ -627,33 +620,32 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
       await authJson("/tributario/aliquotas-iptu", {
         method: "POST", body: JSON.stringify({ exercicio, uso, aliquota: parseFloat(aliquota), descricao }),
       });
-      setMsg("Alíquota cadastrada."); setAliquota(""); setDescricao(""); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Alíquota cadastrada."); setAliquota(""); setDescricao(""); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Excluir alíquota?")) return;
     try {
       await authJson(`/tributario/aliquotas-iptu/${id}`, { method: "DELETE" });
-      setMsg("Alíquota removida."); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Alíquota removida."); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleGerarIPTU = async (ev: FormEvent) => {
     ev.preventDefault();
     try {
       const r = await authJson(`/tributario/lancamentos/gerar-iptu?exercicio=${gerarExercicio}&vencimento=${gerarVenc}`, { method: "POST" });
-      setMsg(`IPTU gerado: ${r.gerados} lançamentos criados. Ignorados: já existia=${r.ignorados_ja_existia}, sem alíquota=${r.ignorados_sem_aliquota}, valor zero=${r.ignorados_valor_zero}.`);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast(`IPTU gerado: ${r.gerados} lançamentos criados. Ignorados: já existia=${r.ignorados_ja_existia}, sem alíquota=${r.ignorados_sem_aliquota}, valor zero=${r.ignorados_valor_zero}.`);
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+    <section className="section-stack section-top">
       <h2>Alíquotas IPTU por Uso</h2>
       <div className="toolbar">
         <label>Exercício:</label>
-        <input type="number" value={exercicio} onChange={(e) => setExercicio(+e.target.value)} style={{ width: 100 }} />
+        <input type="number" value={exercicio} onChange={(e) => setExercicio(+e.target.value)} className="input-narrow" />
       </div>
       <table>
         <thead><tr><th>Exercício</th><th>Uso</th><th>Alíquota (%)</th><th>Descrição</th><th>Ação</th></tr></thead>
@@ -670,7 +662,7 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
         </tbody>
       </table>
       <details open>
-        <summary style={{ cursor: "pointer", marginBottom: 8 }}>Cadastrar nova alíquota</summary>
+        <summary className="summary-toggle mb-2">Cadastrar nova alíquota</summary>
         <form className="form-grid" onSubmit={handleCreate}>
           <label>Uso
             <select value={uso} onChange={(e) => setUso(e.target.value)}>
@@ -692,7 +684,7 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
       <p className="muted">Gera lançamentos de IPTU para todos os imóveis ativos com alíquota configurada para o exercício.</p>
       <form className="form-grid" onSubmit={handleGerarIPTU}>
         <label>Exercício
-          <input type="number" value={gerarExercicio} onChange={(e) => setGerarExercicio(+e.target.value)} style={{ width: 100 }} />
+          <input type="number" value={gerarExercicio} onChange={(e) => setGerarExercicio(+e.target.value)} className="input-narrow" />
         </label>
         <label>Vencimento
           <input type="date" value={gerarVenc} onChange={(e) => setGerarVenc(e.target.value)} required />
@@ -708,40 +700,40 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
 type Parcelamento = { id: number; divida_id: number; numero_parcelas: number; valor_total: number; data_acordo: string; status: string; parcelas: Parcela[] };
 type Parcela = { id: number; numero_parcela: number; valor: number; vencimento: string; status: string; data_pagamento: string | null };
 
-function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+function ParcelamentosTab() {
+  const { toast } = useToast();
   const [dividaId, setDividaId] = useState("");
   const [parcelamentos, setParcelamentos] = useState<Paged<Parcelamento> | null>(null);
   const [selected, setSelected] = useState<Parcelamento | null>(null);
   const [numParcelas, setNumParcelas] = useState("6");
   const [valorTotal, setValorTotal] = useState("");
   const [dataAcordo, setDataAcordo] = useState(new Date().toISOString().slice(0, 10));
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const load = async () => {
     try {
       const qs = dividaId ? `?divida_id=${dividaId}` : "?page=1&size=20";
       const d = await authJson(`/tributario/parcelamentos${qs}`);
       setParcelamentos(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const loadDetail = async (id: number) => {
     try {
       const d = await authJson(`/tributario/parcelamentos/${id}`);
       setSelected(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();
-    if (!dividaId) { setMsg("Informe o ID da dívida ativa."); return; }
+    if (!dividaId) { toast("Informe o ID da dívida ativa.", "error"); return; }
     try {
       await authJson("/tributario/parcelamentos", {
         method: "POST",
         body: JSON.stringify({ divida_id: +dividaId, numero_parcelas: +numParcelas, valor_total: +valorTotal, data_acordo: dataAcordo }),
       });
-      setMsg("Parcelamento criado."); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Parcelamento criado."); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handlePagar = async (pid: number, parcId: number) => {
@@ -751,19 +743,18 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       const r = await authJson(`/tributario/parcelamentos/${pid}/parcelas/${parcId}/pagar`, {
         method: "POST", body: JSON.stringify({ data_pagamento: dataPag }),
       });
-      setMsg(r.parcelamento_quitado ? "Parcelamento quitado! Dívida encerrada." : "Parcela registrada.");
+      toast(r.parcelamento_quitado ? "Parcelamento quitado! Dívida encerrada." : "Parcela registrada.");
       loadDetail(pid);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+    <section className="section-stack section-top">
       <h2>Parcelamentos de Dívida Ativa</h2>
       <div className="toolbar">
-        <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} style={{ width: 200 }} />
+        <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} className="input-narrow" />
         <button className="btn" onClick={load}>Buscar</button>
       </div>
       <table>
@@ -784,7 +775,7 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       </table>
 
       {selected && (
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-2">
           <h3>Parcelas do Parcelamento #{selected.id}</h3>
           <table>
             <thead><tr><th>#</th><th>Valor</th><th>Vencimento</th><th>Status</th><th>Pagamento</th><th>Ação</th></tr></thead>
@@ -805,8 +796,8 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       )}
 
       <details>
-        <summary style={{ cursor: "pointer", marginTop: 16 }}>Criar novo parcelamento</summary>
-        <form className="form-grid" onSubmit={handleCreate} style={{ marginTop: 8 }}>
+        <summary className="summary-toggle mt-4">Criar novo parcelamento</summary>
+        <form className="form-grid mt-2" onSubmit={handleCreate}>
           <label>ID da Dívida Ativa *
             <input value={dividaId} onChange={(e) => setDividaId(e.target.value)} required />
           </label>
@@ -834,8 +825,7 @@ function RelatorioArrecadacaoTab() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [data, setData] = useState<{ total_arrecadado: number; registros: { tributo: string; exercicio: number; competencia: string; qtd_lancamentos: number; valor_total: number }[] } | null>(null);
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro");
+  const { toast } = useToast();
 
   const buildQS = () => {
     const p = new URLSearchParams();
@@ -850,7 +840,7 @@ function RelatorioArrecadacaoTab() {
     try {
       const d = await authJson(`/tributario/relatorio/arrecadacao?${buildQS()}`);
       setData(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const csvHref = () => {
@@ -866,24 +856,23 @@ function RelatorioArrecadacaoTab() {
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <section className="section-stack" style={{ marginTop: 12 }}>
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
+    <section className="section-stack section-top">
       <h2>Relatório Consolidado de Arrecadação</h2>
-      <div className="toolbar" style={{ flexWrap: "wrap", gap: 8 }}>
+      <div className="toolbar-wrap">
         <select value={tributo} onChange={(e) => setTributo(e.target.value)}>
           <option value="">Todos os tributos</option>
           {["IPTU","ISS","ITBI","TAXA_LIXO","TAXA_ILUMINACAO","TAXA_OBRAS"].map((t) => <option key={t}>{t}</option>)}
         </select>
-        <input type="number" placeholder="Exercício" value={exercicio} onChange={(e) => setExercicio(e.target.value)} style={{ width: 110 }} />
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
-        <label style={{ display: "flex", gap: 4, alignItems: "center" }}>Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
+        <input type="number" placeholder="Exercício" value={exercicio} onChange={(e) => setExercicio(e.target.value)} className="input-narrow" />
+        <label className="label-inline">De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
+        <label className="label-inline">Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
         <button className="btn" onClick={load}>Filtrar</button>
         <a className="btn" href={csvHref()} target="_blank" rel="noreferrer">Exportar CSV</a>
       </div>
 
       {data && (
         <>
-          <div style={{ margin: "12px 0", fontWeight: 600 }}>
+          <div className="total-line">
             Total arrecadado: {fmtBRL(data.total_arrecadado)}
           </div>
           <table>

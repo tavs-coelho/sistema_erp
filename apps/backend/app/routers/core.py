@@ -1,13 +1,18 @@
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+import json
+from datetime import date, timedelta
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_user, require_roles
-from ..models import Attachment, AuditLog, Department, FiscalYear, RoleEnum, User
-from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, UserCreate, UserOut, UserUpdate
+from ..deps import get_current_user, get_tenant_id, require_roles
+from ..middleware import invalidate_tenant_cache
+from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Department, FiscalYear, RoleEnum, TenantBranding, User
+from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
 router = APIRouter(prefix="/core", tags=["core"])
@@ -164,3 +169,177 @@ def upload_attachment(
     write_audit(db, user_id=current.id, action="create", entity="attachments", entity_id=str(att.id), after_data={"file": safe_name})
     db.commit()
     return {"id": att.id, "file_name": att.file_name}
+
+
+# ---------------------------------------------------------------------------
+# Server-Sent Events: real-time alert stream
+# ---------------------------------------------------------------------------
+
+def _build_events(db: Session) -> list[dict]:
+    """Collect actionable alerts from the database."""
+    events: list[dict] = []
+
+    # Low-stock alerts (open)
+    low_stock = (
+        db.query(AlertaEstoqueMinimo)
+        .filter(AlertaEstoqueMinimo.status == "aberto")
+        .order_by(AlertaEstoqueMinimo.id.desc())
+        .limit(20)
+        .all()
+    )
+    for alerta in low_stock:
+        events.append(
+            {
+                "type": "estoque_baixo",
+                "message": f"Estoque baixo: {alerta.item.descricao if alerta.item else alerta.item_id} "
+                           f"({alerta.saldo_no_momento:.0f} / mín {alerta.estoque_minimo:.0f})",
+                "id": alerta.id,
+            }
+        )
+
+    # Contracts expiring within the next 30 days
+    today = date.today()
+    soon = today + timedelta(days=30)
+    expiring = (
+        db.query(Contract)
+        .filter(Contract.status == "vigente", Contract.end_date >= today, Contract.end_date <= soon)
+        .order_by(Contract.end_date)
+        .limit(10)
+        .all()
+    )
+    for contract in expiring:
+        days_left = (contract.end_date - today).days
+        events.append(
+            {
+                "type": "contrato_vencendo",
+                "message": f"Contrato {contract.number} vence em {days_left} dia(s) ({contract.end_date.isoformat()})",
+                "id": contract.id,
+            }
+        )
+
+    return events
+
+
+# ---------------------------------------------------------------------------
+# Tenant management endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants", response_model=list[TenantOut])
+def list_tenants(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(RoleEnum.admin)),
+):
+    """List all registered tenants (admin only)."""
+    return db.query(TenantBranding).order_by(TenantBranding.id).all()
+
+
+@router.post("/tenants", response_model=TenantOut, status_code=201)
+def create_tenant(
+    payload: TenantCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+):
+    """Provision a new tenant identified by its subdomain slug (admin only).
+
+    The new ``TenantBranding`` row acts as the tenant registry entry.  Once
+    created, requests arriving with the matching subdomain in the ``Host``
+    header will automatically resolve to this tenant via ``TenantMiddleware``.
+    """
+    existing = db.query(TenantBranding).filter(TenantBranding.subdomain == payload.subdomain).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Subdomínio '{payload.subdomain}' já está em uso.")
+    tenant = TenantBranding(
+        subdomain=payload.subdomain,
+        org_name=payload.org_name,
+        primary_color=payload.primary_color,
+        secondary_color=payload.secondary_color,
+        accent_color=payload.accent_color,
+        app_title=payload.app_title,
+    )
+    db.add(tenant)
+    db.flush()
+    write_audit(
+        db,
+        user_id=current.id,
+        action="create",
+        entity="tenant_branding",
+        entity_id=str(tenant.id),
+        after_data={"subdomain": tenant.subdomain, "org_name": tenant.org_name},
+    )
+    db.commit()
+    db.refresh(tenant)
+    invalidate_tenant_cache(tenant.subdomain)
+    return tenant
+
+
+@router.delete("/tenants/{tenant_id}", status_code=204)
+def delete_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+    current_tenant_id: int = Depends(get_tenant_id),
+):
+    """Remove a tenant (admin only).  Cannot delete the currently active tenant."""
+    if tenant_id == 1:
+        raise HTTPException(status_code=400, detail="Não é possível remover o tenant padrão.")
+    if tenant_id == current_tenant_id:
+        raise HTTPException(status_code=400, detail="Não é possível remover o tenant ativo.")
+    tenant = db.get(TenantBranding, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant não encontrado.")
+    subdomain = tenant.subdomain
+    write_audit(
+        db,
+        user_id=current.id,
+        action="delete",
+        entity="tenant_branding",
+        entity_id=str(tenant_id),
+        before_data={"subdomain": subdomain, "org_name": tenant.org_name},
+    )
+    db.delete(tenant)
+    db.commit()
+    invalidate_tenant_cache(subdomain)
+
+
+async def _event_generator(request: Request, db: Session):
+    """Yield SSE-formatted messages then close."""
+    events = _build_events(db)
+    if not events:
+        # Send a heartbeat so the client knows the connection is alive
+        yield "event: heartbeat\ndata: {}\n\n"
+        return
+
+    for ev in events:
+        if await request.is_disconnected():
+            break
+        yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+
+    # Final heartbeat to signal end of initial batch
+    yield "event: heartbeat\ndata: {}\n\n"
+
+
+@router.get("/events")
+def sse_events(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Server-Sent Events stream of operational alerts.
+
+    The JWT is validated via the standard ``Authorization: Bearer <token>``
+    header.  Use ``fetch`` with ``ReadableStream`` on the frontend instead of
+    ``EventSource`` so the header can be sent.
+
+    Delivers the current snapshot of open low-stock alerts and contracts
+    expiring within 30 days, then closes.  Clients should reconnect
+    periodically (e.g. every 60 s) to poll for new events without holding
+    a long-lived connection.
+    """
+    return StreamingResponse(
+        _event_generator(request, db),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

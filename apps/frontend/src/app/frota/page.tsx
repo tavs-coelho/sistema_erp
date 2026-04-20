@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson, readCookie } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -66,8 +67,7 @@ const STATUS_CHIP: Record<string, string> = {
 
 export default function FrotaPage() {
   const [role] = useState(() => readCookie("role"));
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "veiculos" | "abastecimentos" | "manutencoes">("dashboard");
 
   const canWrite = role === "admin" || role === "procurement";
@@ -84,21 +84,19 @@ export default function FrotaPage() {
       <h1>Frota</h1>
       <p className="muted">Gestão de veículos, abastecimentos e manutenções da frota municipal.</p>
 
-      {msg && <div className={`alert ${isError ? "error" : "success"}`} style={{ marginBottom: 8 }}>{msg}</div>}
-
       <nav style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {TABS.map((t) => (
           <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`}
-            onClick={() => { setTab(t.key); setMsg(""); }}>
+            onClick={() => { setTab(t.key); }}>
             {t.label}
           </button>
         ))}
       </nav>
 
       {tab === "dashboard" && <DashboardTab />}
-      {tab === "veiculos" && <VeiculosTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "abastecimentos" && <AbastecimentosTab setMsg={setMsg} canWrite={canWrite} />}
-      {tab === "manutencoes" && <ManutencoesTab setMsg={setMsg} canWrite={canWrite} />}
+      {tab === "veiculos" && <VeiculosTab canWrite={canWrite} />}
+      {tab === "abastecimentos" && <AbastecimentosTab canWrite={canWrite} />}
+      {tab === "manutencoes" && <ManutencoesTab canWrite={canWrite} />}
     </main>
   );
 }
@@ -134,7 +132,8 @@ function DashboardTab() {
 
 // ── Veículos ──────────────────────────────────────────────────────────────────
 
-function VeiculosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function VeiculosTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [veiculos, setVeiculos] = useState<Paged<Veiculo> | null>(null);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
@@ -163,7 +162,7 @@ function VeiculosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWri
       if (fTipo) p.set("tipo", fTipo);
       if (fStatus) p.set("status", fStatus);
       setVeiculos(await authJson(`/frota/veiculos?${p}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, [page]);
@@ -181,11 +180,11 @@ function VeiculosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWri
           departamento_id: fDept ? +fDept : null,
         }),
       });
-      setMsg("Veículo cadastrado com sucesso.");
+      toast("Veículo cadastrado com sucesso.");
       setCreating(false);
       setFPlaca(""); setFDesc(""); setFMarca(""); setFModelo(""); setFAno(""); setFOdo("0"); setFDept("");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleUpdate = async (id: number) => {
@@ -194,10 +193,10 @@ function VeiculosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWri
       if (editStatus) body["status"] = editStatus;
       if (editOdo) body["odometro_atual"] = +editOdo;
       await authJson(`/frota/veiculos/${id}`, { method: "PATCH", body: JSON.stringify(body) });
-      setMsg("Veículo atualizado.");
+      toast("Veículo atualizado.");
       setEditId(null);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (
@@ -301,7 +300,8 @@ function VeiculosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWri
 
 // ── Abastecimentos ────────────────────────────────────────────────────────────
 
-function AbastecimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function AbastecimentosTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [abast, setAbast] = useState<Paged<Abastecimento> | null>(null);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
@@ -322,7 +322,7 @@ function AbastecimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; 
       const p = new URLSearchParams({ page: String(page), size: "20" });
       if (fVeiculoId) p.set("veiculo_id", fVeiculoId);
       setAbast(await authJson(`/frota/abastecimentos?${p}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, [page]);
@@ -344,11 +344,11 @@ function AbastecimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; 
           departamento_id: fDept ? +fDept : null,
         }),
       });
-      setMsg("Abastecimento registrado.");
+      toast("Abastecimento registrado.");
       setCreating(false);
       setFVId(""); setFLitros(""); setFVlLitro(""); setFOdo(""); setFPosto(""); setFNF(""); setFDept("");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (
@@ -421,7 +421,8 @@ function AbastecimentosTab({ setMsg, canWrite }: { setMsg: (m: string) => void; 
 
 // ── Manutenções ───────────────────────────────────────────────────────────────
 
-function ManutencoesTab({ setMsg, canWrite }: { setMsg: (m: string) => void; canWrite: boolean }) {
+function ManutencoesTab({ canWrite }: { canWrite: boolean }) {
+  const { toast } = useToast();
   const [mans, setMans] = useState<Paged<Manutencao> | null>(null);
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
@@ -446,7 +447,7 @@ function ManutencoesTab({ setMsg, canWrite }: { setMsg: (m: string) => void; can
       if (fStatus) p.set("status", fStatus);
       if (fVId) p.set("veiculo_id", fVId);
       setMans(await authJson(`/frota/manutencoes?${p}`));
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, [page]);
@@ -463,11 +464,11 @@ function ManutencoesTab({ setMsg, canWrite }: { setMsg: (m: string) => void; can
           itens: [],
         }),
       });
-      setMsg("Manutenção aberta com sucesso.");
+      toast("Manutenção aberta com sucesso.");
       setCreating(false);
       setMVId(""); setMDesc(""); setMOdo(""); setMOficina(""); setMDept("");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleConcluir = async (id: number) => {
@@ -479,19 +480,19 @@ function ManutencoesTab({ setMsg, canWrite }: { setMsg: (m: string) => void; can
           valor_servico: fConclValor ? +fConclValor : 0,
         }),
       });
-      setMsg(`Manutenção #${id} concluída.`);
+      toast(`Manutenção #${id} concluída.`);
       setConcludeId(null); setFConclValor("");
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   const handleCancelar = async (id: number) => {
     if (!confirm(`Cancelar manutenção #${id}?`)) return;
     try {
       await authJson(`/frota/manutencoes/${id}/cancelar`, { method: "POST" });
-      setMsg(`Manutenção #${id} cancelada.`);
+      toast(`Manutenção #${id} cancelada.`);
       load();
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
   return (

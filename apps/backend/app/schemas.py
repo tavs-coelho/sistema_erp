@@ -1,7 +1,43 @@
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+import re
 
 from .models import RoleEnum
+
+_HEX_RE = re.compile(r"^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$")
+
+
+class BrandingOut(BaseModel):
+    id: int
+    org_name: str
+    logo_url: str
+    primary_color: str
+    secondary_color: str
+    accent_color: str
+    favicon_url: str
+    app_title: str
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BrandingUpdate(BaseModel):
+    org_name: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    secondary_color: str | None = None
+    accent_color: str | None = None
+    favicon_url: str | None = None
+    app_title: str | None = None
+
+    @field_validator("primary_color", "secondary_color", "accent_color", mode="before")
+    @classmethod
+    def validate_hex_color(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        if not _HEX_RE.match(v):
+            raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb ou #rgb). Recebido: {v!r}")
+        return v.lower()
+
 
 
 class TokenResponse(BaseModel):

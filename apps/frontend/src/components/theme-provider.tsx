@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import { applyTheme, BrandingTheme, resolveTheme, saveTheme } from "@/lib/theme";
+import { applyTheme, BrandingTheme, fetchBrandingFromApi, resolveTheme, saveTheme } from "@/lib/theme";
 
 type ThemeContextValue = {
   theme: BrandingTheme;
@@ -13,6 +13,22 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<BrandingTheme>(resolveTheme);
+
+  // Apply immediately from localStorage, then hydrate from API once mounted.
+  useEffect(() => {
+    applyTheme(theme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    fetchBrandingFromApi().then((apiTheme) => {
+      setTheme(apiTheme);
+      applyTheme(apiTheme);
+      saveTheme(apiTheme);
+    });
+    // Intentionally run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);

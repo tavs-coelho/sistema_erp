@@ -21,6 +21,24 @@ class RoleEnum(str, Enum):
     read_only = "read_only"
 
 
+class TenantBranding(Base):
+    """White-label branding settings stored per tenant (single row, id=1).
+
+    All fields have sensible defaults so the row can be read safely even
+    before any admin has saved custom values.
+    """
+    __tablename__ = "tenant_branding"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    org_name: Mapped[str] = mapped_column(String(120), default="Prefeitura Municipal")
+    logo_url: Mapped[str] = mapped_column(String(500), default="")
+    primary_color: Mapped[str] = mapped_column(String(9), default="#1d4ed8")
+    secondary_color: Mapped[str] = mapped_column(String(9), default="#0f172a")
+    accent_color: Mapped[str] = mapped_column(String(9), default="#0ea5e9")
+    favicon_url: Mapped[str] = mapped_column(String(500), default="/favicon.ico")
+    app_title: Mapped[str] = mapped_column(String(200), default="Sistema ERP Municipal")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+
 class Municipality(Base):
     __tablename__ = "municipalities"
     id: Mapped[int] = mapped_column(primary_key=True)

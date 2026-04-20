@@ -6,7 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from .config import settings
 from .db import SessionLocal
 from .limiter import limiter
-from .routers import accounting, almoxarifado, auth, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
+from .routers import accounting, almoxarifado, auth, branding, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
 from .seed import seed_data
 
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(branding.router)
 app.include_router(core.router)
 app.include_router(accounting.router)
 app.include_router(procurement.router)

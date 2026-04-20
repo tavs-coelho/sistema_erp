@@ -34,10 +34,9 @@ export function resolveTheme(): BrandingTheme {
   return { ...defaults, ...fromStorage };
 }
 
-export function saveTheme(theme: Partial<BrandingTheme>) {
+export function saveTheme(theme: BrandingTheme) {
   if (typeof window === "undefined") return;
-  const merged = { ...resolveTheme(), ...theme };
-  window.localStorage.setItem("erp:branding", JSON.stringify(merged));
+  window.localStorage.setItem("erp:branding", JSON.stringify(theme));
 }
 
 export function applyTheme(theme: BrandingTheme) {

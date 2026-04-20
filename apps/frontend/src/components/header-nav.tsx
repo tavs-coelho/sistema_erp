@@ -52,7 +52,8 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const session: Session = { username, role };
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.length === 0 || item.roles.includes(session.role));
-  const currentLabel = visibleItems.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)))?.label || "Sistema ERP";
+  const isItemActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const currentLabel = visibleItems.find((item) => isItemActive(item.href))?.label || "Sistema ERP";
   const initials = theme.org_name
     .split(" ")
     .map((token) => token[0])
@@ -82,7 +83,7 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
 
         <nav className="sidebar-nav">
           {visibleItems.map((item) => {
-            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const active = isItemActive(item.href);
             return (
               <Link key={item.href} href={item.href} className={cn("nav-link", active && "active")} onClick={() => setSidebarOpen(false)}>
                 {item.label}

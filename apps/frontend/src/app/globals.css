@@ -27,6 +27,7 @@ body {
 body {
   min-height: 100vh;
   color: var(--foreground);
+  background: #f4f7fc;
   background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--theme-primary) 7%, #fff) 0%, #f4f7fc 32%, #edf2fb 100%);
   font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;

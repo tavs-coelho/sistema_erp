@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -102,8 +103,7 @@ const fmt = (v: number) =>
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function IntegracaoPontoFolhaPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "config" | "integrar" | "logs" | "holerite">("dashboard");
 
   const [periodo, setPeriodo] = useState(periodoAtual);
@@ -156,7 +156,7 @@ export default function IntegracaoPontoFolhaPage() {
       const d = await authJson(`/integracao-ponto-folha/dashboard?periodo=${periodo}`);
       setDashData(d);
     } catch (e) {
-      setMsg("Erro ao carregar dashboard: " + messageFrom(e));
+      toast("Erro ao carregar dashboard: " + messageFrom(e), "error");
     }
   }
 
@@ -165,7 +165,7 @@ export default function IntegracaoPontoFolhaPage() {
       const d = await authJson(`/integracao-ponto-folha/config?page=${configPage}&size=30`);
       setConfigs(d);
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -177,7 +177,7 @@ export default function IntegracaoPontoFolhaPage() {
       const d = await authJson(`/integracao-ponto-folha/logs?${params}`);
       setLogs(d);
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -195,7 +195,7 @@ export default function IntegracaoPontoFolhaPage() {
       const d = await authJson(`/hr/payslips/recalcular/logs?page=${holLogPage}&size=30`);
       setHolLogs(d);
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -203,7 +203,6 @@ export default function IntegracaoPontoFolhaPage() {
 
   async function submitConfig(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/integracao-ponto-folha/config", {
         method: "POST",
@@ -214,11 +213,11 @@ export default function IntegracaoPontoFolhaPage() {
           desconto_atraso: cfgDescAtraso,
         }),
       });
-      setMsg("Configuração criada!");
+      toast("Configuração criada!");
       setShowConfigForm(false);
       loadConfigs();
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -226,7 +225,6 @@ export default function IntegracaoPontoFolhaPage() {
 
   async function submitPreview(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     setPreviewResult(null);
     try {
       const body: Record<string, unknown> = { periodo: previewPeriodo };
@@ -237,7 +235,7 @@ export default function IntegracaoPontoFolhaPage() {
       });
       setPreviewResult(d);
     } catch (e) {
-      setMsg("Erro no preview: " + messageFrom(e));
+      toast("Erro no preview: " + messageFrom(e), "error");
     }
   }
 
@@ -245,7 +243,6 @@ export default function IntegracaoPontoFolhaPage() {
 
   async function submitIntegrar(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     setIntegrarResult(null);
     try {
       const body: Record<string, unknown> = {
@@ -261,16 +258,15 @@ export default function IntegracaoPontoFolhaPage() {
       });
       setIntegrarResult(d);
       const nPS = d.payslips_recalculados?.length ?? 0;
-      setMsg(`Integração concluída: ${d.total_ok} OK, ${d.total_pulados} pulados, ${d.total_erros} erros${nPS > 0 ? ` · ${nPS} holerite(s) recalculado(s)` : ""}`);
+      toast(`Integração concluída: ${d.total_ok} OK, ${d.total_pulados} pulados, ${d.total_erros} erros${nPS > 0 ? ` · ${nPS} holerite(s) recalculado(s)` : ""}`);
       if (tab === "logs") loadLogs();
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
   async function submitHolerite(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     setHolResult(null);
     try {
       const body: Record<string, unknown> = {
@@ -283,15 +279,15 @@ export default function IntegracaoPontoFolhaPage() {
         body: JSON.stringify(body),
       });
       setHolResult(d);
-      setMsg(`Recálculo: ${d.total_criados} criado(s), ${d.total_atualizados} atualizado(s), ${d.total_erros} erro(s)`);
+      toast(`Recálculo: ${d.total_criados} criado(s), ${d.total_atualizados} atualizado(s), ${d.total_erros} erro(s)`);
       loadHolLogs();
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
   function exportCsv() {    if (!logFilterPeriodo) {
-      setMsg("Erro: informe um período para exportar CSV");
+      toast("Erro: informe um período para exportar CSV", "error");
       return;
     }
     const safePeriodo = logFilterPeriodo.replace(/[^0-9-]/g, "");
@@ -304,12 +300,6 @@ export default function IntegracaoPontoFolhaPage() {
     <main className="page-content">
       <h1 className="page-title">Integração Ponto → Folha</h1>
 
-      {msg && (
-        <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>
-          {msg}
-          <button onClick={() => setMsg("")} className="alert-close">×</button>
-        </div>
-      )}
 
       <div className="tabs">
         {(["dashboard", "config", "integrar", "logs", "holerite"] as const).map((t) => (

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -78,8 +79,7 @@ const CHIP_ITBI: Record<string, string> = { aberto: "pendente", pago: "pago", ca
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NfseItbiPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "nfse" | "itbi">("dashboard");
 
   // Dashboard
@@ -131,7 +131,7 @@ export default function NfseItbiPage() {
     try {
       const d = await authJson("/nfse-itbi/dashboard");
       setDash(d);
-    } catch (e) { setMsg("Erro ao carregar dashboard: " + messageFrom(e)); }
+    } catch (e) { toast("Erro ao carregar dashboard: " + messageFrom(e), "error"); }
   }
 
   async function loadNfse() {
@@ -141,7 +141,7 @@ export default function NfseItbiPage() {
       if (nfseCompetencia) params.set("competencia", nfseCompetencia);
       const d = await authJson(`/nfse?${params}`);
       setNfseList(d);
-    } catch (e) { setMsg("Erro ao carregar NFS-e: " + messageFrom(e)); }
+    } catch (e) { toast("Erro ao carregar NFS-e: " + messageFrom(e), "error"); }
   }
 
   async function loadItbi() {
@@ -151,7 +151,7 @@ export default function NfseItbiPage() {
       if (itbiNatureza) params.set("natureza_operacao", itbiNatureza);
       const d = await authJson(`/itbi?${params}`);
       setItbiList(d);
-    } catch (e) { setMsg("Erro ao carregar ITBI: " + messageFrom(e)); }
+    } catch (e) { toast("Erro ao carregar ITBI: " + messageFrom(e), "error"); }
   }
 
   async function loadReferenceData() {
@@ -174,7 +174,6 @@ export default function NfseItbiPage() {
 
   async function submitNfse(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/nfse/emitir", {
         method: "POST",
@@ -191,21 +190,21 @@ export default function NfseItbiPage() {
           retencao_fonte: nfseRetencao,
         }),
       });
-      setMsg("NFS-e emitida com sucesso!");
+      toast("NFS-e emitida com sucesso!");
       setShowNfseForm(false);
       loadNfse();
       loadDashboard();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function cancelarNfse(id: number) {
     if (!confirm("Confirma cancelamento desta NFS-e?")) return;
     try {
       await authJson(`/nfse/${id}/cancelar?motivo=Cancelado via interface`, { method: "PATCH" });
-      setMsg("NFS-e cancelada.");
+      toast("NFS-e cancelada.");
       loadNfse();
       loadDashboard();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   function exportNfse() {
@@ -219,7 +218,6 @@ export default function NfseItbiPage() {
 
   async function submitItbi(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/itbi/registrar", {
         method: "POST",
@@ -234,21 +232,21 @@ export default function NfseItbiPage() {
           aliquota_itbi: Number(itbiAliquota),
         }),
       });
-      setMsg("Operação ITBI registrada com sucesso!");
+      toast("Operação ITBI registrada com sucesso!");
       setShowItbiForm(false);
       loadItbi();
       loadDashboard();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function cancelarItbi(id: number) {
     if (!confirm("Confirma cancelamento desta operação ITBI?")) return;
     try {
       await authJson(`/itbi/${id}/cancelar?motivo=Cancelado via interface`, { method: "PATCH" });
-      setMsg("Operação ITBI cancelada.");
+      toast("Operação ITBI cancelada.");
       loadItbi();
       loadDashboard();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   function exportItbi() {
@@ -264,12 +262,6 @@ export default function NfseItbiPage() {
     <main className="page-content">
       <h1 className="page-title">NFS-e / ITBI</h1>
 
-      {msg && (
-        <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>
-          {msg}
-          <button onClick={() => setMsg("")} className="alert-close">×</button>
-        </div>
-      )}
 
       <div className="tabs">
         {(["dashboard", "nfse", "itbi"] as const).map((t) => (

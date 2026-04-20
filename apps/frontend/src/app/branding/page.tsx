@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { useTheme } from "@/components/theme-provider";
+import { useToast } from "@/components/ui/toast";
 import { authToken } from "@/lib/auth";
 import {
   BrandingTheme,
@@ -246,9 +247,8 @@ function BrandPreview({ draft }: { draft: BrandingTheme }) {
 
 export default function BrandingPage() {
   const { theme, updateTheme } = useTheme();
+  const { toast } = useToast();
   const [draft, setDraft] = useState<BrandingTheme>(theme);
-  const [status, setStatus] = useState("");
-  const isError = status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha");
 
   // Keep draft in sync if the theme is hydrated from API after mount.
   useEffect(() => {
@@ -260,21 +260,19 @@ export default function BrandingPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setStatus("Salvando…");
     try {
       const token = authToken();
       const saved = await saveBrandingToApi(draft, token);
       updateTheme(saved);
       setDraft(saved);
-      setStatus("Configurações de identidade visual salvas com sucesso.");
+      toast("Configurações de identidade visual salvas com sucesso.");
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Erro ao salvar branding");
+      toast(err instanceof Error ? err.message : "Erro ao salvar branding", "error");
     }
   };
 
   const handleReset = () => {
     setDraft(theme);
-    setStatus("");
   };
 
   // Contrast summaries
@@ -298,12 +296,6 @@ export default function BrandingPage() {
         Configure cores, logotipo e textos institucionais. As alterações são persistidas no banco de
         dados e aplicadas a todos os usuários do tenant.
       </p>
-
-      {status && (
-        <p className={isError ? "notice error" : "notice"}>
-          <strong>{status}</strong>
-        </p>
-      )}
 
       {anyFail && (
         <p className="notice error">

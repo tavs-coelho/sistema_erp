@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { useToast } from "@/components/ui/toast";
 import { authDownload, authJson, readCookie } from "@/lib/auth";
 
 type Me = { id: number; username: string; name: string; role: string };
@@ -14,7 +15,7 @@ function messageFrom(error: unknown) {
 
 export default function PortalServidorPage() {
   const [role] = useState(() => readCookie("role"));
-  const [status, setStatus] = useState("");
+  const { toast } = useToast();
   const [me, setMe] = useState<Me | null>(null);
   const [slips, setSlips] = useState<Payslip[]>([]);
   const [income, setIncome] = useState<IncomeStatement | null>(null);
@@ -26,14 +27,13 @@ export default function PortalServidorPage() {
         setSlips(slipsData || []);
         setIncome(incomeData);
       })
-      .catch((error) => setStatus(error instanceof Error ? error.message : "Sem acesso ao portal do servidor"));
+      .catch((error) => toast(error instanceof Error ? error.message : "Sem acesso ao portal do servidor", "error"));
   }, []);
 
   return (
     <main className="module-page">
       <h1>Portal do Servidor</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong> | <a href="/rh">Voltar ao RH</a></p>
-      {status && <p className={status.toLowerCase().includes("erro") || status.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{status}</strong></p>}
 
       <section className="card">
         <h2>Meus dados</h2>
@@ -59,7 +59,7 @@ export default function PortalServidorPage() {
                 <tr key={slip.id}>
                   <td>{slip.id}</td><td>{slip.month}</td><td>R$ {slip.gross_amount.toFixed(2)}</td>
                   <td>R$ {slip.deductions.toFixed(2)}</td><td>R$ {slip.net_amount.toFixed(2)}</td>
-                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => setStatus(messageFrom(e)))}>Baixar PDF</button></td>
+                  <td><button className="btn" onClick={() => authDownload(`/hr/payslips/${slip.id}/pdf`, `meu-holerite-${slip.month}.pdf`).catch((e) => toast(messageFrom(e), "error"))}>Baixar PDF</button></td>
                 </tr>
               ))
             ) : (

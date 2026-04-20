@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
@@ -26,8 +27,7 @@ const TIPOS = ["", "recebimento", "repasse"];
 function messageFrom(e: unknown) { return e instanceof Error ? e.message : "Falha na operação"; }
 
 export default function ConveniosPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
 
   const [tab, setTab] = useState<"lista" | "novo" | "desembolsos">("lista");
 
@@ -101,13 +101,13 @@ export default function ConveniosPage() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      Promise.all([loadConvenios(), loadVencendo(), loadDepts()]).catch((e) => setMsg(messageFrom(e)));
+      Promise.all([loadConvenios(), loadVencendo(), loadDepts()]).catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const t = setTimeout(() => { loadConvenios().catch((e) => setMsg(messageFrom(e))); }, 0);
+    const t = setTimeout(() => { loadConvenios().catch((e) => toast(messageFrom(e), "error")); }, 0);
     return () => clearTimeout(t);
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -130,40 +130,40 @@ export default function ConveniosPage() {
           department_id: convDeptId || null,
         }),
       });
-      setMsg(`Convênio ${numero} criado.`);
+      toast(`Convênio ${numero} criado.`);
       setNumero(""); setObjeto(""); setConcedente(""); setCnpj("");
       await loadConvenios(); await loadVencendo();
       setTab("lista");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const addDesembolso = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedConv) return setMsg("Selecione um convênio.");
+    if (!selectedConv) { toast("Selecione um convênio.", "error"); return; }
     try {
       await authJson(`/convenios/${selectedConv}/desembolsos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ numero_parcela: parcela, valor: valorParcela, data_prevista: dataPrevista }),
       });
-      setMsg(`Parcela ${parcela} registrada.`);
+      toast(`Parcela ${parcela} registrada.`);
       setParcela((p) => p + 1);
       await loadDesembolsos(Number(selectedConv));
       await loadSaldo(Number(selectedConv));
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const registrarRecebimento = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedConv || !desembRecebeId) return setMsg("Selecione a parcela.");
+    if (!selectedConv || !desembRecebeId) { toast("Selecione a parcela.", "error"); return; }
     try {
       const qs = new URLSearchParams({ data_efetiva: dataEfetiva || new Date().toISOString().slice(0, 10), status: "recebido" });
       await authJson(`/convenios/${selectedConv}/desembolsos/${desembRecebeId}?${qs}`, { method: "PATCH" });
-      setMsg("Recebimento registrado.");
+      toast("Recebimento registrado.");
       setDataEfetiva(""); setDesembRecebeId("");
       await loadDesembolsos(Number(selectedConv));
       await loadSaldo(Number(selectedConv));
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const STATUS_CHIP: Record<string, string> = {
@@ -179,8 +179,6 @@ export default function ConveniosPage() {
     <main className="module-page" style={{ padding: 16 }}>
       <h1>Módulo de Convênios</h1>
       <p className="muted">Gestão de convênios, controle de parcelas/desembolsos e monitoramento de vencimentos.</p>
-
-      {msg && <p className={isError ? "notice error" : "notice"}><strong>{msg}</strong></p>}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>
@@ -225,7 +223,7 @@ export default function ConveniosPage() {
             <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)}>
               {TIPOS.map((t) => <option key={t} value={t}>{t || "Todos os tipos"}</option>)}
             </select>
-            <button className="btn" onClick={() => { setPage(1); loadConvenios().catch((e) => setMsg(messageFrom(e))); }}>Filtrar</button>
+            <button className="btn" onClick={() => { setPage(1); loadConvenios().catch((e) => toast(messageFrom(e), "error")); }}>Filtrar</button>
           </div>
 
           <table>

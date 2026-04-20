@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -83,8 +84,7 @@ const fmt = (v: number, decimals = 2) =>
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DepreciacaoPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "config" | "calcular" | "relatorio">("dashboard");
 
   const [periodo, setPeriodo] = useState(periodoAtual);
@@ -127,7 +127,7 @@ export default function DepreciacaoPage() {
       const d = await authJson(`/depreciacao/dashboard?periodo=${periodo}`);
       setDashData(d);
     } catch (e) {
-      setMsg("Erro ao carregar dashboard: " + messageFrom(e));
+      toast("Erro ao carregar dashboard: " + messageFrom(e), "error");
     }
   }
 
@@ -136,7 +136,7 @@ export default function DepreciacaoPage() {
       const d = await authJson(`/depreciacao/config?page=${configPage}&size=30`);
       setConfigs(d);
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -148,7 +148,7 @@ export default function DepreciacaoPage() {
       const d = await authJson(`/depreciacao/lancamentos?${params}`);
       setLancamentos(d);
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -158,7 +158,7 @@ export default function DepreciacaoPage() {
       const d = await authJson(`/depreciacao/relatorio/${relAssetId}`);
       setRelatorio(d);
     } catch (e) {
-      setMsg("Erro ao carregar relatório: " + messageFrom(e));
+      toast("Erro ao carregar relatório: " + messageFrom(e), "error");
       setRelatorio(null);
     }
   }
@@ -174,7 +174,6 @@ export default function DepreciacaoPage() {
 
   async function submitConfig(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/depreciacao/config", {
         method: "POST",
@@ -187,11 +186,11 @@ export default function DepreciacaoPage() {
           metodo: cfgMetodo,
         }),
       });
-      setMsg("Configuração criada com sucesso!");
+      toast("Configuração criada com sucesso!");
       setShowConfigForm(false);
       loadConfigs();
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -199,7 +198,6 @@ export default function DepreciacaoPage() {
 
   async function submitCalcular(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       const body: Record<string, unknown> = { periodo: calcPeriodo };
       if (calcAssetId) body.asset_id = Number(calcAssetId);
@@ -208,10 +206,10 @@ export default function DepreciacaoPage() {
         body: JSON.stringify(body),
       });
       setCalcResult(d);
-      setMsg(`Cálculo concluído: ${d.criados} criados, ${d.atualizados} atualizados.`);
+      toast(`Cálculo concluído: ${d.criados} criados, ${d.atualizados} atualizados.`);
       loadLancamentos();
     } catch (e) {
-      setMsg("Erro: " + messageFrom(e));
+      toast("Erro: " + messageFrom(e), "error");
     }
   }
 
@@ -226,13 +224,6 @@ export default function DepreciacaoPage() {
   return (
     <main className="page-content">
       <h1 className="page-title">Depreciação Patrimonial</h1>
-
-      {msg && (
-        <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>
-          {msg}
-          <button onClick={() => setMsg("")} className="alert-close">×</button>
-        </div>
-      )}
 
       <div className="tabs">
         {(["dashboard", "config", "calcular", "relatorio"] as const).map((t) => (

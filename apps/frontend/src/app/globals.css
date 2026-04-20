@@ -815,3 +815,120 @@ code {
     order: 1;
   }
 }
+
+/* ── Toast stack ────────────────────────────────────────────────────────── */
+.toast-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: grid;
+  gap: 8px;
+  width: min(400px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast-stack-item {
+  pointer-events: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-md);
+  animation: toast-in 0.2s ease;
+}
+.toast-stack-item.success { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+.toast-stack-item.error   { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.toast-dismiss {
+  background: none; border: none; cursor: pointer; color: inherit;
+  opacity: 0.6; min-height: unset; padding: 0; font-size: 18px; line-height: 1; width: auto;
+}
+.toast-dismiss:hover { opacity: 1; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Dark Mode ──────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-scheme="light"]) {
+    --background: #0d1117;
+    --foreground: #e2e8f0;
+    --surface: #161b22;
+    --surface-soft: #1c2128;
+    --muted: #8b949e;
+    --border: #30363d;
+    --shadow-sm: 0 6px 18px rgba(0,0,0,.4);
+    --shadow-md: 0 20px 45px rgba(0,0,0,.5);
+  }
+}
+:root[data-color-scheme="dark"] {
+  --background: #0d1117;
+  --foreground: #e2e8f0;
+  --surface: #161b22;
+  --surface-soft: #1c2128;
+  --muted: #8b949e;
+  --border: #30363d;
+  --shadow-sm: 0 6px 18px rgba(0,0,0,.4);
+  --shadow-md: 0 20px 45px rgba(0,0,0,.5);
+}
+
+/* Dark overrides for semantic elements */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-color-scheme="light"]) body {
+    background: var(--background);
+  }
+  :root:not([data-color-scheme="light"]) .input,
+  :root:not([data-color-scheme="light"]) .select,
+  :root:not([data-color-scheme="light"]) input,
+  :root:not([data-color-scheme="light"]) select,
+  :root:not([data-color-scheme="light"]) textarea {
+    background: var(--surface-soft);
+    color: var(--foreground);
+    border-color: var(--border);
+  }
+  :root:not([data-color-scheme="light"]) table { background: var(--surface); }
+  :root:not([data-color-scheme="light"]) th { background: color-mix(in srgb, var(--theme-primary) 10%, var(--surface)); color: var(--muted); }
+  :root:not([data-color-scheme="light"]) tbody tr:hover { background: color-mix(in srgb, var(--theme-primary) 8%, var(--surface)); }
+  :root:not([data-color-scheme="light"]) tfoot tr { background: color-mix(in srgb, var(--theme-secondary) 12%, var(--surface)) !important; }
+  :root:not([data-color-scheme="light"]) .card,
+  :root:not([data-color-scheme="light"]) .kpi-card { background: var(--surface); border-color: var(--border); }
+  :root:not([data-color-scheme="light"]) .btn { background: var(--surface-soft); color: var(--foreground); border-color: var(--border); }
+  :root:not([data-color-scheme="light"]) .badge,
+  :root:not([data-color-scheme="light"]) .chip { background: var(--surface-soft); border-color: var(--border); }
+  :root:not([data-color-scheme="light"]) .notice,
+  :root:not([data-color-scheme="light"]) .alert,
+  :root:not([data-color-scheme="light"]) .toast { background: color-mix(in srgb, var(--theme-primary) 12%, var(--surface)); }
+  :root:not([data-color-scheme="light"]) .notice.success,
+  :root:not([data-color-scheme="light"]) .alert.success,
+  :root:not([data-color-scheme="light"]) .toast.success,
+  :root:not([data-color-scheme="light"]) .toast-stack-item.success { background: color-mix(in srgb, #166534 22%, var(--surface)); color: #86efac; border-color: #166534; }
+  :root:not([data-color-scheme="light"]) .notice.error,
+  :root:not([data-color-scheme="light"]) .alert.error,
+  :root:not([data-color-scheme="light"]) .toast.error,
+  :root:not([data-color-scheme="light"]) .toast-stack-item.error { background: color-mix(in srgb, #991b1b 22%, var(--surface)); color: #fca5a5; border-color: #991b1b; }
+  :root:not([data-color-scheme="light"]) .chip.pago,:root:not([data-color-scheme="light"]) .chip.ativo,:root:not([data-color-scheme="light"]) .chip.vigente,:root:not([data-color-scheme="light"]) .chip.homologado,:root:not([data-color-scheme="light"]) .chip.aberto,:root:not([data-color-scheme="light"]) .chip.create { background: color-mix(in srgb,#166534 22%,var(--surface)); color:#86efac; border-color:#166534; }
+  :root:not([data-color-scheme="light"]) .chip.pendente,:root:not([data-color-scheme="light"]) .chip.liquidado,:root:not([data-color-scheme="light"]) .chip.empenhado,:root:not([data-color-scheme="light"]) .chip.cancelado,:root:not([data-color-scheme="light"]) .chip.update { background: color-mix(in srgb,#92400e 22%,var(--surface)); color:#fde68a; border-color:#92400e; }
+  :root:not([data-color-scheme="light"]) .chip.baixado,:root:not([data-color-scheme="light"]) .chip.delete,:root:not([data-color-scheme="light"]) .chip.desconto { background: color-mix(in srgb,#9f1239 22%,var(--surface)); color:#fecdd3; border-color:#9f1239; }
+  :root:not([data-color-scheme="light"]) .skeleton { background: linear-gradient(110deg, var(--surface-soft) 8%, var(--surface) 18%, var(--surface-soft) 33%); background-size: 200% 100%; }
+}
+:root[data-color-scheme="dark"] body { background: var(--background); }
+:root[data-color-scheme="dark"] .input,:root[data-color-scheme="dark"] .select,:root[data-color-scheme="dark"] input,:root[data-color-scheme="dark"] select,:root[data-color-scheme="dark"] textarea { background: var(--surface-soft); color: var(--foreground); border-color: var(--border); }
+:root[data-color-scheme="dark"] table { background: var(--surface); }
+:root[data-color-scheme="dark"] th { background: color-mix(in srgb, var(--theme-primary) 10%, var(--surface)); color: var(--muted); }
+:root[data-color-scheme="dark"] tbody tr:hover { background: color-mix(in srgb, var(--theme-primary) 8%, var(--surface)); }
+:root[data-color-scheme="dark"] tfoot tr { background: color-mix(in srgb, var(--theme-secondary) 12%, var(--surface)) !important; }
+:root[data-color-scheme="dark"] .card,:root[data-color-scheme="dark"] .kpi-card { background: var(--surface); border-color: var(--border); }
+:root[data-color-scheme="dark"] .btn { background: var(--surface-soft); color: var(--foreground); border-color: var(--border); }
+:root[data-color-scheme="dark"] .badge,:root[data-color-scheme="dark"] .chip { background: var(--surface-soft); border-color: var(--border); }
+:root[data-color-scheme="dark"] .notice,:root[data-color-scheme="dark"] .alert,:root[data-color-scheme="dark"] .toast { background: color-mix(in srgb, var(--theme-primary) 12%, var(--surface)); }
+:root[data-color-scheme="dark"] .notice.success,:root[data-color-scheme="dark"] .alert.success,:root[data-color-scheme="dark"] .toast.success,:root[data-color-scheme="dark"] .toast-stack-item.success { background: color-mix(in srgb,#166534 22%,var(--surface)); color:#86efac; border-color:#166534; }
+:root[data-color-scheme="dark"] .notice.error,:root[data-color-scheme="dark"] .alert.error,:root[data-color-scheme="dark"] .toast.error,:root[data-color-scheme="dark"] .toast-stack-item.error { background: color-mix(in srgb,#991b1b 22%,var(--surface)); color:#fca5a5; border-color:#991b1b; }
+:root[data-color-scheme="dark"] .chip.pago,:root[data-color-scheme="dark"] .chip.ativo,:root[data-color-scheme="dark"] .chip.vigente,:root[data-color-scheme="dark"] .chip.homologado,:root[data-color-scheme="dark"] .chip.aberto,:root[data-color-scheme="dark"] .chip.create { background: color-mix(in srgb,#166534 22%,var(--surface)); color:#86efac; border-color:#166534; }
+:root[data-color-scheme="dark"] .chip.pendente,:root[data-color-scheme="dark"] .chip.liquidado,:root[data-color-scheme="dark"] .chip.empenhado,:root[data-color-scheme="dark"] .chip.cancelado,:root[data-color-scheme="dark"] .chip.update { background: color-mix(in srgb,#92400e 22%,var(--surface)); color:#fde68a; border-color:#92400e; }
+:root[data-color-scheme="dark"] .chip.baixado,:root[data-color-scheme="dark"] .chip.delete,:root[data-color-scheme="dark"] .chip.desconto { background: color-mix(in srgb,#9f1239 22%,var(--surface)); color:#fecdd3; border-color:#9f1239; }
+:root[data-color-scheme="dark"] .skeleton { background: linear-gradient(110deg, var(--surface-soft) 8%, var(--surface) 18%, var(--surface-soft) 33%); background-size: 200% 100%; }

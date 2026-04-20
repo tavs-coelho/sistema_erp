@@ -37,7 +37,7 @@ const NAV_ITEMS = [
 
 export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { theme } = useTheme();
+  const { theme, colorScheme, setColorScheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sessionRaw = useSyncExternalStore<string>(
     (onStoreChange) => {
@@ -110,6 +110,15 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
           </div>
           <div className="topbar-right">
             <span className="demo-badge">Ambiente de Demonstração</span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setColorScheme(colorScheme === "dark" ? "light" : colorScheme === "light" ? "system" : "dark")}
+              aria-label="Alternar modo escuro"
+              title={colorScheme === "dark" ? "Escuro" : colorScheme === "light" ? "Claro" : "Automático"}
+            >
+              {colorScheme === "dark" ? "☀️" : colorScheme === "light" ? "🌤️" : "🌙"}
+            </button>
             <span className="header-user" suppressHydrationWarning>
               {session.username || "usuário"} · {session.role || "perfil"}
             </span>

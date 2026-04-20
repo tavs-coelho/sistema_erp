@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Toast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -196,7 +195,7 @@ export default function PublicPage() {
               <div className="card kpi-card"><p className="muted">Arrecadação tributária</p><p className="kpi-value">{fmt(stats.arrecadacao_tributaria.arrecadado)}</p></div>
               <div className="card kpi-card"><p className="muted">Dívida ativa/ajuizada</p><p className="kpi-value">{fmt(stats.arrecadacao_tributaria.divida_ativa)}</p></div>
             </div>
-          ) : <Toast>Carregando indicadores...</Toast>}
+          ) : <p className="muted">Carregando indicadores...</p>}
           <div className="card">
             <h2>Como navegar</h2>
             <ul className="list-plain">

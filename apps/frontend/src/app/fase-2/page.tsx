@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authToken } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
@@ -15,7 +16,7 @@ type Payment = { id: number; commitment_id: number; amount: number; payment_date
 
 export default function Fase2Page() {
   const token = authToken();
-  const [statusMsg, setStatusMsg] = useState("");
+  const { toast } = useToast();
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>([]);
@@ -90,8 +91,8 @@ export default function Fase2Page() {
   const submitDepartment = async (e: FormEvent) => {
     e.preventDefault();
     const res = await fetch(`${API_URL}/core/departments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ name: departmentName }) });
-    if (!res.ok) return setStatusMsg("Falha ao criar departamento");
-    setStatusMsg("Departamento criado");
+    if (!res.ok) toast("Falha ao criar departamento", "error"); return;
+    toast("Departamento criado");
     await loadCore();
   };
 
@@ -102,8 +103,8 @@ export default function Fase2Page() {
       headers: authHeaders,
       body: JSON.stringify({ name: vendorName, document: vendorDocument }),
     });
-    if (!res.ok) return setStatusMsg("Falha ao criar fornecedor");
-    setStatusMsg("Fornecedor criado");
+    if (!res.ok) toast("Falha ao criar fornecedor", "error"); return;
+    toast("Fornecedor criado");
     await loadVendors();
   };
 
@@ -119,8 +120,8 @@ export default function Fase2Page() {
         fiscal_year_id: selectedFiscalYear,
       }),
     });
-    if (!res.ok) return setStatusMsg("Falha ao criar dotação");
-    setStatusMsg("Dotação orçamentária criada");
+    if (!res.ok) toast("Falha ao criar dotação", "error"); return;
+    toast("Dotação orçamentária criada");
   };
 
   const submitCommitment = async (e: FormEvent) => {
@@ -137,15 +138,15 @@ export default function Fase2Page() {
         vendor_id: selectedVendorId,
       }),
     });
-    if (!res.ok) return setStatusMsg("Falha ao criar empenho");
-    setStatusMsg("Empenho criado");
+    if (!res.ok) toast("Falha ao criar empenho", "error"); return;
+    toast("Empenho criado");
     await loadCommitments();
   };
 
   const liquidateCommitment = async (id: number) => {
     const res = await fetch(`${API_URL}/accounting/liquidate/${id}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) return setStatusMsg("Falha ao liquidar empenho");
-    setStatusMsg(`Empenho ${id} liquidado`);
+    if (!res.ok) toast("Falha ao liquidar empenho", "error"); return;
+    toast(`Empenho ${id} liquidado`);
     await loadCommitments();
   };
 
@@ -156,8 +157,8 @@ export default function Fase2Page() {
       headers: authHeaders,
       body: JSON.stringify({ commitment_id: paymentCommitmentId, amount: Number(paymentAmount), payment_date: paymentDate }),
     });
-    if (!res.ok) return setStatusMsg("Falha ao registrar pagamento");
-    setStatusMsg("Pagamento registrado");
+    if (!res.ok) toast("Falha ao registrar pagamento", "error"); return;
+    toast("Pagamento registrado");
     await Promise.all([loadCommitments(), loadPayments()]);
   };
 
@@ -172,11 +173,11 @@ export default function Fase2Page() {
         <Link className="btn" href="/rh">RH</Link>
         <Link className="btn" href="/patrimonio">Patrimônio</Link>
       </div>
-      {statusMsg && <p className={statusMsg.toLowerCase().includes("falha") || statusMsg.toLowerCase().includes("erro") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
+
       <button className="btn"
         onClick={() => {
           Promise.all([loadCore(), loadVendors(), loadCommitments(), loadPayments()])
-            .catch(() => setStatusMsg("Falha ao carregar listas"));
+            .catch(() => toast("Falha ao carregar listas", "error"));
         }}
       >
         Carregar / atualizar listas
@@ -270,7 +271,7 @@ export default function Fase2Page() {
           onChange={(e) => {
             setVendorSearch(e.target.value);
             setTimeout(() => {
-              loadVendors().catch(() => setStatusMsg("Erro ao carregar fornecedores"));
+              loadVendors().catch(() => toast("Erro ao carregar fornecedores", "error"));
             }, 0);
           }}
         />
@@ -288,7 +289,7 @@ export default function Fase2Page() {
             setCommitmentStatus(e.target.value);
             setCommitmentPage(1);
             setTimeout(() => {
-              loadCommitments().catch(() => setStatusMsg("Erro ao carregar empenhos"));
+              loadCommitments().catch(() => toast("Erro ao carregar empenhos", "error"));
             }, 0);
           }}
         >
@@ -322,7 +323,7 @@ export default function Fase2Page() {
           onClick={() => {
             setCommitmentPage((p) => p - 1);
             setTimeout(() => {
-              loadCommitments().catch(() => setStatusMsg("Erro ao carregar empenhos"));
+              loadCommitments().catch(() => toast("Erro ao carregar empenhos", "error"));
             }, 0);
           }}
         >
@@ -334,7 +335,7 @@ export default function Fase2Page() {
           onClick={() => {
             setCommitmentPage((p) => p + 1);
             setTimeout(() => {
-              loadCommitments().catch(() => setStatusMsg("Erro ao carregar empenhos"));
+              loadCommitments().catch(() => toast("Erro ao carregar empenhos", "error"));
             }, 0);
           }}
         >
@@ -363,7 +364,7 @@ export default function Fase2Page() {
           onClick={() => {
             setPaymentPage((p) => p - 1);
             setTimeout(() => {
-              loadPayments().catch(() => setStatusMsg("Erro ao carregar pagamentos"));
+              loadPayments().catch(() => toast("Erro ao carregar pagamentos", "error"));
             }, 0);
           }}
         >
@@ -375,7 +376,7 @@ export default function Fase2Page() {
           onClick={() => {
             setPaymentPage((p) => p + 1);
             setTimeout(() => {
-              loadPayments().catch(() => setStatusMsg("Erro ao carregar pagamentos"));
+              loadPayments().catch(() => toast("Erro ao carregar pagamentos", "error"));
             }, 0);
           }}
         >

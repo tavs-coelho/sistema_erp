@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -115,8 +116,7 @@ function periodoAtual() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PontoPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "registros" | "folha" | "abonos">("dashboard");
 
   // Shared
@@ -168,7 +168,7 @@ export default function PontoPage() {
     try {
       const d = await authJson(`/ponto/dashboard?periodo=${periodo}`);
       setDash(d);
-    } catch (e) { setMsg("Erro ao carregar dashboard: " + messageFrom(e)); }
+    } catch (e) { toast("Erro ao carregar dashboard: " + messageFrom(e), "error"); }
   }
 
   async function loadRegistros() {
@@ -177,7 +177,7 @@ export default function PontoPage() {
       if (selectedEmployee) params.set("employee_id", String(selectedEmployee));
       const d = await authJson(`/ponto/registros?${params}`);
       setRegistros(d);
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function loadFolha() {
@@ -185,7 +185,7 @@ export default function PontoPage() {
     try {
       const d = await authJson(`/ponto/folha/${folhaEmployee}/${folhaPeriodo}`);
       setFolha(d);
-    } catch (e) { setMsg("Erro ao carregar folha: " + messageFrom(e)); }
+    } catch (e) { toast("Erro ao carregar folha: " + messageFrom(e), "error"); }
   }
 
   async function loadAbonos() {
@@ -195,7 +195,7 @@ export default function PontoPage() {
       if (selectedEmployee) params.set("employee_id", String(selectedEmployee));
       const d = await authJson(`/ponto/abonos?${params}`);
       setAbonos(d);
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   useEffect(() => { loadEmployees(); }, []);
@@ -208,7 +208,6 @@ export default function PontoPage() {
 
   async function submitRegistro(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/ponto/registros", {
         method: "POST",
@@ -219,19 +218,19 @@ export default function PontoPage() {
           hora_registro: regHora,
         }),
       });
-      setMsg("Ponto registrado com sucesso!");
+      toast("Ponto registrado com sucesso!");
       setShowRegForm(false);
       loadRegistros();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function deletarRegistro(id: number) {
     if (!confirm("Confirma exclusão deste registro?")) return;
     try {
       await authJson(`/ponto/registros/${id}`, { method: "DELETE" });
-      setMsg("Registro excluído.");
+      toast("Registro excluído.");
       loadRegistros();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   function exportFolhaCsv() {
@@ -246,7 +245,6 @@ export default function PontoPage() {
 
   async function submitAbono(e: FormEvent) {
     e.preventDefault();
-    setMsg("");
     try {
       await authJson("/ponto/abonos", {
         method: "POST",
@@ -257,10 +255,10 @@ export default function PontoPage() {
           motivo: abMotivo,
         }),
       });
-      setMsg("Abono solicitado com sucesso!");
+      toast("Abono solicitado com sucesso!");
       setShowAbonoForm(false);
       loadAbonos();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   async function aprovarAbono(id: number, novoStatus: string) {
@@ -269,9 +267,9 @@ export default function PontoPage() {
         method: "PATCH",
         body: JSON.stringify({ status: novoStatus }),
       });
-      setMsg(`Abono ${novoStatus}.`);
+      toast(`Abono ${novoStatus}.`);
       loadAbonos();
-    } catch (e) { setMsg("Erro: " + messageFrom(e)); }
+    } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -280,12 +278,6 @@ export default function PontoPage() {
     <main className="page-content">
       <h1 className="page-title">Ponto e Frequência</h1>
 
-      {msg && (
-        <div className={`alert ${isError ? "alert-error" : "alert-success"}`}>
-          {msg}
-          <button onClick={() => setMsg("")} className="alert-close">×</button>
-        </div>
-      )}
 
       <div className="tabs">
         {(["dashboard", "registros", "folha", "abonos"] as const).map((t) => (

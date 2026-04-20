@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,8 +38,7 @@ const CHIP_GUIA: Record<string, string> = { emitida: "empenhado", paga: "pago", 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function TributarioPage() {
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
+  const { toast } = useToast();
   const [tab, setTab] = useState<"dashboard" | "contribuintes" | "imoveis" | "lancamentos" | "guias" | "divida" | "aliquotas" | "parcelamentos" | "relatorio">("dashboard");
 
   // Dashboard
@@ -101,7 +101,7 @@ export default function TributarioPage() {
   const [daValorAt, setDaValorAt] = useState(0);
 
   // Loaders
-  const loadDash = async () => { try { setDash(await authJson("/tributario/dashboard")); } catch (e) { setMsg(messageFrom(e)); } };
+  const loadDash = async () => { try { setDash(await authJson("/tributario/dashboard")); } catch (e) { toast(messageFrom(e), "error"); } };
   const loadContribuintes = async () => {
     const qs = new URLSearchParams({ page: String(cPage), size: "8" });
     if (cSearch) qs.set("search", cSearch);
@@ -133,7 +133,7 @@ export default function TributarioPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       Promise.all([loadDash(), loadContribuintes(), loadLancamentos(), loadGuias(), loadDividas()]).catch((e) =>
-        setMsg(messageFrom(e))
+        toast(messageFrom(e), "error")
       );
     }, 0);
     return () => clearTimeout(t);
@@ -168,31 +168,31 @@ export default function TributarioPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cpf_cnpj: cpfCnpj, nome: cNome, tipo: cTipo, municipio: cMunicipio, uf: cUf }),
       });
-      setMsg(`Contribuinte ${cNome} cadastrado.`);
+      toast(`Contribuinte ${cNome} cadastrado.`);
       setCpfCnpj(""); setCNome(""); setCMunicipio(""); setCUf("");
       await loadContribuintes(); await loadDash();
       setTab("contribuintes");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const submitImovel = async (e: FormEvent) => {
     e.preventDefault();
-    if (!iContribId) return setMsg("Informe o ID do contribuinte.");
+    if (!iContribId) toast("Informe o ID do contribuinte.", "error"); return;
     try {
       await authJson("/tributario/imoveis", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ inscricao: iInscricao, contribuinte_id: iContribId, logradouro: iLogradouro, numero: iNumero, bairro: iBairro, area_terreno: iAreaT, area_construida: iAreaC, valor_venal: iValorV, uso: iUso }),
       });
-      setMsg(`Imóvel ${iInscricao} cadastrado.`);
+      toast(`Imóvel ${iInscricao} cadastrado.`);
       setIInscricao(""); setILogradouro(""); setINumero(""); setIBairro(""); setIAreaT(0); setIAreaC(0); setIValorV(0);
       await loadImoveis(); await loadDash();
       setTab("imoveis");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const submitLancamento = async (e: FormEvent) => {
     e.preventDefault();
-    if (!lContribId) return setMsg("Informe o ID do contribuinte.");
+    if (!lContribId) toast("Informe o ID do contribuinte.", "error"); return;
     try {
       await authJson("/tributario/lancamentos", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -203,46 +203,46 @@ export default function TributarioPage() {
           vencimento: lVencimento,
         }),
       });
-      setMsg(`Lançamento ${lTributo} registrado.`);
+      toast(`Lançamento ${lTributo} registrado.`);
       setLPrincipal(0); setLJuros(0); setLMulta(0); setLDesconto(0);
       await loadLancamentos(); await loadDash();
       setTab("lancamentos");
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const emitirGuia = async (lancId: number) => {
     try {
       const guia = await authJson(`/tributario/lancamentos/${lancId}/emitir-guia`, { method: "POST" });
-      setMsg(`Guia emitida: ${guia.codigo_barras}`);
+      toast(`Guia emitida: ${guia.codigo_barras}`);
       await loadGuias(); await loadLancamentos();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const baixarGuia = async (e: FormEvent) => {
     e.preventDefault();
-    if (!gBaixaId) return setMsg("Selecione a guia.");
+    if (!gBaixaId) toast("Selecione a guia.", "error"); return;
     try {
       const qs = new URLSearchParams({ data_pagamento: gDataPagamento || new Date().toISOString().slice(0, 10) });
       if (gBanco) qs.set("banco", gBanco);
       await authJson(`/tributario/guias/${gBaixaId}/baixar?${qs}`, { method: "POST" });
-      setMsg("Pagamento registrado.");
+      toast("Pagamento registrado.");
       setGBaixaId(""); setGDataPagamento(""); setGBanco("");
       await loadGuias(); await loadLancamentos(); await loadDash();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const inscreverDivida = async (e: FormEvent) => {
     e.preventDefault();
-    if (!daLancId) return setMsg("Informe o ID do lançamento.");
+    if (!daLancId) toast("Informe o ID do lançamento.", "error"); return;
     try {
       await authJson("/tributario/divida-ativa", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lancamento_id: daLancId, numero_inscricao: daNumeroInsc, data_inscricao: daDataInsc, valor_atualizado: daValorAt }),
       });
-      setMsg(`Inscrição ${daNumeroInsc} realizada em dívida ativa.`);
+      toast(`Inscrição ${daNumeroInsc} realizada em dívida ativa.`);
       setDaLancId(""); setDaNumeroInsc(""); setDaValorAt(0);
       await loadDividas(); await loadLancamentos(); await loadDash();
-    } catch (er) { setMsg(messageFrom(er)); }
+    } catch (er) { toast(messageFrom(er), "error"); }
   };
 
   const TABS = [
@@ -261,8 +261,6 @@ export default function TributarioPage() {
     <main className="module-page">
       <h1>Módulo Tributário / Arrecadação Municipal</h1>
       <p className="muted">Gestão de contribuintes, cadastro imobiliário, lançamentos (IPTU/ISS/ITBI), guias e dívida ativa.</p>
-
-      {msg && <p className={isError ? "notice error" : "notice"}><strong>{msg}</strong></p>}
 
       <div className="toolbar">
         <Link className="btn" href="/">Painel</Link>
@@ -581,10 +579,10 @@ export default function TributarioPage() {
       )}
 
       {/* ── Alíquotas IPTU ──────────────────────────────────────────────── */}
-      {tab === "aliquotas" && <AliquotasTab msg={msg} setMsg={setMsg} />}
+      {tab === "aliquotas" && <AliquotasTab />}
 
       {/* ── Parcelamentos ───────────────────────────────────────────────── */}
-      {tab === "parcelamentos" && <ParcelamentosTab msg={msg} setMsg={setMsg} />}
+      {tab === "parcelamentos" && <ParcelamentosTab />}
 
       {/* ── Relatório de Arrecadação ─────────────────────────────────────── */}
       {tab === "relatorio" && <RelatorioArrecadacaoTab />}
@@ -597,7 +595,8 @@ export default function TributarioPage() {
 
 type Aliquota = { id: number; exercicio: number; uso: string; aliquota: number; descricao: string };
 
-function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+function AliquotasTab() {
+  const { toast } = useToast();
   const [exercicio, setExercicio] = useState(new Date().getFullYear());
   const [gerarExercicio, setGerarExercicio] = useState(new Date().getFullYear());
   const [gerarVenc, setGerarVenc] = useState(`${new Date().getFullYear()}-03-31`);
@@ -605,13 +604,12 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
   const [uso, setUso] = useState("residencial");
   const [aliquota, setAliquota] = useState("");
   const [descricao, setDescricao] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const load = async () => {
     try {
       const d = await authJson(`/tributario/aliquotas-iptu?exercicio=${exercicio}`);
       setAliquotas(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   useEffect(() => { load(); }, [exercicio]);
@@ -622,29 +620,28 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
       await authJson("/tributario/aliquotas-iptu", {
         method: "POST", body: JSON.stringify({ exercicio, uso, aliquota: parseFloat(aliquota), descricao }),
       });
-      setMsg("Alíquota cadastrada."); setAliquota(""); setDescricao(""); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Alíquota cadastrada."); setAliquota(""); setDescricao(""); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Excluir alíquota?")) return;
     try {
       await authJson(`/tributario/aliquotas-iptu/${id}`, { method: "DELETE" });
-      setMsg("Alíquota removida."); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Alíquota removida."); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleGerarIPTU = async (ev: FormEvent) => {
     ev.preventDefault();
     try {
       const r = await authJson(`/tributario/lancamentos/gerar-iptu?exercicio=${gerarExercicio}&vencimento=${gerarVenc}`, { method: "POST" });
-      setMsg(`IPTU gerado: ${r.gerados} lançamentos criados. Ignorados: já existia=${r.ignorados_ja_existia}, sem alíquota=${r.ignorados_sem_aliquota}, valor zero=${r.ignorados_valor_zero}.`);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast(`IPTU gerado: ${r.gerados} lançamentos criados. Ignorados: já existia=${r.ignorados_ja_existia}, sem alíquota=${r.ignorados_sem_aliquota}, valor zero=${r.ignorados_valor_zero}.`);
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   return (
     <section className="section-stack section-top">
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Alíquotas IPTU por Uso</h2>
       <div className="toolbar">
         <label>Exercício:</label>
@@ -703,40 +700,40 @@ function AliquotasTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => voi
 type Parcelamento = { id: number; divida_id: number; numero_parcelas: number; valor_total: number; data_acordo: string; status: string; parcelas: Parcela[] };
 type Parcela = { id: number; numero_parcela: number; valor: number; vencimento: string; status: string; data_pagamento: string | null };
 
-function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) => void }) {
+function ParcelamentosTab() {
+  const { toast } = useToast();
   const [dividaId, setDividaId] = useState("");
   const [parcelamentos, setParcelamentos] = useState<Paged<Parcelamento> | null>(null);
   const [selected, setSelected] = useState<Parcelamento | null>(null);
   const [numParcelas, setNumParcelas] = useState("6");
   const [valorTotal, setValorTotal] = useState("");
   const [dataAcordo, setDataAcordo] = useState(new Date().toISOString().slice(0, 10));
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const load = async () => {
     try {
       const qs = dividaId ? `?divida_id=${dividaId}` : "?page=1&size=20";
       const d = await authJson(`/tributario/parcelamentos${qs}`);
       setParcelamentos(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const loadDetail = async (id: number) => {
     try {
       const d = await authJson(`/tributario/parcelamentos/${id}`);
       setSelected(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();
-    if (!dividaId) { setMsg("Informe o ID da dívida ativa."); return; }
+    if (!dividaId) { toast("Informe o ID da dívida ativa.", "error"); return; }
     try {
       await authJson("/tributario/parcelamentos", {
         method: "POST",
         body: JSON.stringify({ divida_id: +dividaId, numero_parcelas: +numParcelas, valor_total: +valorTotal, data_acordo: dataAcordo }),
       });
-      setMsg("Parcelamento criado."); load();
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+      toast("Parcelamento criado."); load();
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const handlePagar = async (pid: number, parcId: number) => {
@@ -746,16 +743,15 @@ function ParcelamentosTab({ msg, setMsg }: { msg: string; setMsg: (m: string) =>
       const r = await authJson(`/tributario/parcelamentos/${pid}/parcelas/${parcId}/pagar`, {
         method: "POST", body: JSON.stringify({ data_pagamento: dataPag }),
       });
-      setMsg(r.parcelamento_quitado ? "Parcelamento quitado! Dívida encerrada." : "Parcela registrada.");
+      toast(r.parcelamento_quitado ? "Parcelamento quitado! Dívida encerrada." : "Parcela registrada.");
       loadDetail(pid);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
     <section className="section-stack section-top">
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Parcelamentos de Dívida Ativa</h2>
       <div className="toolbar">
         <input placeholder="ID da Dívida Ativa (opcional)" value={dividaId} onChange={(e) => setDividaId(e.target.value)} className="input-narrow" />
@@ -829,8 +825,7 @@ function RelatorioArrecadacaoTab() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [data, setData] = useState<{ total_arrecadado: number; registros: { tributo: string; exercicio: number; competencia: string; qtd_lancamentos: number; valor_total: number }[] } | null>(null);
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro");
+  const { toast } = useToast();
 
   const buildQS = () => {
     const p = new URLSearchParams();
@@ -845,7 +840,7 @@ function RelatorioArrecadacaoTab() {
     try {
       const d = await authJson(`/tributario/relatorio/arrecadacao?${buildQS()}`);
       setData(d);
-    } catch (e) { setMsg("Erro: " + (e instanceof Error ? e.message : "falha")); }
+    } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
   const csvHref = () => {
@@ -862,7 +857,6 @@ function RelatorioArrecadacaoTab() {
 
   return (
     <section className="section-stack section-top">
-      {msg && <div className={`alert ${isError ? "error" : "success"}`}>{msg}</div>}
       <h2>Relatório Consolidado de Arrecadação</h2>
       <div className="toolbar-wrap">
         <select value={tributo} onChange={(e) => setTributo(e.target.value)}>

@@ -6,14 +6,14 @@ import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Toast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { API_URL, clearSessionCookies, setSessionCookies } from "@/lib/auth";
 
 export default function LoginPage() {
   const { theme } = useTheme();
+  const { toast } = useToast();
   const [username, setUsername] = useState("admin1");
   const [password, setPassword] = useState("demo123");
-  const [message, setMessage] = useState("");
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,7 +24,7 @@ export default function LoginPage() {
     });
     const data = await res.json();
     if (!res.ok) {
-      setMessage(data.detail || "Falha no login");
+      toast(data.detail || "Falha no login", "error");
       return;
     }
     window.localStorage.setItem("access_token", data.access_token);
@@ -32,7 +32,7 @@ export default function LoginPage() {
     window.localStorage.setItem("username", username);
     clearSessionCookies();
     setSessionCookies(data.role, username);
-    setMessage("Login realizado com sucesso");
+    toast("Login realizado com sucesso", "success");
     window.location.href = "/";
   };
 
@@ -64,7 +64,7 @@ export default function LoginPage() {
             Entrar
           </Button>
         </form>
-        {message ? <Toast variant={message.toLowerCase().includes("falha") ? "error" : "success"}>{message}</Toast> : null}
+
         <small className="muted">Usuário demo: admin1 / demo123</small>
       </Card>
     </main>

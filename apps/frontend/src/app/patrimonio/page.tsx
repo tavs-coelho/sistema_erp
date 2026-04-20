@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { useToast } from "@/components/ui/toast";
 import { authDownload, authJson, readCookie } from "@/lib/auth";
 
 type Department = { id: number; name: string };
@@ -27,7 +28,7 @@ function messageFrom(error: unknown) {
 
 export default function PatrimonioPage() {
   const [role] = useState(() => readCookie("role"));
-  const [statusMsg, setStatusMsg] = useState("");
+  const { toast } = useToast();
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -105,7 +106,7 @@ export default function PatrimonioPage() {
     try {
       await Promise.all([loadCoreData(), loadAssets(), loadMovements(), loadReport()]);
     } catch (error) {
-      setStatusMsg(error instanceof Error ? error.message : "Falha ao carregar módulo de patrimônio");
+      toast(error instanceof Error ? error.message : "Falha ao carregar módulo de patrimônio", "error");
     }
   };
 
@@ -119,7 +120,7 @@ export default function PatrimonioPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadAssets().catch((e) => setStatusMsg(messageFrom(e)));
+      loadAssets().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,7 +128,7 @@ export default function PatrimonioPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      loadMovements().catch((e) => setStatusMsg(messageFrom(e)));
+      loadMovements().catch((e) => toast(messageFrom(e), "error"));
     }, 0);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,16 +151,16 @@ export default function PatrimonioPage() {
           status: "ativo",
         }),
       });
-      setStatusMsg("Bem cadastrado com sucesso.");
+      toast("Bem cadastrado com sucesso.");
       await Promise.all([loadAssets(), loadReport(), loadCoreData()]);
     } catch (error) {
-      setStatusMsg(error instanceof Error ? error.message : "Erro ao cadastrar bem");
+      toast(error instanceof Error ? error.message : "Erro ao cadastrar bem", "error");
     }
   };
 
   const transferAsset = async (e: FormEvent) => {
     e.preventDefault();
-    if (!transferAssetId) return setStatusMsg("Selecione um bem para transferência.");
+    if (!transferAssetId) { toast("Selecione um bem para transferência.", "error"); return; }
     try {
       await authJson(`/patrimony/assets/${transferAssetId}/transfer`, {
         method: "POST",
@@ -170,20 +171,20 @@ export default function PatrimonioPage() {
           new_responsible_employee_id: transferResponsibleEmployeeId === "" ? null : Number(transferResponsibleEmployeeId),
         }),
       });
-      setStatusMsg("Transferência registrada.");
+      toast("Transferência registrada.");
       await Promise.all([loadAssets(), loadMovements(), loadReport()]);
     } catch (error) {
-      setStatusMsg(error instanceof Error ? error.message : "Erro ao transferir bem");
+      toast(error instanceof Error ? error.message : "Erro ao transferir bem", "error");
     }
   };
 
   const writeOffAsset = async (assetId: number) => {
     try {
       const data = await authJson(`/patrimony/assets/${assetId}/write-off`, { method: "POST" });
-      setStatusMsg(data.message || "Bem baixado.");
+      toast(data.message || "Bem baixado.");
       await Promise.all([loadAssets(), loadMovements(), loadReport(), loadCoreData()]);
     } catch (error) {
-      setStatusMsg(error instanceof Error ? error.message : "Erro ao baixar bem");
+      toast(error instanceof Error ? error.message : "Erro ao baixar bem", "error");
     }
   };
 
@@ -194,14 +195,13 @@ export default function PatrimonioPage() {
     if (assetStatus) qs.set("status", assetStatus);
     if (assetDepartmentFilter) qs.set("department_id", String(assetDepartmentFilter));
     qs.set("export", "csv");
-    authDownload(`/patrimony/assets?${qs.toString()}`, "bens-patrimonio.csv").catch((e) => setStatusMsg(messageFrom(e)));
+    authDownload(`/patrimony/assets?${qs.toString()}`, "bens-patrimonio.csv").catch((e) => toast(messageFrom(e), "error"));
   };
 
   return (
     <main className="module-page">
       <h1>Módulo de Patrimônio</h1>
       <p className="muted">Perfil atual: <strong suppressHydrationWarning>{role || "não identificado"}</strong></p>
-      {statusMsg && <p className={statusMsg.toLowerCase().includes("erro") || statusMsg.toLowerCase().includes("falha") ? "notice error" : "notice"}><strong>{statusMsg}</strong></p>}
 
       <section className="kpi-grid">
         <div className="card">
@@ -274,7 +274,7 @@ export default function PatrimonioPage() {
             <option value="">Todos os departamentos</option>
             {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
           </select>
-          <button className="btn" onClick={() => { setAssetPage(1); loadAssets().catch((e) => setStatusMsg(messageFrom(e))); }}>Aplicar filtros</button>
+          <button className="btn" onClick={() => { setAssetPage(1); loadAssets().catch((e) => toast(messageFrom(e), "error")); }}>Aplicar filtros</button>
           <button className="btn" onClick={exportAssetsCsv}>Exportar CSV</button>
         </div>
         <table>
@@ -308,7 +308,7 @@ export default function PatrimonioPage() {
             <option value="">Todos os bens</option>
             {(assets?.items || []).map((item) => <option key={item.id} value={item.id}>{item.tag}</option>)}
           </select>
-          <button className="btn" onClick={() => { setMovementPage(1); loadMovements().catch((e) => setStatusMsg(messageFrom(e))); }}>Filtrar</button>
+          <button className="btn" onClick={() => { setMovementPage(1); loadMovements().catch((e) => toast(messageFrom(e), "error")); }}>Filtrar</button>
         </div>
         <table>
           <thead><tr><th>ID</th><th>Bem</th><th>De</th><th>Para</th><th>Tipo</th><th>Data</th></tr></thead>
@@ -338,7 +338,7 @@ export default function PatrimonioPage() {
             <option value="">Todos os departamentos</option>
             {departments.map((dep) => <option key={dep.id} value={dep.id}>{dep.name}</option>)}
           </select>
-          <button className="btn" onClick={() => loadReport().catch((e) => setStatusMsg(messageFrom(e)))}>Gerar relatório</button>
+          <button className="btn" onClick={() => loadReport().catch((e) => toast(messageFrom(e), "error"))}>Gerar relatório</button>
         </div>
         <ul>
           {Object.entries(report || {}).length > 0 ? (

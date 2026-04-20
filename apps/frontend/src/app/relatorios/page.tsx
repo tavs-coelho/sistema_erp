@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { authJson, authDownload } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Toast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -45,8 +45,6 @@ const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice
 
 export default function RelatoriosPage() {
   const [tab, setTab] = useState<"veiculo" | "departamento">("veiculo");
-  const [msg, setMsg] = useState("");
-  const isError = msg.toLowerCase().includes("erro") || msg.toLowerCase().includes("falha");
 
   const TABS = [
     { key: "veiculo", label: "Custo por Veículo" },
@@ -62,29 +60,28 @@ export default function RelatoriosPage() {
         </p>
       </div>
 
-      {msg && <Toast variant={isError ? "error" : "success"}>{msg}</Toast>}
-
       <nav className="tab-strip">
         {TABS.map((t) => (
           <button
             key={t.key}
             className={cn("tab-btn", tab === t.key && "active")}
-            onClick={() => { setTab(t.key); setMsg(""); }}
+            onClick={() => { setTab(t.key); }}
           >
             {t.label}
           </button>
         ))}
       </nav>
 
-      {tab === "veiculo" && <CustoPorVeiculoTab setMsg={setMsg} />}
-      {tab === "departamento" && <CustoPorDepartamentoTab setMsg={setMsg} />}
+      {tab === "veiculo" && <CustoPorVeiculoTab />}
+      {tab === "departamento" && <CustoPorDepartamentoTab />}
     </main>
   );
 }
 
 // ── Custo por Veículo ─────────────────────────────────────────────────────────
 
-function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
+function CustoPorVeiculoTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RelResponse<VeiculoRow> | null>(null);
   const [loading, setLoading] = useState(false);
   const [fInicio, setFInicio] = useState(firstOfYear);
@@ -105,8 +102,7 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/relatorios/frota/custo-por-veiculo?${buildParams()}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -116,7 +112,7 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
         `/relatorios/frota/custo-por-veiculo?${buildParams()}&export=csv`,
         `custo_por_veiculo_${fInicio || "inicio"}_${fFim || "fim"}.csv`
       );
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -225,7 +221,8 @@ function CustoPorVeiculoTab({ setMsg }: { setMsg: (m: string) => void }) {
 
 // ── Custo por Departamento ────────────────────────────────────────────────────
 
-function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
+function CustoPorDepartamentoTab() {
+  const { toast } = useToast();
   const [data, setData] = useState<RelResponse<DeptRow> | null>(null);
   const [loading, setLoading] = useState(false);
   const [fInicio, setFInicio] = useState(firstOfYear);
@@ -244,8 +241,7 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
     setLoading(true);
     try {
       setData(await authJson(`/relatorios/frota/custo-por-departamento?${buildParams()}`));
-      setMsg("");
-    } catch (e) { setMsg("Erro: " + msgFrom(e)); }
+    } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
     setLoading(false);
   };
 
@@ -255,7 +251,7 @@ function CustoPorDepartamentoTab({ setMsg }: { setMsg: (m: string) => void }) {
         `/relatorios/frota/custo-por-departamento?${buildParams()}&export=csv`,
         `custo_por_departamento_${fInicio || "inicio"}_${fFim || "fim"}.csv`
       );
-    } catch (e) { setMsg("Erro ao exportar: " + msgFrom(e)); }
+    } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps

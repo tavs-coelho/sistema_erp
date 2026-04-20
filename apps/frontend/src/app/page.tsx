@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Toast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toast";
 import { API_URL, authJson, clearSessionCookies } from "@/lib/auth";
 
 type Dashboard = {
@@ -18,7 +18,6 @@ type Inventory = { total: number; ativos: number };
 type PublicList = { total: number };
 type Session = { username: string; full_name: string; role: string };
 type RecentAuditEntry = { id: number; action: string; entity: string; created_at: string };
-type MessageKind = "success" | "error" | "info";
 
 const QUICK_LINKS = [
   { href: "/fase-2", label: "Contábil", roles: ["admin", "accountant", "procurement", "read_only"] },
@@ -37,12 +36,11 @@ const QUICK_LINKS = [
 ];
 
 export default function Home() {
+  const { toast } = useToast();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [publicCommitments, setPublicCommitments] = useState<PublicList | null>(null);
   const [publicPayments, setPublicPayments] = useState<PublicList | null>(null);
-  const [message, setMessage] = useState<string>("");
-  const [messageKind, setMessageKind] = useState<MessageKind>("info");
   const [loading, setLoading] = useState(true);
   const [recentAudit, setRecentAudit] = useState<RecentAuditEntry[]>([]);
   const [session, setSession] = useState<Session>({
@@ -73,8 +71,7 @@ export default function Home() {
         setPublicPayments({ total: payments.total || 0 });
       })
       .catch(() => {
-        setMessage("Não foi possível carregar os painéis de resumo.");
-        setMessageKind("error");
+        toast("Não foi possível carregar os painéis de resumo.", "error");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -87,11 +84,9 @@ export default function Home() {
   const copyText = async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      setMessage(`Copiado: ${value}`);
-      setMessageKind("success");
+      toast(`Copiado: ${value}`, "success");
     } catch {
-      setMessage(`Não foi possível copiar ${value}.`);
-      setMessageKind("error");
+      toast(`Não foi possível copiar ${value}.`, "error");
     }
   };
 
@@ -123,12 +118,6 @@ export default function Home() {
         ))}
         <Button variant="danger" onClick={logout}>Sair</Button>
       </nav>
-
-      {message ? (
-        <Toast variant={messageKind === "error" ? "error" : messageKind === "success" ? "success" : "info"}>
-          {message}
-        </Toast>
-      ) : null}
 
       <section className="kpi-grid">
         <Card className="kpi-card">

@@ -9,6 +9,7 @@ _HEX_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$")
 
 class BrandingOut(BaseModel):
     id: int
+    subdomain: str | None = None
     org_name: str
     logo_url: str
     primary_color: str
@@ -37,6 +38,31 @@ class BrandingUpdate(BaseModel):
         if not _HEX_COLOR_RE.match(v):
             raise ValueError(f"Cor inválida: deve ser hexadecimal (#rrggbb ou #rgb). Recebido: {v!r}")
         return v.lower()
+
+
+class TenantCreate(BaseModel):
+    subdomain: str
+    org_name: str = "Prefeitura Municipal"
+    primary_color: str = "#1d4ed8"
+    secondary_color: str = "#0f172a"
+    accent_color: str = "#0ea5e9"
+    app_title: str = "Sistema ERP Municipal"
+
+    @field_validator("subdomain")
+    @classmethod
+    def validate_subdomain(cls, v: str) -> str:
+        import re as _re
+        if not _re.match(r"^[a-z0-9]([a-z0-9\-]{0,62}[a-z0-9])?$", v):
+            raise ValueError("Subdomínio inválido. Use apenas letras minúsculas, números e hífens.")
+        return v.lower()
+
+
+class TenantOut(BaseModel):
+    id: int
+    subdomain: str | None = None
+    org_name: str
+    app_title: str
+    model_config = ConfigDict(from_attributes=True)
 
 
 

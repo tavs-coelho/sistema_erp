@@ -10,9 +10,10 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_user, require_roles
-from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Department, FiscalYear, RoleEnum, User
-from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, UserCreate, UserOut, UserUpdate
+from ..deps import get_current_user, get_tenant_id, require_roles
+from ..middleware import invalidate_tenant_cache
+from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Department, FiscalYear, RoleEnum, TenantBranding, User
+from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
 router = APIRouter(prefix="/core", tags=["core"])
@@ -218,6 +219,87 @@ def _build_events(db: Session) -> list[dict]:
         )
 
     return events
+
+
+# ---------------------------------------------------------------------------
+# Tenant management endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/tenants", response_model=list[TenantOut])
+def list_tenants(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles(RoleEnum.admin)),
+):
+    """List all registered tenants (admin only)."""
+    return db.query(TenantBranding).order_by(TenantBranding.id).all()
+
+
+@router.post("/tenants", response_model=TenantOut, status_code=201)
+def create_tenant(
+    payload: TenantCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+):
+    """Provision a new tenant identified by its subdomain slug (admin only).
+
+    The new ``TenantBranding`` row acts as the tenant registry entry.  Once
+    created, requests arriving with the matching subdomain in the ``Host``
+    header will automatically resolve to this tenant via ``TenantMiddleware``.
+    """
+    existing = db.query(TenantBranding).filter(TenantBranding.subdomain == payload.subdomain).first()
+    if existing:
+        raise HTTPException(status_code=409, detail=f"Subdomínio '{payload.subdomain}' já está em uso.")
+    tenant = TenantBranding(
+        subdomain=payload.subdomain,
+        org_name=payload.org_name,
+        primary_color=payload.primary_color,
+        secondary_color=payload.secondary_color,
+        accent_color=payload.accent_color,
+        app_title=payload.app_title,
+    )
+    db.add(tenant)
+    db.flush()
+    write_audit(
+        db,
+        user_id=current.id,
+        action="create",
+        entity="tenant_branding",
+        entity_id=str(tenant.id),
+        after_data={"subdomain": tenant.subdomain, "org_name": tenant.org_name},
+    )
+    db.commit()
+    db.refresh(tenant)
+    invalidate_tenant_cache(tenant.subdomain)
+    return tenant
+
+
+@router.delete("/tenants/{tenant_id}", status_code=204)
+def delete_tenant(
+    tenant_id: int,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+    current_tenant_id: int = Depends(get_tenant_id),
+):
+    """Remove a tenant (admin only).  Cannot delete the currently active tenant."""
+    if tenant_id == 1:
+        raise HTTPException(status_code=400, detail="Não é possível remover o tenant padrão.")
+    if tenant_id == current_tenant_id:
+        raise HTTPException(status_code=400, detail="Não é possível remover o tenant ativo.")
+    tenant = db.get(TenantBranding, tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant não encontrado.")
+    subdomain = tenant.subdomain
+    write_audit(
+        db,
+        user_id=current.id,
+        action="delete",
+        entity="tenant_branding",
+        entity_id=str(tenant_id),
+        before_data={"subdomain": subdomain, "org_name": tenant.org_name},
+    )
+    db.delete(tenant)
+    db.commit()
+    invalidate_tenant_cache(subdomain)
 
 
 async def _event_generator(request: Request, db: Session):

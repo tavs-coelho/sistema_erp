@@ -22,13 +22,22 @@ class RoleEnum(str, Enum):
 
 
 class TenantBranding(Base):
-    """White-label branding settings stored per tenant (single row, id=1).
+    """White-label branding settings stored per tenant.
 
-    All fields have sensible defaults so the row can be read safely even
-    before any admin has saved custom values.
+    Each row represents one tenant.  The ``subdomain`` field is a URL-safe
+    slug used for subdomain routing (e.g. ``prefeitura-a`` → ``prefeitura-a.erp.app``).
+    All branding fields have sensible defaults so the row can be read safely
+    even before any admin has saved custom values.
+
+    Multi-tenancy routing:
+        ``TenantMiddleware`` reads the ``Host`` header, extracts the subdomain
+        prefix, and resolves the matching ``TenantBranding`` row to populate
+        ``request.state.tenant_id``.  All tenant-scoped queries should filter
+        by this value via the ``get_tenant_id`` dependency.
     """
     __tablename__ = "tenant_branding"
     id: Mapped[int] = mapped_column(primary_key=True)
+    subdomain: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True, index=True)
     org_name: Mapped[str] = mapped_column(String(120), default="Prefeitura Municipal")
     logo_url: Mapped[str] = mapped_column(String(500), default="")
     primary_color: Mapped[str] = mapped_column(String(9), default="#1d4ed8")
@@ -82,6 +91,8 @@ class User(Base):
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    # Multi-tenancy: NULL means the row belongs to the default tenant (id=1).
+    tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenant_branding.id"), nullable=True, index=True)
 
 
 class Vendor(Base):

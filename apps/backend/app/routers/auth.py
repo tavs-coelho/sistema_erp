@@ -10,7 +10,7 @@ from ..config import settings
 from ..db import get_db
 from ..limiter import limiter as _limiter
 from ..models import PasswordResetToken, User
-from ..deps import get_current_user
+from ..deps import get_current_user, get_tenant_id
 from ..schemas import AuthMeResponse, LoginRequest, PasswordResetConfirm, PasswordResetRequest, RefreshRequest, TokenResponse
 from ..security import create_access_token, create_refresh_token, hash_password, verify_password
 
@@ -24,8 +24,20 @@ def me(current_user: User = Depends(get_current_user)):
 
 @router.post("/login", response_model=TokenResponse)
 @_limiter.limit(settings.login_rate_limit)
-def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == payload.username).first()
+def login(
+    request: Request,
+    payload: LoginRequest,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    # Scope the user lookup to the current tenant.
+    # Users with tenant_id IS NULL are treated as belonging to tenant 1 (legacy rows).
+    q = db.query(User).filter(User.username == payload.username)
+    if tenant_id == 1:
+        q = q.filter((User.tenant_id == 1) | (User.tenant_id.is_(None)))
+    else:
+        q = q.filter(User.tenant_id == tenant_id)
+    user = q.first()
     if not user or not verify_password(payload.password, user.hashed_password):
         # Audit failed login attempt (user_id may be None if username not found)
         write_audit(

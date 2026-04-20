@@ -7,12 +7,12 @@ Endpoints:
 
 import time
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..db import get_db
-from ..deps import require_roles
+from ..deps import get_tenant_id, require_roles
 from ..models import RoleEnum, TenantBranding, User
 from ..schemas import BrandingOut, BrandingUpdate
 
@@ -29,24 +29,28 @@ _DEFAULTS = {
 }
 
 # ---------------------------------------------------------------------------
-# Simple in-process cache with TTL (avoids a DB round-trip on every page load)
+# Per-tenant in-process cache with TTL (avoids a DB round-trip on every page load)
+# Keyed by tenant_id so different tenants get independent cached values.
 # ---------------------------------------------------------------------------
 _CACHE_TTL = 300  # seconds
-_cache: BrandingOut | None = None
-_cache_ts: float = 0.0
+_cache: dict[int, BrandingOut] = {}
+_cache_ts: dict[int, float] = {}
 
 
-def _invalidate_cache() -> None:
-    global _cache, _cache_ts
-    _cache = None
-    _cache_ts = 0.0
+def _invalidate_cache(tenant_id: int | None = None) -> None:
+    if tenant_id is None:
+        _cache.clear()
+        _cache_ts.clear()
+    else:
+        _cache.pop(tenant_id, None)
+        _cache_ts.pop(tenant_id, None)
 
 
-def _get_or_create(db: Session) -> TenantBranding:
-    """Return the single branding row (id=1), creating it with defaults if absent."""
-    row = db.get(TenantBranding, 1)
+def _get_or_create(db: Session, tenant_id: int) -> TenantBranding:
+    """Return the branding row for *tenant_id*, creating it with defaults if absent."""
+    row = db.get(TenantBranding, tenant_id)
     if not row:
-        row = TenantBranding(id=1, **_DEFAULTS)
+        row = TenantBranding(id=tenant_id, **_DEFAULTS)
         db.add(row)
         db.commit()
         db.refresh(row)
@@ -54,32 +58,36 @@ def _get_or_create(db: Session) -> TenantBranding:
 
 
 @router.get("", response_model=BrandingOut)
-def get_branding(db: Session = Depends(get_db)):
+def get_branding(
+    request: Request,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
     """Public endpoint — no authentication required.
 
-    Returns the current branding configuration so the frontend can apply
-    theme colours, org name, logo and title on every page load.
-    Responses are cached in-process for up to 5 minutes to avoid repeated
-    database round-trips on every page navigation.
+    Returns the branding configuration for the current tenant so the
+    frontend can apply theme colours, org name, logo and title on every
+    page load.  Responses are cached in-process per tenant for up to 5
+    minutes to avoid repeated database round-trips on every page navigation.
     """
-    global _cache, _cache_ts
     now = time.monotonic()
-    if _cache is not None and (now - _cache_ts) < _CACHE_TTL:
-        return _cache
-    row = _get_or_create(db)
-    _cache = BrandingOut.model_validate(row)
-    _cache_ts = now
-    return _cache
+    if tenant_id in _cache and (now - _cache_ts.get(tenant_id, 0.0)) < _CACHE_TTL:
+        return _cache[tenant_id]
+    row = _get_or_create(db, tenant_id)
+    _cache[tenant_id] = BrandingOut.model_validate(row)
+    _cache_ts[tenant_id] = now
+    return _cache[tenant_id]
 
 
 @router.put("", response_model=BrandingOut)
 def update_branding(
     payload: BrandingUpdate,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current: User = Depends(require_roles(RoleEnum.admin)),
 ):
     """Admin-only endpoint to update the tenant branding settings."""
-    row = _get_or_create(db)
+    row = _get_or_create(db, tenant_id)
     before: dict = {
         "org_name": row.org_name,
         "primary_color": row.primary_color,
@@ -93,11 +101,11 @@ def update_branding(
         user_id=current.id,
         action="update",
         entity="tenant_branding",
-        entity_id="1",
+        entity_id=str(tenant_id),
         before_data=before,
         after_data=payload.model_dump(exclude_none=True),
     )
     db.commit()
     db.refresh(row)
-    _invalidate_cache()
+    _invalidate_cache(tenant_id)
     return row

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
+import { useTheme } from "@/components/theme-provider";
 import { readCookie } from "@/lib/auth";
+import { cn } from "@/lib/cn";
 
 type Session = { username: string; role: string };
 
@@ -32,8 +34,10 @@ const NAV_ITEMS = [
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];
 
-export default function HeaderNav() {
+export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { theme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const sessionRaw = useSyncExternalStore<string>(
     (onStoreChange) => {
       if (typeof window === "undefined") return () => {};
@@ -48,25 +52,68 @@ export default function HeaderNav() {
   const session: Session = { username, role };
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.length === 0 || item.roles.includes(session.role));
+  const currentLabel = visibleItems.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)))?.label || "Sistema ERP";
+  const initials = theme.org_name
+    .split(" ")
+    .map((token) => token[0])
+    .join("")
+    .slice(0, 3)
+    .toUpperCase();
+
+  if (pathname.startsWith("/login")) {
+    return <div className="auth-shell">{children}</div>;
+  }
 
   return (
-    <>
-      <nav className="app-header-nav">
-        {visibleItems.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-          return (
-            <Link key={item.href} href={item.href} className={active ? "active" : ""}>
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="app-header-right">
-        <span className="demo-badge">Ambiente de Demonstração</span>
-        <span className="header-user" suppressHydrationWarning>
-          {session.username || "usuário"} · {session.role || "perfil"}
-        </span>
+    <div className="app-shell">
+      <aside className={cn("app-sidebar", sidebarOpen && "open")}>
+        <Link href="/" className="brand-block" onClick={() => setSidebarOpen(false)}>
+          {theme.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={theme.logo_url} alt={theme.org_name} className="brand-logo" />
+          ) : (
+            <span className="brand-monogram">{initials}</span>
+          )}
+          <span className="brand-copy">
+            <strong>{theme.org_name}</strong>
+            <small>ERP institucional</small>
+          </span>
+        </Link>
+
+        <nav className="sidebar-nav">
+          {visibleItems.map((item) => {
+            const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            return (
+              <Link key={item.href} href={item.href} className={cn("nav-link", active && "active")} onClick={() => setSidebarOpen(false)}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div className="app-main">
+        <header className="app-topbar">
+          <div className="topbar-left">
+            <button type="button" className="btn btn-ghost sidebar-toggle" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menu">
+              ☰
+            </button>
+            <div className="topbar-title">
+              <strong>{currentLabel}</strong>
+              <small>Painel administrativo institucional</small>
+            </div>
+          </div>
+          <div className="topbar-right">
+            <span className="demo-badge">Ambiente de Demonstração</span>
+            <span className="header-user" suppressHydrationWarning>
+              {session.username || "usuário"} · {session.role || "perfil"}
+            </span>
+          </div>
+        </header>
+        <div className="app-content">{children}</div>
       </div>
-    </>
+
+      {sidebarOpen ? <button type="button" className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu" /> : null}
+    </div>
   );
 }

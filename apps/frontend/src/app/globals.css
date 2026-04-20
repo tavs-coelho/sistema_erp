@@ -28,6 +28,7 @@ body {
   min-height: 100vh;
   color: var(--foreground);
   background: #f4f7fc;
+  background: radial-gradient(circle at 0% 0%, #ecf4ff 0%, #f4f7fc 34%, #edf2fb 100%);
   background: radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--theme-primary) 7%, #fff) 0%, #f4f7fc 32%, #edf2fb 100%);
   font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -63,6 +64,7 @@ a {
   gap: 16px;
   padding: clamp(20px, 5vw, 36px);
   border-radius: var(--radius-lg);
+  background: linear-gradient(140deg, #132342, #154182);
   background: linear-gradient(140deg, color-mix(in srgb, var(--theme-secondary) 84%, #000), color-mix(in srgb, var(--theme-primary) 78%, #000));
   color: #f8fbff;
   box-shadow: var(--shadow-md);
@@ -586,11 +588,5 @@ code {
 
   .login-card {
     order: 1;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: light;
   }
 }

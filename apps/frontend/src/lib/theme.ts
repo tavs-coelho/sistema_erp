@@ -8,6 +8,8 @@ export type BrandingTheme = {
   app_title: string;
 };
 
+const BRANDING_STORAGE_KEY = process.env.NEXT_PUBLIC_BRANDING_STORAGE_KEY || "erp:branding";
+
 const defaults: BrandingTheme = {
   org_name: process.env.NEXT_PUBLIC_ORG_NAME || "Prefeitura Municipal",
   logo_url: process.env.NEXT_PUBLIC_LOGO_URL || "",
@@ -30,13 +32,13 @@ function parseTheme(raw: string | null): Partial<BrandingTheme> {
 
 export function resolveTheme(): BrandingTheme {
   if (typeof window === "undefined") return defaults;
-  const fromStorage = parseTheme(window.localStorage.getItem("erp:branding"));
+  const fromStorage = parseTheme(window.localStorage.getItem(BRANDING_STORAGE_KEY));
   return { ...defaults, ...fromStorage };
 }
 
 export function saveTheme(theme: BrandingTheme) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem("erp:branding", JSON.stringify(theme));
+  window.localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(theme));
 }
 
 export function applyTheme(theme: BrandingTheme) {

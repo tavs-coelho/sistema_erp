@@ -97,7 +97,9 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
         <header className="app-topbar">
           <div className="topbar-left">
             <button type="button" className="btn btn-ghost sidebar-toggle" onClick={() => setSidebarOpen((prev) => !prev)} aria-label="Abrir menu">
-              ☰
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
             <div className="topbar-title">
               <strong>{currentLabel}</strong>

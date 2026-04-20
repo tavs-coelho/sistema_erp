@@ -395,6 +395,60 @@ textarea:focus {
   color: var(--foreground);
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.tab-btn.active {
+  background: color-mix(in srgb, var(--theme-primary) 14%, #fff);
+  color: color-mix(in srgb, var(--theme-primary) 90%, #000);
+  border-color: color-mix(in srgb, var(--theme-primary) 36%, var(--border));
+}
+
+.tab-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-export {
+  color: #166534;
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.td-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-plain {
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.text-sm {
+  font-size: 13px;
+}
+
+.text-xs {
+  font-size: 12px;
+}
+
+.page-section {
+  display: grid;
+  gap: 14px;
+  padding-top: 12px;
 }
 
 .notice,

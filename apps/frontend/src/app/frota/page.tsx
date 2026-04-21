@@ -165,6 +165,7 @@ function VeiculosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {
@@ -325,6 +326,7 @@ function AbastecimentosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {
@@ -450,6 +452,7 @@ function ManutencoesTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {

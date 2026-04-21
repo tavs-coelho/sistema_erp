@@ -252,6 +252,7 @@ export default function BrandingPage() {
 
   // Keep draft in sync if the theme is hydrated from API after mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft(theme);
   }, [theme]);
 

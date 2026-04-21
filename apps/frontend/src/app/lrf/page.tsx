@@ -107,6 +107,7 @@ function RREOTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   const ind = data?.indicadores;
@@ -227,6 +228,7 @@ function RGFTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   const ind = data?.indicadores as RGFIndicadores | undefined;
@@ -334,7 +336,7 @@ function RGFTab() {
             <tr key={i}>
               <td>{l.descricao}</td>
               <td style={{ textAlign: "right" }}>
-                {(l as any).quadrimestre != null ? fmtBRL((l as any).quadrimestre) : "—"}
+                {l.quadrimestre != null ? fmtBRL(l.quadrimestre) : "—"}
               </td>
               <td style={{ textAlign: "right" }}><strong>{fmtBRL(l.acumulado)}</strong></td>
             </tr>

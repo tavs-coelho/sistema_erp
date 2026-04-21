@@ -24,6 +24,8 @@ def my_payslips(db: Session = Depends(get_db), user: User = Depends(require_role
 
 @router.get("/income-statement")
 def income_statement(db: Session = Depends(get_db), user: User = Depends(require_roles(RoleEnum.employee, RoleEnum.admin, RoleEnum.hr))):
+    if user.employee_id is None:
+        return {"employee": user.full_name, "total_liquido": 0.0, "periodos": 0}
     slips = db.query(Payslip).filter(Payslip.employee_id == user.employee_id).all()
     total = sum(s.net_amount for s in slips)
     return {"employee": user.full_name, "total_liquido": total, "periodos": len(slips)}

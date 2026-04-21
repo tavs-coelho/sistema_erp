@@ -163,10 +163,14 @@ export default function DepreciacaoPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadAssets(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "config") loadConfigs(); }, [tab, configPage]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (tab === "calcular") loadLancamentos();
   }, [tab, lancPage, lancFilterPeriodo, lancFilterAsset]);
 

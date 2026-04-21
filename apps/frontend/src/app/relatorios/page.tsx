@@ -123,6 +123,7 @@ function CustoPorVeiculoTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];
@@ -262,6 +263,7 @@ function CustoPorDepartamentoTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];

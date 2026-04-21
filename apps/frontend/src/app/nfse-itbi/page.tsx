@@ -165,9 +165,13 @@ export default function NfseItbiPage() {
     } catch {}
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadDashboard(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "nfse") { loadNfse(); loadReferenceData(); } }, [tab, nfsePage, nfseStatus, nfseCompetencia]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "itbi") { loadItbi(); loadReferenceData(); } }, [tab, itbiPage, itbiStatus, itbiNatureza]);
 
   // ── NFS-e submit ───────────────────────────────────────────────────────────

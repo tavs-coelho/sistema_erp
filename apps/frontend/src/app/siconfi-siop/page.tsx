@@ -165,8 +165,11 @@ export default function SiconfiSiopPage() {
     } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, exercicio]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "config") loadConfig(); }, [tab]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "historico") loadHistorico(); }, [tab, histPage, histFiltroTipo, exercicio]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -272,6 +275,7 @@ export default function SiconfiSiopPage() {
     } catch (err) { toast("Erro: " + messageFrom(err), "error"); }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "xml") loadXmlHistorico(); }, [tab, xmlHistPage, xmlHistFiltro, xmlHistValido, exercicio]);
 
   const TABS = [

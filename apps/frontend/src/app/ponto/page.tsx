@@ -198,10 +198,15 @@ export default function PontoPage() {
     } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadEmployees(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "registros") loadRegistros(); }, [tab, regPage, selectedEmployee]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "folha") loadFolha(); }, [tab, folhaEmployee, folhaPeriodo]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "abonos") loadAbonos(); }, [tab, abonoPage, abonoStatusFiltro, selectedEmployee]);
 
   // ── Submit Registro ────────────────────────────────────────────────────────

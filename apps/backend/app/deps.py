@@ -19,7 +19,7 @@ def get_tenant_id(request: Request) -> int:
     return getattr(request.state, "tenant_id", 1)
 
 
-def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(\n    db: Session = Depends(get_db),\n    token: str = Depends(oauth2_scheme),\n    tenant_id: int = Depends(get_tenant_id),\n) -> User:
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])

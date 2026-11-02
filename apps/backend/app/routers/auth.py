@@ -68,7 +68,11 @@ def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(\n    payload: RefreshRequest,\n    db: Session = Depends(get_db),\n    tenant_id: int = Depends(get_tenant_id),\n):
+def refresh(
+    payload: RefreshRequest,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
     try:
         decoded = jwt.decode(payload.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
         if decoded.get("type") != "refresh":
@@ -122,7 +126,11 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
 
 
 @router.post("/reset-password")
-def reset_password(\n    payload: PasswordResetConfirm,\n    db: Session = Depends(get_db),\n    tenant_id: int = Depends(get_tenant_id),\n):
+def reset_password(
+    payload: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
     reset = db.query(PasswordResetToken).filter(PasswordResetToken.token == payload.token).first()
     if not reset or reset.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token inválido/expirado")

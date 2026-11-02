@@ -4,7 +4,8 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_\nfrom sqlalchemy.orm import Session
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
@@ -15,7 +16,15 @@ from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Depart
 from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
-router = APIRouter(prefix="/core", tags=["core"])\n\n\ndef tenant_user_query(db: Session, tenant_id: int):\n    """Scope user CRUD to the request tenant, retaining legacy tenant 1 rows."""\n    query = db.query(User)\n    if tenant_id == 1:\n        return query.filter(or_(User.tenant_id == 1, User.tenant_id.is_(None)))\n    return query.filter(User.tenant_id == tenant_id)
+router = APIRouter(prefix="/core", tags=["core"])
+
+
+def tenant_user_query(db: Session, tenant_id: int):
+    """Scope user CRUD to the request tenant, retaining legacy tenant 1 rows."""
+    query = db.query(User)
+    if tenant_id == 1:
+        return query.filter(or_(User.tenant_id == 1, User.tenant_id.is_(None)))
+    return query.filter(User.tenant_id == tenant_id)
 
 
 @router.get("/users", response_model=list[UserOut])
@@ -31,7 +40,12 @@ def list_users(
 
 
 @router.post("/users", response_model=UserOut)
-def create_user(\n    payload: UserCreate,\n    db: Session = Depends(get_db),\n    tenant_id: int = Depends(get_tenant_id),\n    current: User = Depends(require_roles(RoleEnum.admin)),\n):
+def create_user(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+):
     if db.query(User).filter(User.username == payload.username).first():
         raise HTTPException(status_code=409, detail="Nome de usuário já em uso")
     user = User(
@@ -306,16 +320,25 @@ async def _event_generator(request: Request, db: Session):
     events = _build_events(db)
     if not events:
         # Send a heartbeat so the client knows the connection is alive
-        yield "event: heartbeat\ndata: {}\n\n"
+        yield "event: heartbeat
+data: {}
+
+"
         return
 
     for ev in events:
         if await request.is_disconnected():
             break
-        yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+        yield f"event: {ev['type']}
+data: {json.dumps(ev, ensure_ascii=False)}
+
+"
 
     # Final heartbeat to signal end of initial batch
-    yield "event: heartbeat\ndata: {}\n\n"
+    yield "event: heartbeat
+data: {}
+
+"
 
 
 @router.get("/events")

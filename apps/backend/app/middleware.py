@@ -2,8 +2,7 @@
 
 Reads the ``Host`` request header, extracts the first subdomain component,
 and resolves it to a ``TenantBranding.id`` by querying the database.  The
-resolved ``tenant_id`` (defaulting to ``1`` when no matching tenant is found
-or when accessed via ``localhost`` / ``127.0.0.1``) is stored on
+resolved ``tenant_id`` (defaulting to ``1`` only on local or apex hosts) is stored on
 ``request.state.tenant_id`` so every downstream handler and dependency can
 read it without repeating the lookup.
 

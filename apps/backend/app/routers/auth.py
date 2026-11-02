@@ -80,8 +80,8 @@ def refresh(
         user = db.get(User, int(decoded["sub"]))
     except (JWTError, ValueError, TypeError) as exc:
         raise HTTPException(status_code=401, detail="Refresh token inválido") from exc
-    if not user:
-        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    if not user or not user.active or (user.tenant_id or 1) != tenant_id:
+        raise HTTPException(status_code=401, detail="Refresh token inválido")
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id, user.role.value),
@@ -112,7 +112,7 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     else:
         q = q.filter(User.tenant_id == tenant_id)
     user = q.first()
-    if not user:
+    if not user or not user.active:
         return {"message": "Se usuário existir, o reset foi gerado"}
     token = secrets.token_urlsafe(24)
     reset = PasswordResetToken(user_id=user.id, token=token, expires_at=datetime.now(timezone.utc) + timedelta(minutes=30))
@@ -132,9 +132,16 @@ def reset_password(
     tenant_id: int = Depends(get_tenant_id),
 ):
     reset = db.query(PasswordResetToken).filter(PasswordResetToken.token == payload.token).first()
-    if not reset or reset.expires_at < datetime.now(timezone.utc):
+    if not reset:
+        raise HTTPException(status_code=400, detail="Token inválido/expirado")
+    expires_at = reset.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token inválido/expirado")
     user = db.get(User, reset.user_id)
+    if not user or not user.active or (user.tenant_id or 1) != tenant_id:
+        raise HTTPException(status_code=400, detail="Token inválido/expirado")
     user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
     db.delete(reset)

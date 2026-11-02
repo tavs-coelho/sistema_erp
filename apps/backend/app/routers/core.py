@@ -31,9 +31,10 @@ def tenant_user_query(db: Session, tenant_id: int):
 def list_users(
     active: bool | None = None,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.read_only)),
 ):
-    q = db.query(User)
+    q = tenant_user_query(db, tenant_id)
     if active is not None:
         q = q.filter(User.active == active)
     return q.order_by(User.id).all()
@@ -55,6 +56,7 @@ def create_user(
         role=payload.role,
         hashed_password=hash_password(payload.password),
         employee_id=payload.employee_id,
+        tenant_id=tenant_id,
     )
     db.add(user)
     db.flush()
@@ -69,9 +71,10 @@ def update_user(
     user_id: int,
     payload: UserUpdate,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current: User = Depends(require_roles(RoleEnum.admin)),
 ):
-    user = db.get(User, user_id)
+    user = tenant_user_query(db, tenant_id).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     before = {"role": user.role.value, "active": user.active}
@@ -322,25 +325,16 @@ async def _event_generator(request: Request, db: Session):
     events = _build_events(db)
     if not events:
         # Send a heartbeat so the client knows the connection is alive
-        yield "event: heartbeat
-data: {}
-
-"
+        yield "event: heartbeat\ndata: {}\n\n"
         return
 
     for ev in events:
         if await request.is_disconnected():
             break
-        yield f"event: {ev['type']}
-data: {json.dumps(ev, ensure_ascii=False)}
-
-"
+        yield f"event: {ev['type']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
 
     # Final heartbeat to signal end of initial batch
-    yield "event: heartbeat
-data: {}
-
-"
+    yield "event: heartbeat\ndata: {}\n\n"
 
 
 @router.get("/events")

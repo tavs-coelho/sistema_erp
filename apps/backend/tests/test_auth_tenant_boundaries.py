@@ -180,7 +180,7 @@ def test_user_management_is_scoped_to_current_tenant(tenant_client):
         "/core/users",
         json={
             "username": "new-tenant-two", "full_name": "Created in Tenant Two",
-            "email": "new2@example.invalid", "role": "read_only",
+            "email": "new2@example.com", "role": "read_only",
             "password": "test-password-new",
         },
         headers=two_headers,

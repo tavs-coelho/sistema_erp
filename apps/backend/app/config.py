@@ -1,9 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
+
+
+INSECURE_KEYS = {"change-me-demo-secret", "changeme", "secret", "demo-secret"}
 
 
 class Settings(BaseSettings):
     app_name: str = "Sistema ERP Municipal"
-    # Demo default only; override via environment variable in non-demo environments.
     secret_key: str = "change-me-demo-secret"
     algorithm: str = "HS256"
     access_token_minutes: int = 30
@@ -12,14 +15,21 @@ class Settings(BaseSettings):
     upload_dir: str = "/data/uploads"
     cors_allowed_origins: str = "http://localhost,http://127.0.0.1"
     demo_mode: bool = True
-    # Rate limiting for /auth/login. Set LOGIN_RATE_LIMIT=10000/minute to disable in tests.
     login_rate_limit: str = "10/minute"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
+    @model_validator(mode="after")
+    def validate_production_configuration(self):
+        if not self.demo_mode:
+            if len(self.secret_key) < 32 or self.secret_key.lower() in INSECURE_KEYS:
+                raise ValueError("SECRET_KEY must be a strong, unique value (at least 32 characters) outside demo mode")
+            if self.database_url.startswith("postgresql") and "://erp:erp@" in self.database_url:
+                raise ValueError("Default PostgreSQL credentials are forbidden outside demo mode")
+            if "*" in self.cors_origins:
+                raise ValueError("Wildcard CORS origins are forbidden outside demo mode")
+        return self
+
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
-
-
-settings = Settings()

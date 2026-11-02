@@ -60,6 +60,9 @@ def healthcheck():
 
 @app.on_event("startup")
 def startup_seed():
+    # Never create demonstration accounts or sample records outside demo mode.
+    if not settings.demo_mode:
+        return
     db = SessionLocal()
     try:
         seed_data(db)

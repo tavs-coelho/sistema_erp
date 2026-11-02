@@ -31,6 +31,7 @@ jobs:
         working-directory: apps/backend
         env:
           DATABASE_URL: "sqlite:///./test.db"
+          UPLOAD_DIR: "/tmp/erp-ci-uploads"
         run: |
           # Legacy test modules mutate DATABASE_URL at import time and some remove
           # SQLite files. Isolate each module in a new Python process.

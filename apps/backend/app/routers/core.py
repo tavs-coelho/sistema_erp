@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import or_\nfrom sqlalchemy.orm import Session
 
 from ..audit import write_audit
 from ..config import settings
@@ -15,7 +15,7 @@ from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Depart
 from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
-router = APIRouter(prefix="/core", tags=["core"])
+router = APIRouter(prefix="/core", tags=["core"])\n\n\ndef tenant_user_query(db: Session, tenant_id: int):\n    """Scope user CRUD to the request tenant, retaining legacy tenant 1 rows."""\n    query = db.query(User)\n    if tenant_id == 1:\n        return query.filter(or_(User.tenant_id == 1, User.tenant_id.is_(None)))\n    return query.filter(User.tenant_id == tenant_id)
 
 
 @router.get("/users", response_model=list[UserOut])
@@ -31,7 +31,7 @@ def list_users(
 
 
 @router.post("/users", response_model=UserOut)
-def create_user(payload: UserCreate, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin))):
+def create_user(\n    payload: UserCreate,\n    db: Session = Depends(get_db),\n    tenant_id: int = Depends(get_tenant_id),\n    current: User = Depends(require_roles(RoleEnum.admin)),\n):
     if db.query(User).filter(User.username == payload.username).first():
         raise HTTPException(status_code=409, detail="Nome de usuário já em uso")
     user = User(

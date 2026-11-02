@@ -152,3 +152,39 @@ def test_legacy_default_tenant_user_retains_access(tenant_client):
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 200
     set_tenant(2)
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
+def test_user_management_is_scoped_to_current_tenant(tenant_client):
+    client, session_factory, set_tenant = tenant_client
+    one_token = create_access_token(101, "admin")
+    one_headers = {"Authorization": f"Bearer {one_token}"}
+    one_users = client.get("/core/users", headers=one_headers)
+    assert one_users.status_code == 200
+    assert {u["id"] for u in one_users.json()} == {101, 303, 404}
+
+    set_tenant(2)
+    two_token = create_access_token(202, "admin")
+    two_headers = {"Authorization": f"Bearer {two_token}"}
+    two_users = client.get("/core/users", headers=two_headers)
+    assert two_users.status_code == 200
+    assert {u["id"] for u in two_users.json()} == {202}
+
+    cross_update = client.patch(
+        "/core/users/101", json={"full_name": "Should Not Change"}, headers=two_headers
+    )
+    assert cross_update.status_code == 404
+    with session_factory() as db:
+        assert db.get(User, 101).full_name == "Tenant One"
+
+    new_user = client.post(
+        "/core/users",
+        json={
+            "username": "new-tenant-two", "full_name": "Created in Tenant Two",
+            "email": "new2@example.invalid", "role": "read_only",
+            "password": "test-password-new",
+        },
+        headers=two_headers,
+    )
+    assert new_user.status_code == 200
+    with session_factory() as db:
+        assert db.get(User, new_user.json()["id"]).tenant_id == 2

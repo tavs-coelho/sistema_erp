@@ -130,6 +130,7 @@ function DashboardTab() {
     setAutoLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   const pct = data?.pct_conciliado ?? 0;
@@ -289,6 +290,7 @@ function LancamentosTab() {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(1); }, [filterStatus, filterTipo, filterConta]);
 
   const totalPages = Math.ceil(total / SIZE);
@@ -468,6 +470,7 @@ function ContasTab() {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   return (

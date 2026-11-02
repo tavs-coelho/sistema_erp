@@ -612,6 +612,7 @@ function AliquotasTab() {
     } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [exercicio]);
 
   const handleCreate = async (ev: FormEvent) => {

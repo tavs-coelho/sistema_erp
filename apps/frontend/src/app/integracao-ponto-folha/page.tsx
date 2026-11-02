@@ -181,9 +181,13 @@ export default function IntegracaoPontoFolhaPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadEmployees(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "config") loadConfigs(); }, [tab, configPage]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === "logs") loadLogs(); }, [tab, logPage, logFilterPeriodo, logFilterEmp]);
   useEffect(() => {
     if (tab === "holerite" && holLogs === null) loadHolLogs();

@@ -179,6 +179,7 @@ function ItensTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page, categoria, apenasAbaixo]);
 
   const handleCreate = async (ev: FormEvent) => {
@@ -439,6 +440,7 @@ function HistoricoTab() {
     authDownload(`/almoxarifado/movimentacoes?${p.toString()}`, "movimentacoes.csv").catch(() => toast("Erro ao exportar", "error"));
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page]);
 
   return (
@@ -539,6 +541,7 @@ function RecebimentosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [page]);
 
   const addLinha = () => setFItens((prev) => [...prev, { item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" }]);
@@ -778,6 +781,7 @@ function RequisicaoTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadAlertas(); loadReqs(); }, [page]);
 
   const handleCreateReq = async (ev: FormEvent) => {

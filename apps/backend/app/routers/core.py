@@ -1,8 +1,9 @@
 from pathlib import Path
 import json
+from uuid import uuid4
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -161,7 +162,10 @@ def upload_attachment(
     safe_name = Path(file.filename).name
     if not safe_name:
         raise HTTPException(status_code=400, detail="Arquivo inválido")
-    path = upload_dir / safe_name
+    # Prepend a unique token so concurrent uploads of the same filename never
+    # overwrite each other and path-traversal via the filename is impossible.
+    unique_name = f"{uuid4().hex}_{safe_name}"
+    path = upload_dir / unique_name
     path.write_bytes(file.file.read())
     att = Attachment(entity_type=entity_type, entity_id=entity_id, file_name=safe_name, path=str(path))
     db.add(att)

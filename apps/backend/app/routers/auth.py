@@ -38,7 +38,7 @@ def login(
     else:
         q = q.filter(User.tenant_id == tenant_id)
     user = q.first()
-    if not user or not verify_password(payload.password, user.hashed_password):
+    if not user or not user.active or not verify_password(payload.password, user.hashed_password):
         # Audit failed login attempt (user_id may be None if username not found)
         write_audit(
             db,
@@ -78,6 +78,8 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Refresh token inválido") from exc
     if not user:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
+    if not user.active:
+        raise HTTPException(status_code=401, detail="Usuário inativo")
     return TokenResponse(
         access_token=create_access_token(user.id, user.role.value),
         refresh_token=create_refresh_token(user.id, user.role.value),
@@ -122,6 +124,8 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
     if not reset or reset.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Token inválido/expirado")
     user = db.get(User, reset.user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuário associado ao token não encontrado")
     user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
     db.delete(reset)

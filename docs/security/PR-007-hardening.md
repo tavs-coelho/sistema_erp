@@ -58,3 +58,15 @@ O workflow GitHub Actions `.github/workflows/ci.yml` executa suíte backend, lin
 ## Rastreabilidade do Termo de Referência
 
 IDs oficiais e percentuais de cobertura não foram preenchidos sem confrontação individual da matriz técnica. **Nenhum requisito deve ser considerado demonstrável apenas por este documento**. Vincular código, teste, resultado de execução e demonstração ao item oficial antes de alterar seu status.
+
+## Evidência de execução — CI #39 (02/11/2026)
+
+- Run: https://github.com/tavs-coelho/sistema_erp/actions/runs/41545757936
+- Backend: **617 testes aprovados em 27 módulos pytest**, executados em processos separados; nenhum módulo com falha. Este número representa a soma dos resultados dos módulos, não testes exclusivos de segurança.
+- Segurança multi-entidade: **17 testes aprovados**, sem falhas, com avisos de depreciação.
+- Docker Compose: validação de configuração aprovada.
+- Frontend: **lint reprovado** por erros existentes; build não foi executado porque o job interrompeu antes. A CI geral permanece vermelha.
+- A verificação ocorreu em SQLite de testes, não comprova funcionamento no PostgreSQL nem restauração/implantação.
+- A configuração de CI passa `UPLOAD_DIR=/tmp/erp-ci-uploads` para permitir testes de anexos sem acesso ao volume `/data`.
+
+**Decisão de release:** manter PR em rascunho até resolver o lint/frontend e completar os testes de produção relevantes. Não extrapolar 617 testes de backend para cobertura dos 2.420 requisitos funcionais/52 tecnológicos da licitação.

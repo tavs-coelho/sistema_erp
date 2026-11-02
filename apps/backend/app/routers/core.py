@@ -146,9 +146,11 @@ def list_audit_logs(
     entity: str | None = None,
     user_id: int | None = None,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.read_only)),
 ):
-    q = db.query(AuditLog).order_by(AuditLog.created_at.desc())
+    scoped_users = tenant_user_query(db, tenant_id).with_entities(User.id)
+    q = db.query(AuditLog).filter(AuditLog.user_id.in_(scoped_users)).order_by(AuditLog.created_at.desc())
     if action:
         q = q.filter(AuditLog.action == action)
     if entity:

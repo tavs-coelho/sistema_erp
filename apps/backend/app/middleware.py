@@ -13,7 +13,7 @@ Routing logic
 - ``localhost:8000``         → no subdomain → tenant_id = 1 (default)
 - ``127.0.0.1``              → no subdomain → tenant_id = 1 (default)
 - ``erp.app`` (bare apex)   → no subdomain → tenant_id = 1 (default)
-- ``unknown-slug.erp.app``  → subdomain found but no DB match → tenant_id = 1
+- ``unknown-slug.erp.app``  → subdomain found but no DB match → HTTP 404
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from .models import TenantBranding
 # ---------------------------------------------------------------------------
 # Per-tenant subdomain → tenant_id cache (avoids a DB lookup on every request)
 # ---------------------------------------------------------------------------
-_SUBDOMAIN_CACHE: dict[str, int] = {}
+_SUBDOMAIN_CACHE: dict[str, int | None] = {}
 _SUBDOMAIN_CACHE_LOCK = threading.Lock()
 _SUBDOMAIN_CACHE_TTL = 60  # seconds
 _SUBDOMAIN_CACHE_TS: dict[str, float] = {}
@@ -66,7 +66,7 @@ def _lookup_tenant(subdomain: str) -> int:
     db = SessionLocal()
     try:
         row = db.query(TenantBranding).filter(TenantBranding.subdomain == subdomain).first()
-        tenant_id = row.id if row else _DEFAULT_TENANT_ID
+        tenant_id = row.id if row else None
     finally:
         db.close()
 

@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 from app.db import Base, get_db
 from app.deps import get_tenant_id
 from app.main import app
-from app.models import PasswordResetToken, RoleEnum, TenantBranding, User
+from app.models import AuditLog, PasswordResetToken, RoleEnum, TenantBranding, User
 from app.security import create_access_token, create_refresh_token, hash_password, verify_password
 
 
@@ -188,3 +188,24 @@ def test_user_management_is_scoped_to_current_tenant(tenant_client):
     assert new_user.status_code == 200
     with session_factory() as db:
         assert db.get(User, new_user.json()["id"]).tenant_id == 2
+
+
+def test_audit_trail_is_scoped_to_tenant(tenant_client):
+    client, session_factory, set_tenant = tenant_client
+    with session_factory() as db:
+        db.add_all([
+            AuditLog(user_id=101, action="create", entity="tenant-one-only", entity_id="101"),
+            AuditLog(user_id=202, action="create", entity="tenant-two-only", entity_id="202"),
+        ])
+        db.commit()
+
+    token_one = create_access_token(101, "admin")
+    one = client.get("/core/audit-logs", headers={"Authorization": f"Bearer {token_one}"})
+    assert one.status_code == 200
+    assert {log["entity"] for log in one.json()["items"]} == {"tenant-one-only"}
+
+    set_tenant(2)
+    token_two = create_access_token(202, "admin")
+    two = client.get("/core/audit-logs", headers={"Authorization": f"Bearer {token_two}"})
+    assert two.status_code == 200
+    assert {log["entity"] for log in two.json()["items"]} == {"tenant-two-only"}

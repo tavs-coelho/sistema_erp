@@ -101,8 +101,13 @@ def logout(request: Request, current_user: User = Depends(get_current_user), db:
 
 
 @router.post("/request-password-reset")
-def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == payload.username).first()
+def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(get_db), tenant_id: int = Depends(get_tenant_id)):
+    q = db.query(User).filter(User.username == payload.username)
+    if tenant_id == 1:
+        q = q.filter((User.tenant_id == 1) | (User.tenant_id.is_(None)))
+    else:
+        q = q.filter(User.tenant_id == tenant_id)
+    user = q.first()
     if not user:
         return {"message": "Se usuário existir, o reset foi gerado"}
     token = secrets.token_urlsafe(24)

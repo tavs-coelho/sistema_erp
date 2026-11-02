@@ -103,7 +103,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
         host = request.headers.get("host", "localhost")
         subdomain = _resolve_subdomain(host)
         if subdomain:
-            request.state.tenant_id = _lookup_tenant(subdomain)
+            tenant_id = _lookup_tenant(subdomain)
+            if tenant_id is None:
+                return Response("Entidade não encontrada", status_code=404)
+            request.state.tenant_id = tenant_id
         else:
             request.state.tenant_id = _DEFAULT_TENANT_ID
         return await call_next(request)

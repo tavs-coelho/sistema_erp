@@ -31,7 +31,19 @@ jobs:
         working-directory: apps/backend
         env:
           DATABASE_URL: "sqlite:///./test.db"
-        run: pytest tests/ -v --tb=short
+        run: |
+          # Legacy test modules mutate DATABASE_URL at import time and some remove
+          # SQLite files. Isolate each module in a new Python process.
+          failures=0
+          for file in tests/test_*.py; do
+            rm -f test*.db
+            echo "===== Running $file ====="
+            if ! pytest "$file" -q --tb=short; then
+              failures=$((failures + 1))
+            fi
+          done
+          echo "Failed test modules: $failures"
+          test "$failures" -eq 0
 
   frontend-lint-build:
     name: Frontend — lint + build

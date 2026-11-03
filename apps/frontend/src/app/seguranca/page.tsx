@@ -7,18 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { authJson, clearSessionCookies } from "@/lib/auth";
+import { authJson, clearBrowserCookies } from "@/lib/auth";
 
 type MfaStatus = { enabled: boolean; recovery_codes_remaining: number };
 type SetupDetails = { secret: string; provisioning_uri: string; expires_in: number };
 type SetupConfirmed = { enabled: boolean; recovery_codes: string[] };
 
-function exitToLogin() {
-  window.localStorage.removeItem("access_token");
-  window.localStorage.removeItem("role");
-  window.localStorage.removeItem("username");
-  clearSessionCookies();
-  window.location.href = "/login";
+async function exitToLogin() {
+  await clearBrowserCookies();
+  window.location.replace("/login");
 }
 
 export default function SecurityPage() {
@@ -84,7 +81,7 @@ export default function SecurityPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ current_password: password, code: code.trim() }),
       });
-      exitToLogin();
+      await exitToLogin();
     } catch (error) {
       toast(error instanceof Error ? error.message : "Não foi possível desativar", "error");
       setLoading(false);
@@ -102,7 +99,7 @@ export default function SecurityPage() {
           <h2>Códigos de recuperação — exibição única</h2>
           <p>Salve estes códigos em local seguro. Cada código só pode ser utilizado uma vez. Eles não serão exibidos novamente.</p>
           <ul>{recoveryCodes.map((value) => <li key={value}><code>{value}</code></li>)}</ul>
-          <Button variant="primary" onClick={exitToLogin}>Salvei os códigos. Entrar novamente</Button>
+          <Button variant="primary" onClick={() => { void exitToLogin(); }}>Salvei os códigos. Entrar novamente</Button>
         </Card>
       ) : status.enabled ? (
         <Card>

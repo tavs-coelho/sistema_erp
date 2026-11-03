@@ -102,7 +102,7 @@ class CsrfCookieMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         # Browser login / refresh / logout always require CSRF. Other routes
         # require it only when using cookie auth rather than explicit Bearer.
-        browser_endpoint = request.url.path.startswith("/auth/browser/")
+        browser_endpoint = request.url.path.startswith(("/auth/browser/", "/api/auth/browser/"))
         bearer = request.headers.get("authorization", "")
         explicit_bearer = bearer.lower().startswith("bearer ") and bool(bearer[7:].strip())
         cookie_auth = ACCESS_COOKIE in request.cookies or REFRESH_COOKIE in request.cookies

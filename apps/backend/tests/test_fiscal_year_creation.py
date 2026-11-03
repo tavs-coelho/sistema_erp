@@ -75,3 +75,21 @@ def test_fiscal_year_requires_authorization_and_valid_year(client_db):
                        headers=bearer(100, "read_only")).status_code == 403
     assert client.post("/core/fiscal-years", json={"year": 1800},
                        headers=bearer(99, "admin")).status_code == 422
+
+
+def test_first_password_change_works_for_read_only_profile_and_revokes_jwt(client_db):
+    client, maker = client_db
+    headers = bearer(100, "read_only")
+    changed = client.post(
+        "/employee-portal/change-password",
+        json={"new_password": "new-access-password-long"},
+        headers=headers,
+    )
+    assert changed.status_code == 200
+    assert client.get("/auth/me", headers=headers).status_code == 401
+    with maker() as db:
+        from app.models import User
+        from app.security import verify_password
+        user = db.get(User, 100)
+        assert verify_password("new-access-password-long", user.hashed_password)
+        assert user.must_change_password is False

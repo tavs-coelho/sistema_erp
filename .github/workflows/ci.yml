@@ -158,3 +158,48 @@ jobs:
       - name: Validar rotação e replay no PostgreSQL
         working-directory: apps/backend
         run: python -m scripts.verify_postgres_device_session verify
+  
+  postgres-fresh-install:
+    name: PostgreSQL — instalação limpa desde revisão 0001
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: erp_ci
+          POSTGRES_PASSWORD: only_for_ephemeral_ci
+          POSTGRES_DB: erp_fresh_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp_ci -d erp_fresh_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql+psycopg2://erp_ci:only_for_ephemeral_ci@localhost:5432/erp_fresh_ci"
+      DEMO_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/backend/requirements.txt
+      - name: Instalar dependências
+        working-directory: apps/backend
+        run: pip install -r requirements.txt
+      - name: Aplicar todas as migrações em banco vazio
+        working-directory: apps/backend
+        run: alembic upgrade head
+      - name: Validar head e esquema completo
+        working-directory: apps/backend
+        run: |
+          alembic current
+          python -m scripts.verify_fresh_postgres_schema
+      - name: Verificar aplicação básica no banco migrado
+        working-directory: apps/backend
+        run: |
+          python -c "from app.main import app; from app.db import SessionLocal; from sqlalchemy import text; s=SessionLocal(); print('db:',s.execute(text('select 1')).scalar()); s.close(); print('routes:', len(app.routes))"

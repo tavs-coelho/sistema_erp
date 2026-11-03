@@ -106,6 +106,7 @@ class UserMfa(Base):
     pending_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_used_counter: Mapped[int] = mapped_column(Integer, default=-1, nullable=False)
+    challenge_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
 
 class MfaRecoveryCode(Base):

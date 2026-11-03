@@ -165,7 +165,17 @@ function VeiculosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -325,7 +335,17 @@ function AbastecimentosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -450,7 +470,17 @@ function ManutencoesTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();

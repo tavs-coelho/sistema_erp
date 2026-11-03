@@ -30,10 +30,14 @@ def get_current_user(
         if payload.get("type") != "access":
             raise credentials_exception
         user_id = int(payload.get("sub", 0))
+        token_version = int(payload.get("ver", 0))
     except (JWTError, ValueError, TypeError) as exc:
         raise credentials_exception from exc
     user = db.get(User, user_id)
-    if not user or not user.active or (user.tenant_id or 1) != tenant_id:
+    if (
+        not user or not user.active or (user.tenant_id or 1) != tenant_id
+        or user.session_version != token_version
+    ):
         raise credentials_exception
     return user
 

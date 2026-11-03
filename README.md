@@ -371,3 +371,49 @@ Frontend:
   - Painel de auditoria sem recursos avançados de investigação (foco em demonstrabilidade).
 - **Not demo-ready**
   - Módulos/rotinas avançadas fora do escopo do MVP procurement-demo (ex.: contratos e compras avançadas ponta a ponta no frontend).
+
+
+## Autenticação em duas etapas (MFA TOTP) e sessões
+
+O MFA é opcional por usuário nesta fase e funciona com Google Authenticator ou
+qualquer aplicativo que implemente TOTP (RFC 6238, SHA-1, 6 dígitos, 30 segundos).
+
+**Antes de ativar o MFA**, configure uma chave Fernet independente do
+`SECRET_KEY` usado para JWT. Gere-a fora do repositório:
+
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Armazene o resultado em um gerenciador de segredos e injete-o como
+`MFA_ENCRYPTION_KEY` no backend. **Nunca** salve a chave real no GitHub ou
+a exponha no frontend. Guarde backup seguro: trocar a chave sem recriptografar
+os registros torna os segredos TOTP existentes irrecuperáveis.
+
+1. Entre normalmente e abra **Segurança da Conta**.
+2. Informe a senha atual e copie a chave para o aplicativo autenticador.
+3. Confirme o código de seis dígitos recebido. A ativação revoga os JWTs antigos.
+4. Salve os dez códigos de recuperação exibidos uma única vez; cada código só funciona uma vez.
+5. Na próxima autenticação, informe usuário e senha e depois o TOTP ou um código de recuperação.
+6. Desativar o MFA exige senha atual e segundo fator e revoga as sessões.
+
+O logout agora revoga **todos** os access/refresh tokens da conta por meio
+de `session_version`; não há revogação individual por dispositivo nesta fase.
+O reset de senha também invalida tokens anteriores. Desafios de login MFA
+expiram em 3 minutos e não podem ser reutilizados.
+
+Endpoints: `POST /auth/mfa/setup`, `POST /auth/mfa/confirm`,
+`POST /auth/mfa/verify-login`, `GET /auth/mfa/status`,
+`POST /auth/mfa/disable`. O primeiro `POST /auth/login` retorna
+`mfa_required=true` e um `challenge_token` em vez de tokens de acesso
+quando MFA está ativo. Não armazene o desafio como access token.
+
+Migração: `alembic upgrade head` (revisão `0019_user_mfa_sessions`,
+dependente de `0006_multi_tenancy`). A cadeia anterior de Alembic ainda
+precisa de revisão em uma instalação limpa, pois `0001_initial` usa
+`Base.metadata.create_all()` do modelo atual. Testes em SQLite não
+substituem a validação de migração em PostgreSQL de homologação.
+
+**Aviso:** o sistema ainda não está liberado para produção. Revisar separação
+de todos os módulos por entidade, segredos de implantação, testes de migração
+e backup, políticas de MFA obrigatório e armazenamento de tokens no browser.

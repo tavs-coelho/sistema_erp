@@ -130,7 +130,17 @@ function DashboardTab() {
     setAutoLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
 
   const pct = data?.pct_conciliado ?? 0;
   const barColor = pct >= 80 ? "#28a745" : pct >= 50 ? "#fd7e14" : "#dc3545";
@@ -289,7 +299,17 @@ function LancamentosTab() {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(1); }, [filterStatus, filterTipo, filterConta]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load(1);
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [filterStatus, filterTipo, filterConta]);
 
   const totalPages = Math.ceil(total / SIZE);
 
@@ -468,7 +488,17 @@ function ContasTab() {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
 
   return (
     <section className="section-stack">

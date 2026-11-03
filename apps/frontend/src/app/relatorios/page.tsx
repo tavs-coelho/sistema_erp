@@ -123,7 +123,17 @@ function CustoPorVeiculoTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];
   const totais = data?.totais;
@@ -262,7 +272,17 @@ function CustoPorDepartamentoTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rows = data?.itens || [];
   const totais = data?.totais;

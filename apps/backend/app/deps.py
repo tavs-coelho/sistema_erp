@@ -8,7 +8,21 @@ from .db import get_db
 from .models import RoleEnum, User, UserSession
 from .session_service import valid_session
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+
+def get_access_token(
+    request: Request,
+    bearer: str | None = Depends(oauth2_scheme),
+) -> str:
+    """Authenticate explicit API bearers or opt-in browser HttpOnly cookies."""
+    if bearer:
+        return bearer
+    if settings.browser_cookie_auth_enabled:
+        token = request.cookies.get("erp_access")
+        if token:
+            return token
+    raise HTTPException(status_code=401, detail="Token inválido")
 
 
 def get_tenant_id(request: Request) -> int:
@@ -22,7 +36,7 @@ def get_tenant_id(request: Request) -> int:
 
 def get_current_user(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_access_token),
     tenant_id: int = Depends(get_tenant_id),
 ) -> User:
     credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")

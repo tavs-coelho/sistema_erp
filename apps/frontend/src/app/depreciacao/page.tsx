@@ -163,11 +163,34 @@ export default function DepreciacaoPage() {
     }
   }
 
-  useEffect(() => { loadAssets(); }, []);
-  useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
-  useEffect(() => { if (tab === "config") loadConfigs(); }, [tab, configPage]);
   useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      loadAssets();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "dashboard") loadDashboard();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, periodo]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "config") loadConfigs();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, configPage]);
+  useEffect(() => {
+    const task = setTimeout(() => {
     if (tab === "calcular") loadLancamentos();
+    }, 0);
+    return () => clearTimeout(task);
   }, [tab, lancPage, lancFilterPeriodo, lancFilterAsset]);
 
   // ── Criar Config ───────────────────────────────────────────────────────────

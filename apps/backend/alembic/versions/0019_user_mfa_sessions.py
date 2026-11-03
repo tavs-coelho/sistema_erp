@@ -22,6 +22,7 @@ def upgrade() -> None:
         sa.Column("pending_expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("last_used_counter", sa.Integer(), nullable=False, server_default="-1"),
+        sa.Column("challenge_hash", sa.String(64), nullable=True),
     )
     op.create_table(
         "mfa_recovery_codes",

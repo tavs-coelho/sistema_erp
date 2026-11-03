@@ -7,7 +7,8 @@ from .config import settings
 from .db import SessionLocal
 from .limiter import limiter
 from .middleware import TenantMiddleware
-from .routers import accounting, almoxarifado, auth, branding, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
+from .browser_cookie import CsrfCookieMiddleware
+from .routers import accounting, almoxarifado, auth, browser_auth, branding, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
 from .seed import seed_data
 
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
@@ -25,8 +26,10 @@ app.add_middleware(
 # Resolve tenant from Host header on every request.
 # Must be added AFTER CORSMiddleware so it runs closer to the route handler.
 app.add_middleware(TenantMiddleware)
+app.add_middleware(CsrfCookieMiddleware)
 
 app.include_router(auth.router)
+app.include_router(browser_auth.router)
 app.include_router(branding.router)
 app.include_router(core.router)
 app.include_router(accounting.router)

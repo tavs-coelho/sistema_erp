@@ -250,9 +250,11 @@ export default function BrandingPage() {
   const { toast } = useToast();
   const [draft, setDraft] = useState<BrandingTheme>(theme);
 
-  // Keep draft in sync if the theme is hydrated from API after mount.
+  // Synchronize server-hydrated theme without scheduling a synchronous state
+  // update during React's effect phase. Cancel obsolete updates on theme change.
   useEffect(() => {
-    setDraft(theme);
+    const task = setTimeout(() => setDraft(theme), 0);
+    return () => clearTimeout(task);
   }, [theme]);
 
   const updateDraft = (partial: Partial<BrandingTheme>) =>

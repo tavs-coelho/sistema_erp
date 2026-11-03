@@ -58,12 +58,14 @@ def browser_client(monkeypatch):
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_tenant_id] = lambda: 1
-    with TestClient(app, base_url="https://testserver") as client:
-        # Running a lifespan may invoke demo seeding against an external DB;
-        # keep fixture DB isolated by not depending on startup for users.
+    # Do not run the app lifespan: demo startup may seed the global database.
+    client = TestClient(app, base_url="https://testserver")
+    try:
         yield client, factory, lambda tenant: app.dependency_overrides.__setitem__(
             get_tenant_id, lambda: tenant
         )
+    finally:
+        client.close()
     app.dependency_overrides.pop(get_db, None)
     app.dependency_overrides.pop(get_tenant_id, None)
     engine.dispose()

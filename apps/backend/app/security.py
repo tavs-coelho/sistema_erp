@@ -37,10 +37,8 @@ def create_refresh_token(user_id: int, role: str, version: int = 0) -> str:
     return create_token({"sub": str(user_id), "role": role, "type": "refresh", "ver": version}, settings.refresh_token_minutes)
 
 
-def create_mfa_challenge(user_id: int, tenant_id: int, version: int) -> str:
-    from secrets import token_urlsafe
-
+def create_mfa_challenge(user_id: int, tenant_id: int, version: int, nonce: str) -> str:
     return create_token({
         "sub": str(user_id), "tenant": tenant_id, "type": "mfa_challenge",
-        "ver": version, "jti": token_urlsafe(16),
+        "ver": version, "jti": nonce,
     }, 3)

@@ -10,34 +10,32 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_user, get_tenant_id
+from ..deps import get_current_user, get_tenant_id, oauth2_scheme
 from ..limiter import limiter as _limiter
 from ..mfa import (
     consume_mfa_code, decrypt_secret, encrypt_secret, generate_totp_secret,
     provisioning_uri, replace_recovery_codes, valid_totp_counter,
 )
-from ..models import MfaRecoveryCode, PasswordResetToken, User, UserMfa
+from ..models import MfaRecoveryCode, PasswordResetToken, User, UserMfa, UserSession
 from ..schemas import (
     AuthMeResponse, LoginRequest, MfaChallengeResponse, MfaCodeRequest,
     MfaConfirmResponse, MfaDisableRequest, MfaLoginConfirm, MfaSetupRequest,
     MfaSetupResponse, MfaStatusResponse, PasswordResetConfirm,
-    PasswordResetRequest, RefreshRequest, TokenResponse,
+    PasswordResetRequest, RefreshRequest, TokenResponse, SessionOut,
 )
 from ..security import (
-    create_access_token, create_mfa_challenge, create_refresh_token,
-    hash_password, verify_password,
+    create_mfa_challenge, hash_password, verify_password,
+)
+from ..session_service import (
+    create_device_session, rotate_refresh_token, revoke_user_sessions, utc_now,
+    valid_session,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _issue_tokens(user: User) -> TokenResponse:
-    return TokenResponse(
-        access_token=create_access_token(user.id, user.role.value, user.session_version),
-        refresh_token=create_refresh_token(user.id, user.role.value, user.session_version),
-        role=user.role,
-        must_change_password=user.must_change_password,
-    )
+def _issue_tokens(user: User, db: Session, request: Request, tenant_id: int) -> TokenResponse:
+    return create_device_session(db, user, tenant_id, request)
 
 
 def _find_user(db: Session, username: str, tenant_id: int) -> User | None:
@@ -101,7 +99,7 @@ def login(
         after_data={"username": user.username, "ip": request.client.host if request.client else "unknown"},
     )
     db.commit()
-    return _issue_tokens(user)
+    return _issue_tokens(user, db, request, tenant_id)
 
 
 @router.post("/mfa/verify-login", response_model=TokenResponse)
@@ -141,43 +139,138 @@ def verify_mfa_login(
     record.challenge_hash = None
     write_audit(db, user_id=user.id, action="mfa_login", entity="users", entity_id=str(user.id))
     db.commit()
-    return _issue_tokens(user)
+    return _issue_tokens(user, db, request, tenant_id)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(
     payload: RefreshRequest,
+    request: Request,
     db: Session = Depends(get_db),
     tenant_id: int = Depends(get_tenant_id),
 ):
+    error = HTTPException(status_code=401, detail="Refresh token inválido")
     try:
         claims = jwt.decode(payload.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
         if claims.get("type") != "refresh":
             raise JWTError("invalid")
         user_id = int(claims["sub"])
         version = int(claims.get("ver", 0))
+        sid = claims.get("sid")
+        jti = claims.get("jti")
     except (JWTError, ValueError, TypeError, KeyError) as exc:
-        raise HTTPException(status_code=401, detail="Refresh token inválido") from exc
+        raise error from exc
     user = _active_tenant_user(db, user_id, tenant_id)
     if not user or user.session_version != version:
-        raise HTTPException(status_code=401, detail="Refresh token inválido")
-    return _issue_tokens(user)
+        raise error
+    if not sid:
+        # Legacy refresh tokens are allowed only in isolated demonstration mode.
+        # Production requires re-authentication to create tracked sessions.
+        if not settings.demo_mode:
+            raise error
+        return _issue_tokens(user, db, request, tenant_id)
+    if not isinstance(sid, str) or len(sid) != 32 or not isinstance(jti, str):
+        raise error
+    result = rotate_refresh_token(db, user, tenant_id, sid, payload.refresh_token)
+    if result is None:
+        raise error
+    return result
 
 
 @router.post("/logout")
-def logout(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Revokes all access and refresh tokens for the account by bumping its
-    # version. Granular per-device sessions require a later session registry.
+def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    # Access tokens are validated by get_current_user before their claims are read.
+    sid = jwt.get_unverified_claims(token).get("sid")
+    if isinstance(sid, str) and len(sid) == 32:
+        record = db.get(UserSession, sid)
+        if not valid_session(record, current_user, tenant_id):
+            raise HTTPException(status_code=401, detail="Sessão inválida")
+        record.revoked_at = utc_now()
+    else:
+        # Only demo-mode legacy access tokens can reach this branch.
+        current_user.session_version += 1
+        revoke_user_sessions(db, current_user.id)
+    write_audit(
+        db, user_id=current_user.id, action="logout", entity="users",
+        entity_id=str(current_user.id), after_data={"current_session_revoked": True},
+    )
+    db.commit()
+    return {"message": "Sessão encerrada"}
+
+
+@router.post("/logout-all")
+def logout_all(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     current_user.session_version += 1
+    revoke_user_sessions(db, current_user.id)
     record = db.get(UserMfa, current_user.id)
     if record:
         record.challenge_hash = None
-    write_audit(
-        db, user_id=current_user.id, action="logout", entity="users", entity_id=str(current_user.id),
-        after_data={"all_sessions_revoked": True, "ip": request.client.host if request.client else "unknown"},
-    )
+    write_audit(db, user_id=current_user.id, action="logout_all", entity="users",
+                entity_id=str(current_user.id), after_data={"all_sessions_revoked": True})
     db.commit()
-    return {"message": "Todas as sessões foram revogadas"}
+    return {"message": "Todas as sessões foram encerradas"}
+
+
+@router.get("/sessions", response_model=list[SessionOut])
+def list_sessions(
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    current_sid = jwt.get_unverified_claims(token).get("sid")
+    records = (
+        db.query(UserSession)
+        .filter(UserSession.user_id == current_user.id,
+                UserSession.tenant_id == tenant_id,
+                UserSession.session_version == current_user.session_version,
+                UserSession.revoked_at.is_(None),
+                UserSession.expires_at > utc_now())
+        .order_by(UserSession.created_at.desc())
+        .limit(50).all()
+    )
+    return [
+        SessionOut(
+            id=record.id, user_agent=record.user_agent,
+            created_at=record.created_at, last_used_at=record.last_used_at,
+            expires_at=record.expires_at, current=record.id == current_sid,
+        )
+        for record in records
+    ]
+
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+):
+    record = (
+        db.query(UserSession)
+        .filter(UserSession.id == session_id,
+                UserSession.user_id == current_user.id,
+                UserSession.tenant_id == tenant_id)
+        .with_for_update().first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    if record.revoked_at is None:
+        record.revoked_at = utc_now()
+        write_audit(db, user_id=current_user.id, action="session_revoked",
+                    entity="users", entity_id=str(current_user.id),
+                    after_data={"session_id": session_id})
+        db.commit()
+    return {"message": "Sessão encerrada"}
 
 
 @router.get("/mfa/status", response_model=MfaStatusResponse)
@@ -242,6 +335,7 @@ def mfa_confirm(
     record.last_used_counter = counter
     codes = replace_recovery_codes(db, current.id)
     current.session_version += 1
+    revoke_user_sessions(db, current.id)
     write_audit(db, user_id=current.id, action="mfa_enabled", entity="users", entity_id=str(current.id))
     db.commit()
     return MfaConfirmResponse(recovery_codes=codes)
@@ -266,6 +360,7 @@ def mfa_disable(
     db.query(MfaRecoveryCode).filter(MfaRecoveryCode.user_id == current.id).delete()
     db.delete(record)
     current.session_version += 1
+    revoke_user_sessions(db, current.id)
     write_audit(db, user_id=current.id, action="mfa_disabled", entity="users", entity_id=str(current.id))
     db.commit()
     return {"message": "MFA desativado; todas as sessões foram revogadas"}
@@ -314,6 +409,7 @@ def reset_password(
     user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
     user.session_version += 1
+    revoke_user_sessions(db, user.id)
     record = db.get(UserMfa, user.id)
     if record:
         record.challenge_hash = None

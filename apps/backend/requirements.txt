@@ -14,3 +14,4 @@ email-validator==2.2.0
 python-dateutil>=2.9.0
 lxml>=5.0.0
 slowapi==0.1.9
+cryptography==44.0.3

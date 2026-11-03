@@ -77,6 +77,46 @@ class TokenResponse(BaseModel):
     must_change_password: bool
 
 
+class MfaChallengeResponse(BaseModel):
+    mfa_required: bool = True
+    challenge_token: str
+    expires_in: int = 180
+
+
+class MfaLoginConfirm(BaseModel):
+    challenge_token: str
+    code: str
+
+
+class MfaSetupRequest(BaseModel):
+    current_password: str
+
+
+class MfaCodeRequest(BaseModel):
+    code: str
+
+
+class MfaDisableRequest(BaseModel):
+    current_password: str
+    code: str
+
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+    expires_in: int = 600
+
+
+class MfaConfirmResponse(BaseModel):
+    enabled: bool = True
+    recovery_codes: list[str]
+
+
+class MfaStatusResponse(BaseModel):
+    enabled: bool
+    recovery_codes_remaining: int
+
+
 class AuthMeResponse(BaseModel):
     id: int
     username: str

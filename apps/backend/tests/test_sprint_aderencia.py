@@ -98,6 +98,16 @@ def test_logout_success_creates_audit_log():
         assert r.status_code == 200
         after = db.query(AuditLog).filter(AuditLog.action == "logout").count()
         assert after > before
+        # Logout now revokes all existing JWTs. Preserve the valid test fixture
+        # for unrelated modules without exceeding the deliberate login rate-limit.
+        assert client.get("/auth/me", headers=headers).status_code == 401
+        from app.models import User
+        from app.security import create_access_token
+        user = db.query(User).filter(User.username == "admin1").first()
+        db.refresh(user)
+        _token_cache["admin1"] = create_access_token(
+            user.id, user.role.value, user.session_version
+        )
     finally:
         db.close()
 

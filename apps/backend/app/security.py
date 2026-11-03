@@ -29,9 +29,18 @@ def create_token(data: dict, minutes: int) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
-def create_access_token(user_id: int, role: str) -> str:
-    return create_token({"sub": str(user_id), "role": role, "type": "access"}, settings.access_token_minutes)
+def create_access_token(user_id: int, role: str, version: int = 0) -> str:
+    return create_token({"sub": str(user_id), "role": role, "type": "access", "ver": version}, settings.access_token_minutes)
 
 
-def create_refresh_token(user_id: int, role: str) -> str:
-    return create_token({"sub": str(user_id), "role": role, "type": "refresh"}, settings.refresh_token_minutes)
+def create_refresh_token(user_id: int, role: str, version: int = 0) -> str:
+    return create_token({"sub": str(user_id), "role": role, "type": "refresh", "ver": version}, settings.refresh_token_minutes)
+
+
+def create_mfa_challenge(user_id: int, tenant_id: int, version: int) -> str:
+    from secrets import token_urlsafe
+
+    return create_token({
+        "sub": str(user_id), "tenant": tenant_id, "type": "mfa_challenge",
+        "ver": version, "jti": token_urlsafe(16),
+    }, 3)

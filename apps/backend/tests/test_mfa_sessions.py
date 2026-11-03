@@ -12,6 +12,7 @@ from app.config import settings
 from app.db import Base, get_db
 from app.deps import get_tenant_id
 from app.main import app
+from app.limiter import limiter
 from app.mfa import totp_at, valid_totp_counter
 from app.models import MfaRecoveryCode, RoleEnum, TenantBranding, User, UserMfa
 from app.security import hash_password
@@ -19,6 +20,8 @@ from app.security import hash_password
 
 @pytest.fixture
 def mfa_client(monkeypatch):
+    # Rate limits are process-wide; each isolated test represents a new client.
+    limiter._storage.reset()
     monkeypatch.setattr(settings, "mfa_encryption_key", Fernet.generate_key().decode("ascii"))
     moment = [1790000100.0]
     monkeypatch.setattr("app.mfa.time.time", lambda: moment[0])

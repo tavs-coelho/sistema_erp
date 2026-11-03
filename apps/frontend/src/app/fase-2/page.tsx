@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { authToken } from "@/lib/auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+import { apiFetch, authDownload } from "@/lib/auth";
 
 type ListResponse<T> = { total: number; page: number; size: number; items: T[] };
 type Department = { id: number; name: string };
@@ -15,7 +13,6 @@ type Commitment = { id: number; number: string; description: string; amount: num
 type Payment = { id: number; commitment_id: number; amount: number; payment_date: string };
 
 export default function Fase2Page() {
-  const token = authToken();
   const { toast } = useToast();
 
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -47,12 +44,12 @@ export default function Fase2Page() {
   const [paymentAmount, setPaymentAmount] = useState(12000);
   const [paymentDate, setPaymentDate] = useState("2026-04-19");
 
-  const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const authHeaders = { "Content-Type": "application/json" };
 
   const loadCore = async () => {
     const [depRes, fyRes] = await Promise.all([
-      fetch(`${API_URL}/core/departments`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`${API_URL}/core/fiscal-years`, { headers: { Authorization: `Bearer ${token}` } }),
+      apiFetch(`/core/departments`, {}),
+      apiFetch(`/core/fiscal-years`, {}),
     ]);
     const depJson = await depRes.json();
     const fyJson = await fyRes.json();
@@ -63,8 +60,8 @@ export default function Fase2Page() {
   };
 
   const loadVendors = async () => {
-    const res = await fetch(`${API_URL}/accounting/vendors?search=${encodeURIComponent(vendorSearch)}&page=1&size=10`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await apiFetch(`/accounting/vendors?search=${encodeURIComponent(vendorSearch)}&page=1&size=10`, {
+      
     });
     const data = await res.json();
     setVendors(data);
@@ -72,9 +69,9 @@ export default function Fase2Page() {
   };
 
   const loadCommitments = async () => {
-    const res = await fetch(
-      `${API_URL}/accounting/commitments?status=${encodeURIComponent(commitmentStatus)}&page=${commitmentPage}&size=5`,
-      { headers: { Authorization: `Bearer ${token}` } },
+    const res = await apiFetch(
+      `/accounting/commitments?status=${encodeURIComponent(commitmentStatus)}&page=${commitmentPage}&size=5`,
+      {},
     );
     const data = await res.json();
     setCommitments(data);
@@ -82,15 +79,15 @@ export default function Fase2Page() {
   };
 
   const loadPayments = async () => {
-    const res = await fetch(`${API_URL}/accounting/payments?page=${paymentPage}&size=5`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await apiFetch(`/accounting/payments?page=${paymentPage}&size=5`, {
+      
     });
     setPayments(await res.json());
   };
 
   const submitDepartment = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/core/departments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ name: departmentName }) });
+    const res = await apiFetch(`/core/departments`, { method: "POST", headers: authHeaders, body: JSON.stringify({ name: departmentName }) });
     if (!res.ok) { toast("Falha ao criar departamento", "error"); return; }
     toast("Departamento criado");
     await loadCore();
@@ -98,7 +95,7 @@ export default function Fase2Page() {
 
   const submitVendor = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/accounting/vendors`, {
+    const res = await apiFetch(`/accounting/vendors`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ name: vendorName, document: vendorDocument }),
@@ -110,7 +107,7 @@ export default function Fase2Page() {
 
   const submitAllocation = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/accounting/budget-allocations`, {
+    const res = await apiFetch(`/accounting/budget-allocations`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({
@@ -126,7 +123,7 @@ export default function Fase2Page() {
 
   const submitCommitment = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/accounting/commitments`, {
+    const res = await apiFetch(`/accounting/commitments`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({
@@ -144,7 +141,7 @@ export default function Fase2Page() {
   };
 
   const liquidateCommitment = async (id: number) => {
-    const res = await fetch(`${API_URL}/accounting/liquidate/${id}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    const res = await apiFetch(`/accounting/liquidate/${id}`, { method: "POST",  });
     if (!res.ok) { toast("Falha ao liquidar empenho", "error"); return; }
     toast(`Empenho ${id} liquidado`);
     await loadCommitments();
@@ -152,7 +149,7 @@ export default function Fase2Page() {
 
   const submitPayment = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/accounting/payments`, {
+    const res = await apiFetch(`/accounting/payments`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ commitment_id: paymentCommitmentId, amount: Number(paymentAmount), payment_date: paymentDate }),
@@ -299,7 +296,7 @@ export default function Fase2Page() {
           <option value="pago">Pago</option>
         </select>
         </label>
-        <a className="btn" href={`${API_URL}/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank">Exportar CSV</a>
+        <a className="btn" href={`/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank">Exportar CSV</a>
         <table className="mt-2">
           <thead>
             <tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>

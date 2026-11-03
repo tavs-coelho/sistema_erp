@@ -612,7 +612,10 @@ function AliquotasTab() {
     } catch (e) { toast("Erro: " + (e instanceof Error ? e.message : "falha"), "error"); }
   };
 
-  useEffect(() => { load(); }, [exercicio]);
+  useEffect(() => {
+    const task = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(task);
+  }, [exercicio]);
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();

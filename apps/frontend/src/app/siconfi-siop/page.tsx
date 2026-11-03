@@ -165,9 +165,29 @@ export default function SiconfiSiopPage() {
     } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
-  useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, exercicio]);
-  useEffect(() => { if (tab === "config") loadConfig(); }, [tab]);
-  useEffect(() => { if (tab === "historico") loadHistorico(); }, [tab, histPage, histFiltroTipo, exercicio]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      if (tab === "dashboard") loadDashboard();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [tab, exercicio]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "config") loadConfig();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "historico") loadHistorico();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, histPage, histFiltroTipo, exercicio]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -272,7 +292,17 @@ export default function SiconfiSiopPage() {
     } catch (err) { toast("Erro: " + messageFrom(err), "error"); }
   }
 
-  useEffect(() => { if (tab === "xml") loadXmlHistorico(); }, [tab, xmlHistPage, xmlHistFiltro, xmlHistValido, exercicio]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      if (tab === "xml") loadXmlHistorico();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [tab, xmlHistPage, xmlHistFiltro, xmlHistValido, exercicio]);
 
   const TABS = [
     { key: "dashboard", label: "Dashboard" },

@@ -179,7 +179,17 @@ function ItensTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, [page, categoria, apenasAbaixo]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page, categoria, apenasAbaixo]);
 
   const handleCreate = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -439,7 +449,17 @@ function HistoricoTab() {
     authDownload(`/almoxarifado/movimentacoes?${p.toString()}`, "movimentacoes.csv").catch(() => toast("Erro ao exportar", "error"));
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   return (
     <section className="section-stack">
@@ -539,7 +559,17 @@ function RecebimentosTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   const addLinha = () => setFItens((prev) => [...prev, { item_almoxarifado_id: "", quantidade_recebida: "", valor_unitario: "0" }]);
   const removeLinha = (i: number) => setFItens((prev) => prev.filter((_, idx) => idx !== i));
@@ -778,7 +808,17 @@ function RequisicaoTab({ canWrite }: { canWrite: boolean }) {
     } catch (e) { toast("Erro: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { loadAlertas(); loadReqs(); }, [page]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      loadAlertas(); loadReqs();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, [page]);
 
   const handleCreateReq = async (ev: FormEvent) => {
     ev.preventDefault();

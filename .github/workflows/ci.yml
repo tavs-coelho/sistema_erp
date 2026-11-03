@@ -31,7 +31,20 @@ jobs:
         working-directory: apps/backend
         env:
           DATABASE_URL: "sqlite:///./test.db"
-        run: pytest tests/ -v --tb=short
+          UPLOAD_DIR: "/tmp/erp-ci-uploads"
+        run: |
+          # Legacy test modules mutate DATABASE_URL at import time and some remove
+          # SQLite files. Isolate each module in a new Python process.
+          failures=0
+          for file in tests/test_*.py; do
+            rm -f test*.db
+            echo "===== Running $file ====="
+            if ! pytest "$file" -q --tb=short; then
+              failures=$((failures + 1))
+            fi
+          done
+          echo "Failed test modules: $failures"
+          test "$failures" -eq 0
 
   frontend-lint-build:
     name: Frontend — lint + build
@@ -72,3 +85,29 @@ jobs:
 
       - name: Verificar sintaxe do docker-compose.yml
         run: docker compose config --quiet
+
+  tenant-security-tests:
+    name: Segurança — autenticação e isolamento multi-entidade
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/backend/requirements.txt
+      - name: Instalar dependências
+        working-directory: apps/backend
+        run: pip install -r requirements.txt
+      - name: Testar autenticação e segregação
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: "sqlite:///./tenant_security_test.db"
+        run: |
+          pytest -v --tb=short \
+            tests/test_auth_tenant_boundaries.py \
+            tests/test_password_reset_tenant.py \
+            tests/test_tenant_middleware_security.py \
+            tests/test_production_config.py

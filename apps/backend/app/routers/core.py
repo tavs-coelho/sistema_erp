@@ -2,8 +2,9 @@ from pathlib import Path
 import json
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..audit import write_audit
@@ -18,20 +19,34 @@ from ..security import hash_password
 router = APIRouter(prefix="/core", tags=["core"])
 
 
+def tenant_user_query(db: Session, tenant_id: int):
+    """Scope user CRUD to the request tenant, retaining legacy tenant 1 rows."""
+    query = db.query(User)
+    if tenant_id == 1:
+        return query.filter(or_(User.tenant_id == 1, User.tenant_id.is_(None)))
+    return query.filter(User.tenant_id == tenant_id)
+
+
 @router.get("/users", response_model=list[UserOut])
 def list_users(
     active: bool | None = None,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.read_only)),
 ):
-    q = db.query(User)
+    q = tenant_user_query(db, tenant_id)
     if active is not None:
         q = q.filter(User.active == active)
     return q.order_by(User.id).all()
 
 
 @router.post("/users", response_model=UserOut)
-def create_user(payload: UserCreate, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin))):
+def create_user(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+):
     if db.query(User).filter(User.username == payload.username).first():
         raise HTTPException(status_code=409, detail="Nome de usuário já em uso")
     user = User(
@@ -41,6 +56,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), current: Use
         role=payload.role,
         hashed_password=hash_password(payload.password),
         employee_id=payload.employee_id,
+        tenant_id=tenant_id,
     )
     db.add(user)
     db.flush()
@@ -55,9 +71,10 @@ def update_user(
     user_id: int,
     payload: UserUpdate,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current: User = Depends(require_roles(RoleEnum.admin)),
 ):
-    user = db.get(User, user_id)
+    user = tenant_user_query(db, tenant_id).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
     before = {"role": user.role.value, "active": user.active}
@@ -132,9 +149,11 @@ def list_audit_logs(
     entity: str | None = None,
     user_id: int | None = None,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(require_roles(RoleEnum.admin, RoleEnum.read_only)),
 ):
-    q = db.query(AuditLog).order_by(AuditLog.created_at.desc())
+    scoped_users = tenant_user_query(db, tenant_id).with_entities(User.id)
+    q = db.query(AuditLog).filter(AuditLog.user_id.in_(scoped_users)).order_by(AuditLog.created_at.desc())
     if action:
         q = q.filter(AuditLog.action == action)
     if entity:

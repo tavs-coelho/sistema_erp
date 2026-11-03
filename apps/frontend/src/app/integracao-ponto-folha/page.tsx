@@ -181,14 +181,47 @@ export default function IntegracaoPontoFolhaPage() {
     }
   }
 
-  useEffect(() => { loadEmployees(); }, []);
-  useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
-  useEffect(() => { if (tab === "config") loadConfigs(); }, [tab, configPage]);
-  useEffect(() => { if (tab === "logs") loadLogs(); }, [tab, logPage, logFilterPeriodo, logFilterEmp]);
   useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      loadEmployees();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "dashboard") loadDashboard();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, periodo]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "config") loadConfigs();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, configPage]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "logs") loadLogs();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, logPage, logFilterPeriodo, logFilterEmp]);
+  useEffect(() => {
+    const task = setTimeout(() => {
     if (tab === "holerite" && holLogs === null) loadHolLogs();
+    }, 0);
+    return () => clearTimeout(task);
   }, [tab]);
-  useEffect(() => { if (tab === "holerite") loadHolLogs(); }, [holLogPage]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "holerite") loadHolLogs();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [holLogPage]);
 
   async function loadHolLogs() {
     try {

@@ -2,8 +2,7 @@
 
 Reads the ``Host`` request header, extracts the first subdomain component,
 and resolves it to a ``TenantBranding.id`` by querying the database.  The
-resolved ``tenant_id`` (defaulting to ``1`` when no matching tenant is found
-or when accessed via ``localhost`` / ``127.0.0.1``) is stored on
+resolved ``tenant_id`` (defaulting to ``1`` only on local or apex hosts) is stored on
 ``request.state.tenant_id`` so every downstream handler and dependency can
 read it without repeating the lookup.
 
@@ -13,7 +12,7 @@ Routing logic
 - ``localhost:8000``         → no subdomain → tenant_id = 1 (default)
 - ``127.0.0.1``              → no subdomain → tenant_id = 1 (default)
 - ``erp.app`` (bare apex)   → no subdomain → tenant_id = 1 (default)
-- ``unknown-slug.erp.app``  → subdomain found but no DB match → tenant_id = 1
+- ``unknown-slug.erp.app``  → subdomain found but no DB match → HTTP 404
 """
 
 from __future__ import annotations
@@ -31,7 +30,7 @@ from .models import TenantBranding
 # ---------------------------------------------------------------------------
 # Per-tenant subdomain → tenant_id cache (avoids a DB lookup on every request)
 # ---------------------------------------------------------------------------
-_SUBDOMAIN_CACHE: dict[str, int] = {}
+_SUBDOMAIN_CACHE: dict[str, int | None] = {}
 _SUBDOMAIN_CACHE_LOCK = threading.Lock()
 _SUBDOMAIN_CACHE_TTL = 60  # seconds
 _SUBDOMAIN_CACHE_TS: dict[str, float] = {}
@@ -66,7 +65,7 @@ def _lookup_tenant(subdomain: str) -> int:
     db = SessionLocal()
     try:
         row = db.query(TenantBranding).filter(TenantBranding.subdomain == subdomain).first()
-        tenant_id = row.id if row else _DEFAULT_TENANT_ID
+        tenant_id = row.id if row else None
     finally:
         db.close()
 
@@ -104,7 +103,10 @@ class TenantMiddleware(BaseHTTPMiddleware):
         host = request.headers.get("host", "localhost")
         subdomain = _resolve_subdomain(host)
         if subdomain:
-            request.state.tenant_id = _lookup_tenant(subdomain)
+            tenant_id = _lookup_tenant(subdomain)
+            if tenant_id is None:
+                return Response("Entidade não encontrada", status_code=404)
+            request.state.tenant_id = tenant_id
         else:
             request.state.tenant_id = _DEFAULT_TENANT_ID
         return await call_next(request)

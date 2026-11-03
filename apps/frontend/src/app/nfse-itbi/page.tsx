@@ -165,10 +165,35 @@ export default function NfseItbiPage() {
     } catch {}
   }
 
-  useEffect(() => { loadDashboard(); }, []);
-  useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab]);
-  useEffect(() => { if (tab === "nfse") { loadNfse(); loadReferenceData(); } }, [tab, nfsePage, nfseStatus, nfseCompetencia]);
-  useEffect(() => { if (tab === "itbi") { loadItbi(); loadReferenceData(); } }, [tab, itbiPage, itbiStatus, itbiNatureza]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      loadDashboard();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "dashboard") loadDashboard();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "nfse") { loadNfse(); loadReferenceData(); }
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, nfsePage, nfseStatus, nfseCompetencia]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "itbi") { loadItbi(); loadReferenceData(); }
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, itbiPage, itbiStatus, itbiNatureza]);
 
   // ── NFS-e submit ───────────────────────────────────────────────────────────
 

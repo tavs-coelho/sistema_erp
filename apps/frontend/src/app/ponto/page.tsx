@@ -198,11 +198,41 @@ export default function PontoPage() {
     } catch (e) { toast("Erro: " + messageFrom(e), "error"); }
   }
 
-  useEffect(() => { loadEmployees(); }, []);
-  useEffect(() => { if (tab === "dashboard") loadDashboard(); }, [tab, periodo]);
-  useEffect(() => { if (tab === "registros") loadRegistros(); }, [tab, regPage, selectedEmployee]);
-  useEffect(() => { if (tab === "folha") loadFolha(); }, [tab, folhaEmployee, folhaPeriodo]);
-  useEffect(() => { if (tab === "abonos") loadAbonos(); }, [tab, abonoPage, abonoStatusFiltro, selectedEmployee]);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      loadEmployees();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "dashboard") loadDashboard();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, periodo]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "registros") loadRegistros();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, regPage, selectedEmployee]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "folha") loadFolha();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, folhaEmployee, folhaPeriodo]);
+  useEffect(() => {
+    const task = setTimeout(() => {
+      if (tab === "abonos") loadAbonos();
+    }, 0);
+    return () => clearTimeout(task);
+  }, [tab, abonoPage, abonoStatusFiltro, selectedEmployee]);
 
   // ── Submit Registro ────────────────────────────────────────────────────────
 

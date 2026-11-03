@@ -107,7 +107,17 @@ function RREOTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
 
   const ind = data?.indicadores;
   const linhas = data?.linhas || [];
@@ -227,7 +237,17 @@ function RGFTab() {
     } catch (e) { toast("Erro ao exportar: " + msgFrom(e), "error"); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+
+    const task = setTimeout(() => {
+
+      load();
+
+    }, 0);
+
+    return () => clearTimeout(task);
+
+  }, []);
 
   const ind = data?.indicadores as RGFIndicadores | undefined;
   const linhas = data?.linhas || [];
@@ -334,7 +354,7 @@ function RGFTab() {
             <tr key={i}>
               <td>{l.descricao}</td>
               <td style={{ textAlign: "right" }}>
-                {(l as any).quadrimestre != null ? fmtBRL((l as any).quadrimestre) : "—"}
+                {l.quadrimestre != null ? fmtBRL(l.quadrimestre) : "—"}
               </td>
               <td style={{ textAlign: "right" }}><strong>{fmtBRL(l.acumulado)}</strong></td>
             </tr>

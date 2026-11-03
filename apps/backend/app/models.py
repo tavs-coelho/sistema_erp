@@ -97,6 +97,27 @@ class User(Base):
 
 
 
+
+
+class UserSession(Base):
+    """One device's refresh family and associated access tokens.
+
+    Only a SHA-256 hash of the currently valid refresh token is persisted.
+    A revoked row cannot be revived by presenting an older refresh token.
+    """
+    __tablename__ = "user_sessions"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), index=True)
+    session_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    refresh_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_agent: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class UserMfa(Base):
     """Encrypted TOTP enrolment state; the secret is never stored in plaintext."""
     __tablename__ = "user_mfa"

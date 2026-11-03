@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .db import get_db
-from .models import RoleEnum, User
+from .models import RoleEnum, User, UserSession
+from .session_service import valid_session
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -38,6 +39,17 @@ def get_current_user(
         not user or not user.active or (user.tenant_id or 1) != tenant_id
         or user.session_version != token_version
     ):
+        raise credentials_exception
+    session_id = payload.get("sid")
+    if session_id:
+        if not isinstance(session_id, str) or len(session_id) != 32:
+            raise credentials_exception
+        record = db.get(UserSession, session_id)
+        if not valid_session(record, user, tenant_id):
+            raise credentials_exception
+    elif not settings.demo_mode:
+        # Tokens issued before session tracking cannot be revoked per device.
+        # Require fresh authentication outside demonstration environments.
         raise credentials_exception
     return user
 

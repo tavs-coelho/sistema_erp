@@ -111,4 +111,6 @@ jobs:
             tests/test_password_reset_tenant.py \
             tests/test_tenant_middleware_security.py \
             tests/test_production_config.py \
-            tests/test_mfa_sessions.py
+            tests/test_mfa_sessions.py \
+            tests/test_device_sessions.py \
+            tests/test_device_session_migration.py

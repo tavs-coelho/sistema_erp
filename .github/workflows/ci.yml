@@ -221,8 +221,9 @@ jobs:
       - name: Subir ERP completo em modo demo isolado
         run: |
           docker compose up -d --build
-          curl -f --retry 45 --retry-delay 5 --retry-connrefused http://127.0.0.1:8000/
-          curl -f --retry 45 --retry-delay 5 --retry-connrefused http://127.0.0.1/login
+          # Containers may be "started" while Alembic/seed and Next are booting.
+          curl -fsS --max-time 5 --retry 45 --retry-delay 5 --retry-all-errors http://127.0.0.1:8000/
+          curl -fsS --max-time 5 --retry 45 --retry-delay 5 --retry-all-errors http://127.0.0.1/login
       - name: Instalar Playwright e Chromium
         working-directory: apps/frontend
         run: |

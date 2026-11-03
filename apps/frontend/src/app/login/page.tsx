@@ -12,28 +12,48 @@ import { API_URL, clearSessionCookies, setSessionCookies } from "@/lib/auth";
 export default function LoginPage() {
   const { theme } = useTheme();
   const { toast } = useToast();
-  const [username, setUsername] = useState("admin1");
-  const [password, setPassword] = useState("demo123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [mfaCode, setMfaCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      toast(data.detail || "Falha no login", "error");
-      return;
+    if (loading) return;
+    setLoading(true);
+    try {
+      const endpoint = challengeToken ? "/auth/mfa/verify-login" : "/auth/login";
+      const body = challengeToken ? { challenge_token: challengeToken, code: mfaCode } : { username, password };
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.detail || "Falha na autenticação", "error");
+        return;
+      }
+      if (data.mfa_required) {
+        setChallengeToken(data.challenge_token);
+        setMfaCode("");
+        setPassword("");
+        toast("Digite o código do aplicativo autenticador ou um código de recuperação.", "success");
+        return;
+      }
+      window.localStorage.setItem("access_token", data.access_token);
+      window.localStorage.setItem("role", data.role);
+      window.localStorage.setItem("username", username);
+      clearSessionCookies();
+      setSessionCookies(data.role, username);
+      toast("Login realizado com sucesso", "success");
+      window.location.href = data.must_change_password ? "/trocar-senha" : "/";
+    } catch {
+      toast("Não foi possível autenticar. Verifique a conexão.", "error");
+    } finally {
+      setLoading(false);
     }
-    window.localStorage.setItem("access_token", data.access_token);
-    window.localStorage.setItem("role", data.role);
-    window.localStorage.setItem("username", username);
-    clearSessionCookies();
-    setSessionCookies(data.role, username);
-    toast("Login realizado com sucesso", "success");
-    window.location.href = data.must_change_password ? "/trocar-senha" : "/";
   };
 
   return (
@@ -50,22 +70,36 @@ export default function LoginPage() {
 
       <Card className="login-card">
         <h2>Acesso ao sistema</h2>
-        <p className="muted">Use as credenciais de demonstração para navegar pelos módulos.</p>
+        <p className="muted">{challengeToken ? "Verificação em duas etapas" : "Informe as credenciais da sua entidade."}</p>
         <form onSubmit={submit} className="section-stack">
-          <label className="field-group">
-            Usuário
-            <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
-          </label>
-          <label className="field-group">
-            Senha
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-          </label>
-          <Button type="submit" variant="primary">
-            Entrar
+          {challengeToken ? (
+            <>
+              <label className="field-group">
+                Código TOTP (6 dígitos) ou código de recuperação
+                <Input value={mfaCode} onChange={(e) => setMfaCode(e.target.value.trim())}
+                  autoComplete="one-time-code" inputMode="text" required />
+              </label>
+              <Button type="button" variant="secondary" onClick={() => {
+                setChallengeToken("");
+                setMfaCode("");
+              }}>Voltar ao login</Button>
+            </>
+          ) : (
+            <>
+              <label className="field-group">
+                Usuário
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
+              </label>
+              <label className="field-group">
+                Senha
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+              </label>
+            </>
+          )}
+          <Button type="submit" variant="primary" disabled={loading}>
+            {loading ? "Validando..." : challengeToken ? "Validar código" : "Entrar"}
           </Button>
         </form>
-
-        <small className="muted">Usuário demo: admin1 / demo123</small>
       </Card>
     </main>
   );

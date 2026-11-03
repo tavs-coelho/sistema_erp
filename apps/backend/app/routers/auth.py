@@ -122,7 +122,13 @@ def verify_mfa_login(
     except (JWTError, ValueError, TypeError, KeyError) as exc:
         raise _bad_mfa() from exc
     user = _active_tenant_user(db, user_id, tenant_id)
-    record = db.get(UserMfa, user_id) if user else None
+    # Lock the MFA state while consuming TOTP/recovery codes; this prevents
+    # two concurrent requests from redeeming the same challenge on PostgreSQL.
+    record = (
+        db.query(UserMfa).filter(UserMfa.user_id == user_id)
+        .with_for_update().populate_existing().first()
+        if user else None
+    )
     if not user or user.session_version != version or not record or not record.enabled:
         raise _bad_mfa()
     expected = hashlib.sha256(nonce.encode("ascii")).hexdigest()
@@ -214,7 +220,10 @@ def mfa_confirm(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    record = db.get(UserMfa, current.id)
+    record = (
+        db.query(UserMfa).filter(UserMfa.user_id == current.id)
+        .with_for_update().populate_existing().first()
+    )
     if not record or record.enabled or not record.encrypted_pending_secret or not record.pending_expires_at:
         raise HTTPException(status_code=400, detail="Configuração MFA não iniciada")
     expiry = record.pending_expires_at
@@ -248,7 +257,10 @@ def mfa_disable(
 ):
     if not verify_password(payload.current_password, current.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
-    record = db.get(UserMfa, current.id)
+    record = (
+        db.query(UserMfa).filter(UserMfa.user_id == current.id)
+        .with_for_update().populate_existing().first()
+    )
     if not record or not record.enabled or not consume_mfa_code(db, current, payload.code):
         raise HTTPException(status_code=401, detail="Código MFA inválido")
     db.query(MfaRecoveryCode).filter(MfaRecoveryCode.user_id == current.id).delete()

@@ -114,3 +114,47 @@ jobs:
             tests/test_mfa_sessions.py \
             tests/test_device_sessions.py \
             tests/test_device_session_migration.py
+
+  postgres-session-migration:
+    name: PostgreSQL — migração de sessões e rotação
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: erp_ci
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: erp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U erp_ci -d erp_ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql+psycopg2://erp_ci:ci_only_password@localhost:5432/erp_ci"
+      DEMO_MODE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/backend/requirements.txt
+      - name: Instalar dependências
+        working-directory: apps/backend
+        run: pip install -r requirements.txt
+      - name: Preparar esquema anterior (sintético)
+        working-directory: apps/backend
+        run: python -m scripts.verify_postgres_device_session bootstrap
+      - name: Atualizar Alembic para revisão 0020
+        working-directory: apps/backend
+        run: |
+          alembic stamp 0019_user_mfa_sessions
+          alembic upgrade head
+      - name: Validar rotação e replay no PostgreSQL
+        working-directory: apps/backend
+        run: python -m scripts.verify_postgres_device_session verify

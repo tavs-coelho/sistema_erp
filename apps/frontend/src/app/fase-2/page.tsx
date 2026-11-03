@@ -161,9 +161,8 @@ export default function Fase2Page() {
 
   return (
     <main className="module-page">
-      <h1>Fluxo demonstrável — Fase 2</h1>
+      <h1>Execução orçamentária e financeira</h1>
       <p>Admin: departamento → fornecedor → dotação → empenho → liquidação → pagamento.</p>
-      <p className="muted">Cenário seeded para busca rápida: <strong>Fornecedor Demo Integrado</strong> e <strong>EMP-DEMO-001</strong>.</p>
       <div className="toolbar">
         <Link className="btn" href="/">Voltar ao painel</Link>
         <Link className="btn" href="/public">Transparência</Link>
@@ -296,7 +295,7 @@ export default function Fase2Page() {
           <option value="pago">Pago</option>
         </select>
         </label>
-        <a className="btn" href={`/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`} target="_blank">Exportar CSV</a>
+        <button className="btn" type="button" onClick={() => { void authDownload(`/accounting/reports/commitments?status=${encodeURIComponent(commitmentStatus)}&export=csv`, "empenhos.csv").catch(() => toast("Erro ao exportar empenhos", "error")); }}>Exportar CSV</button>
         <table className="mt-2">
           <thead>
             <tr><th>Número</th><th>Descrição</th><th>Valor</th><th>Status</th><th>Ação</th></tr>

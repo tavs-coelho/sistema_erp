@@ -17,10 +17,10 @@ depends_on = None
 def upgrade() -> None:
     # ── Colunas active em departments e users ─────────────────────────────────
     with op.batch_alter_table("departments") as batch_op:
-        batch_op.add_column(sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+        batch_op.add_column(sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.true()))
 
     with op.batch_alter_table("users") as batch_op:
-        batch_op.add_column(sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+        batch_op.add_column(sa.Column("active", sa.Boolean(), nullable=False, server_default=sa.true()))
 
     # ── PPA ───────────────────────────────────────────────────────────────────
     op.create_table(

@@ -83,10 +83,12 @@ function NotificationBell() {
   };
 
   useEffect(() => {
-    fetchAlerts();
+    const initialTask = setTimeout(() => { void fetchAlerts(); }, 0);
     const interval = setInterval(fetchAlerts, 60_000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(initialTask);
+      clearInterval(interval);
+    };
   }, []);
 
   // Close dropdown on outside click

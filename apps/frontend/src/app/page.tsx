@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { DashboardChart } from "@/components/ui/dashboard-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
-import { API_URL, authJson, clearSessionCookies } from "@/lib/auth";
+import { API_URL, authJson, logoutBrowser } from "@/lib/auth";
 
 type Dashboard = {
   total_empenhado: number;
@@ -82,22 +82,10 @@ export default function Home() {
     [session.role],
   );
 
-  const copyText = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast(`Copiado: ${value}`, "success");
-    } catch {
-      toast(`Não foi possível copiar ${value}.`, "error");
-    }
-  };
 
   const logout = async () => {
-    await fetch(`${API_URL}/auth/logout`, { method: "POST" });
-    window.localStorage.removeItem("access_token");
-    window.localStorage.removeItem("role");
-    window.localStorage.removeItem("username");
-    clearSessionCookies();
-    window.location.href = "/login";
+    await logoutBrowser();
+    window.location.replace("/login");
   };
 
   return (
@@ -171,17 +159,12 @@ export default function Home() {
         </Card>
 
         <Card>
-          <h2>Modo demonstração</h2>
-          <p><strong>Usuários:</strong> admin1, hr1, employee1, patrimony1 (senha: demo123)</p>
-          <p><strong>Ordem:</strong> Contábil → Transparência → RH → Portal do Servidor → Patrimônio → Auditoria</p>
-          <p><strong>Cenário seeded:</strong></p>
-          <ul className="list-plain">
-            <li>Departamento: <code>Secretaria Demo Integrada</code> <Button size="sm" className="btn-inline" onClick={() => copyText("Secretaria Demo Integrada")}>Copiar</Button></li>
-            <li>Fornecedor: <code>Fornecedor Demo Integrado</code> <Button size="sm" className="btn-inline" onClick={() => copyText("Fornecedor Demo Integrado")}>Copiar</Button></li>
-            <li>Empenho: <code>EMP-DEMO-001</code> <Button size="sm" className="btn-inline" onClick={() => copyText("EMP-DEMO-001")}>Copiar</Button></li>
-            <li>Bem: <code>PAT-DEMO-001</code> <Button size="sm" className="btn-inline" onClick={() => copyText("PAT-DEMO-001")}>Copiar</Button></li>
-            <li>Evento folha: <code>Evento Demo Integrado</code> <Button size="sm" className="btn-inline" onClick={() => copyText("Evento Demo Integrado")}>Copiar</Button></li>
-          </ul>
+          <h2>Operações do ERP</h2>
+          <p>Inicie pela gestão contábil para cadastrar unidades, fornecedores,
+          dotações orçamentárias, empenhos, liquidações e pagamentos.</p>
+          <a className="btn" href="/fase-2">Abrir execução orçamentária</a>
+          <p className="muted">Os registros cadastrados podem ser consultados nos módulos
+          autorizados e no Portal da Transparência, conforme as regras de publicação.</p>
         </Card>
 
         <Card>

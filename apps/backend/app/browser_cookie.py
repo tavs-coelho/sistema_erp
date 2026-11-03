@@ -83,7 +83,7 @@ def set_session_cookies(response: Response, tokens: TokenResponse) -> None:
     response.set_cookie(
         REFRESH_COOKIE, tokens.refresh_token, httponly=True,
         secure=settings.browser_cookie_secure, samesite="strict",
-        path="/api/auth/browser",  # browser endpoints are accessed via /api
+        path="/",  # works on both /api proxy and direct FastAPI routes
         max_age=settings.refresh_token_minutes * 60,
     )
     response.headers["Cache-Control"] = "no-store"
@@ -91,7 +91,7 @@ def set_session_cookies(response: Response, tokens: TokenResponse) -> None:
 
 def clear_session_cookies(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE, path="/", secure=settings.browser_cookie_secure, samesite="strict")
-    response.delete_cookie(REFRESH_COOKIE, path="/api/auth/browser", secure=settings.browser_cookie_secure, samesite="strict")
+    response.delete_cookie(REFRESH_COOKIE, path="/", secure=settings.browser_cookie_secure, samesite="strict")
     response.delete_cookie(CSRF_COOKIE, path="/", secure=settings.browser_cookie_secure, samesite="strict")
     response.headers["Cache-Control"] = "no-store"
 

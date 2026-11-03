@@ -1,21 +1,28 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const DEFAULT_AUTHENTICATED_ROUTE = "/";
-
+/**
+ * Navigation convenience only. Actual authentication/authorization always
+ * happens in FastAPI by checking the signed JWT and tenant-bound device row.
+ */
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get("session")?.value;
-  const publicPrefixes = ["/public", "/login", "/_next"];
-  const isPublic = publicPrefixes.some((prefix) => request.nextUrl.pathname.startsWith(prefix));
-
-  if (!token && !isPublic) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const path = request.nextUrl.pathname;
+  const isPublic = path === "/login" || path === "/public"
+    || path.startsWith("/public/") || path.startsWith("/_next/");
+  const hasCookie = Boolean(request.cookies.get("erp_access")?.value
+    || request.cookies.get("erp_refresh")?.value);
+  if (!hasCookie && !isPublic) {
+    const destination = new URL("/login", request.url);
+    destination.searchParams.set("returnTo", path);
+    return NextResponse.redirect(destination);
   }
-
-  if (token && request.nextUrl.pathname === "/login") {
-    return NextResponse.redirect(new URL(DEFAULT_AUTHENTICATED_ROUTE, request.url));
+  if (hasCookie && path === "/login") {
+    // A stale cookie can be present. Browser login is still accessible when
+    // the caller requests it explicitly after a session expires.
+    if (request.nextUrl.searchParams.get("expired") !== "1") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
   }
-
   return NextResponse.next();
 }
 

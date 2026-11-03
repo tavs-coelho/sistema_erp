@@ -217,3 +217,41 @@ def test_cookies_never_authorize_mfa_challenge_as_access(browser_client):
     assert claims["type"] == "access"
     client.cookies.set("erp_access", client.cookies.get("erp_refresh"))
     assert client.get("/auth/browser/me").status_code == 401
+
+
+def test_browser_mfa_challenge_never_exposes_bearer_tokens(browser_client, monkeypatch):
+    client, _, _ = browser_client
+    from app.mfa import totp_at
+
+    clock = [1790000100.0]
+    monkeypatch.setattr("app.mfa.time.time", lambda: clock[0])
+    csrf = get_csrf(client)
+    assert login(client, csrf).status_code == 200
+    started = client.post(
+        "/auth/mfa/setup", headers=headers(csrf),
+        json={"current_password": "first-test-password"},
+    )
+    assert started.status_code == 200, started.text
+    secret = started.json()["secret"]
+    enabled = client.post(
+        "/auth/mfa/confirm", headers=headers(csrf),
+        json={"code": totp_at(secret, int(clock[0] // 30))},
+    )
+    assert enabled.status_code == 200, enabled.text
+
+    challenge = login(client, csrf)
+    assert challenge.status_code == 200, challenge.text
+    data = challenge.json()
+    assert data["mfa_required"] is True
+    assert "access_token" not in data and "refresh_token" not in data
+    clock[0] += 30
+    verified = client.post(
+        "/auth/browser/mfa/verify-login", headers=headers(csrf),
+        json={
+            "challenge_token": data["challenge_token"],
+            "code": totp_at(secret, int(clock[0] // 30)),
+        },
+    )
+    assert verified.status_code == 200, verified.text
+    assert set(verified.json()) == {"role", "must_change_password"}
+    assert client.get("/auth/browser/me").status_code == 200

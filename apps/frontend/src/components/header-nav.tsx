@@ -34,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/auditoria", label: "Auditoria", roles: ["admin", "read_only"] },
   { href: "/branding", label: "Identidade Visual", roles: ["admin"] },
   { href: "/seguranca", label: "Segurança da Conta", roles: ["admin", "accountant", "hr", "procurement", "patrimony", "employee", "read_only"] },
+  { href: "/ajuda", label: "Central de Ajuda", roles: [] as string[] },
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];
 

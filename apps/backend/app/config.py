@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     cors_allowed_origins: str = "http://localhost,http://127.0.0.1"
     demo_mode: bool = True
     login_rate_limit: str = "10/minute"
+    mfa_encryption_key: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 

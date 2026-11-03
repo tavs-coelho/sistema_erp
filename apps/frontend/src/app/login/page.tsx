@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { API_URL, clearSessionCookies, setSessionCookies } from "@/lib/auth";
+import { browserAuthJson, clearLegacyTokens, setSessionCookies } from "@/lib/auth";
 
 export default function LoginPage() {
   const { theme } = useTheme();
@@ -23,34 +23,27 @@ export default function LoginPage() {
     if (loading) return;
     setLoading(true);
     try {
-      const endpoint = challengeToken ? "/auth/mfa/verify-login" : "/auth/login";
-      const body = challengeToken ? { challenge_token: challengeToken, code: mfaCode } : { username, password };
-      const res = await fetch(`${API_URL}${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      const endpoint = challengeToken ? "/mfa/verify-login" : "/login";
+      const body = challengeToken
+        ? { challenge_token: challengeToken, code: mfaCode }
+        : { username, password };
+      const data = await browserAuthJson(endpoint, {
+        method: "POST", body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast(data.detail || "Falha na autenticação", "error");
-        return;
-      }
       if (data.mfa_required) {
         setChallengeToken(data.challenge_token);
         setMfaCode("");
         setPassword("");
-        toast("Digite o código do aplicativo autenticador ou um código de recuperação.", "success");
+        toast("Informe o código do aplicativo autenticador ou de recuperação.", "success");
         return;
       }
-      window.localStorage.setItem("access_token", data.access_token);
-      window.localStorage.setItem("role", data.role);
-      window.localStorage.setItem("username", username);
-      clearSessionCookies();
-      setSessionCookies(data.role, username);
+      // Only the server sets the HttpOnly auth cookies. Never store JWTs here.
+      clearLegacyTokens();
+      setSessionCookies(String(data.role || ""), username);
       toast("Login realizado com sucesso", "success");
-      window.location.href = data.must_change_password ? "/trocar-senha" : "/";
-    } catch {
-      toast("Não foi possível autenticar. Verifique a conexão.", "error");
+      window.location.replace(data.must_change_password ? "/trocar-senha" : "/");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Falha na autenticação", "error");
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, authDownload } from "@/lib/auth";
 
@@ -26,23 +26,24 @@ export default function Fase2Page() {
   const [commitmentPage, setCommitmentPage] = useState(1);
   const [paymentPage, setPaymentPage] = useState(1);
 
-  const [departmentName, setDepartmentName] = useState("Secretaria de Planejamento");
-  const [vendorName, setVendorName] = useState("Fornecedor Demo Fase 2");
-  const [vendorDocument, setVendorDocument] = useState("45.123.987/0001-65");
-  const [allocationCode, setAllocationCode] = useState("BA-F2-001");
-  const [allocationDescription, setAllocationDescription] = useState("Dotação Fase 2");
-  const [allocationAmount, setAllocationAmount] = useState(90000);
+  const [departmentName, setDepartmentName] = useState("");
+  const [newFiscalYear, setNewFiscalYear] = useState(new Date().getFullYear());
+  const [vendorName, setVendorName] = useState("");
+  const [vendorDocument, setVendorDocument] = useState("");
+  const [allocationCode, setAllocationCode] = useState("");
+  const [allocationDescription, setAllocationDescription] = useState("");
+  const [allocationAmount, setAllocationAmount] = useState(0);
   const [selectedFiscalYear, setSelectedFiscalYear] = useState<number>(1);
 
-  const [commitmentNumber, setCommitmentNumber] = useState("EMP-F2-001");
-  const [commitmentDescription, setCommitmentDescription] = useState("Empenho para fluxo fase 2");
-  const [commitmentAmount, setCommitmentAmount] = useState(12000);
+  const [commitmentNumber, setCommitmentNumber] = useState("");
+  const [commitmentDescription, setCommitmentDescription] = useState("");
+  const [commitmentAmount, setCommitmentAmount] = useState(0);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number>(1);
   const [selectedVendorId, setSelectedVendorId] = useState<number>(1);
 
   const [paymentCommitmentId, setPaymentCommitmentId] = useState<number>(1);
   const [paymentAmount, setPaymentAmount] = useState(12000);
-  const [paymentDate, setPaymentDate] = useState("2026-04-19");
+  const [paymentDate, setPaymentDate] = useState("");
 
   const authHeaders = { "Content-Type": "application/json" };
 
@@ -83,6 +84,21 @@ export default function Fase2Page() {
       
     });
     setPayments(await res.json());
+  };
+
+  const submitFiscalYear = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await apiFetch("/core/fiscal-years", {
+        method: "POST", body: JSON.stringify({ year: newFiscalYear, active: true }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.detail || "Falha ao criar exercício");
+      toast("Exercício financeiro cadastrado", "success");
+      await loadCore();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Erro ao criar exercício", "error");
+    }
   };
 
   const submitDepartment = async (e: FormEvent) => {
@@ -159,6 +175,14 @@ export default function Fase2Page() {
     await Promise.all([loadCommitments(), loadPayments()]);
   };
 
+  useEffect(() => {
+    const task = setTimeout(() => {
+      void Promise.all([loadCore(), loadVendors(), loadCommitments(), loadPayments()])
+        .catch(() => toast("Não foi possível carregar os registros. Verifique a sessão.", "error"));
+    }, 0);
+    return () => clearTimeout(task);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <main className="module-page">
       <h1>Execução orçamentária e financeira</h1>
@@ -180,6 +204,16 @@ export default function Fase2Page() {
       </button>
 
       <section className="auto-grid section-top">
+        <form onSubmit={submitFiscalYear} className="card section-stack">
+          <h2>0) Exercício financeiro</h2>
+          <label className="field-group">Ano
+            <input type="number" min={2000} max={2100}
+              value={newFiscalYear}
+              onChange={(e) => setNewFiscalYear(Number(e.target.value))} required />
+          </label>
+          <button className="btn btn-primary" type="submit">Cadastrar exercício</button>
+          <p className="muted">Cadastre o exercício antes de incluir dotações e empenhos.</p>
+        </form>
         <form onSubmit={submitDepartment} className="card section-stack">
           <h2>1) Criar departamento</h2>
           <label className="field-group">Nome do departamento

@@ -75,7 +75,13 @@ def _initial_metadata() -> MetaData:
 
 
 def upgrade() -> None:
-    _initial_metadata().create_all(bind=op.get_bind(), checkfirst=False)
+    bind = op.get_bind()
+    # Alembic creates version_num VARCHAR(32) by default, but historical
+    # revision identifiers exceed 32 characters (e.g. 0007_integracao_*).
+    # Expand only on PostgreSQL before recording those revisions.
+    if bind.dialect.name == "postgresql":
+        op.execute("ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128)")
+    _initial_metadata().create_all(bind=bind, checkfirst=False)
 
 
 def downgrade() -> None:

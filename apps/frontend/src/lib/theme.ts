@@ -1,4 +1,4 @@
-import { API_URL } from "@/lib/auth";
+import { API_URL, authJson } from "@/lib/auth";
 
 export type BrandingTheme = {
   org_name: string;
@@ -82,21 +82,11 @@ export async function fetchBrandingFromApi(): Promise<BrandingTheme> {
  * Persist branding to the backend API (admin-only).
  * Throws on HTTP error so the caller can surface a status message.
  */
-export async function saveBrandingToApi(theme: BrandingTheme, accessToken: string): Promise<BrandingTheme> {
-  const response = await fetch(`${API_URL}/branding`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(theme),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = (data as { detail?: string })?.detail || "Falha ao salvar branding";
-    throw new Error(message);
-  }
-  return { ...defaults, ...(data as Partial<BrandingTheme>) };
+export async function saveBrandingToApi(theme: BrandingTheme): Promise<BrandingTheme> {
+  const data = await authJson("/branding", {
+    method: "PUT", body: JSON.stringify(theme),
+  }) as Partial<BrandingTheme>;
+  return { ...defaults, ...data };
 }
 
 // ── WCAG contrast helpers ────────────────────────────────────────────────────

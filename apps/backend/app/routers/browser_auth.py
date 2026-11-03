@@ -106,3 +106,15 @@ def browser_logout_all(
     auth.logout_all(current_user, db)
     clear_session_cookies(response)
     return {"message": "Todas as sessões encerradas"}
+
+
+@router.post("/clear")
+def clear_expired_browser_session(response: Response):
+    """Clear expired browser cookies even when the former access token is invalid.
+
+    The CSRF middleware requires a valid signed same-origin double-submit token.
+    This endpoint never creates or revives a server-side session.
+    """
+    browser_auth_enabled()
+    clear_session_cookies(response)
+    return {"message": "Cookies de sessão encerrados"}

@@ -23,56 +23,44 @@ down_revision = None
 branch_labels = None
 depends_on = None
 
-# Legacy core tables, all others are created by revisions 0002..0020.
-# There are deliberately NO branding, MFA or other later module tables here.
-_BASELINE_TABLES = (
-    "municipalities",
-    "departments",
-    "fiscal_years",
-    "employees",
-    "users",
-    "vendors",
-    "budget_allocations",
-    "funding_sources",
-    "commitments",
-    "liquidations",
-    "payments",
-    "revenue_entries",
-    "procurement_processes",
-    "contracts",
-    "contract_addenda",
-    "assets",
-    "asset_movements",
-    "payroll_events",
-    "payslips",
-    "attachments",
-    "audit_logs",
-    "password_reset_tokens",
-    "contas_bancarias",
-    "lancamentos_bancarios",
-)
-
-# Columns are introduced by these later revisions and must be absent here.
-_ADDED_LATER = {
-    "departments": {"active"},              # 0002
-    "users": {"active", "tenant_id", "session_version"},  # 0002, multi-tenancy, MFA
-    "commitments": {"loa_item_id"},           # 0017
+# Frozen column list for the pre-0002 core schema. Future ORM additions are
+# NEVER inserted into revision 0001 implicitly: add a new revision instead.
+# Column SQL types are copied from the ORM; type changes still require review.
+_INITIAL_COLUMNS: dict[str, tuple[str, ...]] = {
+    "municipalities": ("id", "name"),
+    "departments": ("id", "name"),
+    "fiscal_years": ("id", "year", "active"),
+    "employees": ("id", "name", "cpf", "job_title", "employment_type", "base_salary", "department_id"),
+    "users": ("id", "username", "full_name", "email", "hashed_password", "role", "must_change_password", "employee_id"),
+    "vendors": ("id", "name", "document"),
+    "budget_allocations": ("id", "code", "description", "amount", "fiscal_year_id"),
+    "funding_sources": ("id", "code", "name"),
+    "commitments": ("id", "number", "description", "amount", "status", "fiscal_year_id", "department_id", "vendor_id"),
+    "liquidations": ("id", "commitment_id", "amount", "created_at"),
+    "payments": ("id", "commitment_id", "amount", "payment_date"),
+    "revenue_entries": ("id", "description", "amount", "entry_date"),
+    "procurement_processes": ("id", "number", "object_description", "status"),
+    "contracts": ("id", "number", "process_id", "vendor_id", "start_date", "end_date", "amount", "status"),
+    "contract_addenda": ("id", "contract_id", "description", "amount_delta"),
+    "assets": ("id", "tag", "description", "classification", "location", "department_id", "responsible_employee_id", "value", "status"),
+    "asset_movements": ("id", "asset_id", "from_department_id", "to_department_id", "movement_type", "moved_at"),
+    "payroll_events": ("id", "employee_id", "month", "kind", "description", "value"),
+    "payslips": ("id", "employee_id", "month", "gross_amount", "deductions", "net_amount"),
+    "attachments": ("id", "entity_type", "entity_id", "file_name", "path"),
+    "audit_logs": ("id", "user_id", "action", "entity", "entity_id", "before_data", "after_data", "created_at"),
+    "password_reset_tokens": ("id", "user_id", "token", "expires_at"),
+    "contas_bancarias": ("id", "banco", "agencia", "numero_conta", "descricao", "tipo", "ativa", "saldo_inicial", "data_saldo_inicial", "created_at"),
+    "lancamentos_bancarios": ("id", "conta_id", "data_lancamento", "tipo", "valor", "descricao", "documento_ref", "status", "payment_id", "revenue_entry_id", "divergencia_obs", "conciliado_em", "conciliado_por_id", "created_at"),
 }
 
 
 def _initial_metadata() -> MetaData:
     metadata = MetaData()
-    for name in _BASELINE_TABLES:
+    for name, column_names in _INITIAL_COLUMNS.items():
         source = Base.metadata.tables[name]
-        excluded = _ADDED_LATER.get(name, set())
-        # Column.copy keeps historical FK, unique/index and default metadata
-        # while avoiding later ORM relationships and duplicate tables.
-        columns: list[Column] = [
-            column.copy() for column in source.columns if column.name not in excluded
-        ]
+        columns: list[Column] = [source.c[column_name].copy() for column_name in column_names]
         Table(name, metadata, *columns)
     return metadata
-
 
 def upgrade() -> None:
     bind = op.get_bind()

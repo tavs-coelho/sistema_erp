@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { authJson } from "@/lib/auth";
+import { authDownload, authJson } from "@/lib/auth";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -847,13 +847,13 @@ function RelatorioArrecadacaoTab() {
   };
 
   const csvHref = () => {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
     const p = new URLSearchParams({ export: "csv" });
     if (tributo) p.set("tributo", tributo);
     if (exercicio) p.set("exercicio", exercicio);
     if (dataInicio) p.set("data_inicio", dataInicio);
     if (dataFim) p.set("data_fim", dataFim);
-    return `${API}/tributario/relatorio/arrecadacao?${p.toString()}`;
+    return `/tributario/relatorio/arrecadacao?${p.toString()}`;
   };
 
   const fmtBRL = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -870,7 +870,7 @@ function RelatorioArrecadacaoTab() {
         <label className="label-inline">De: <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} /></label>
         <label className="label-inline">Até: <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} /></label>
         <button className="btn" onClick={load}>Filtrar</button>
-        <a className="btn" href={csvHref()} target="_blank" rel="noreferrer">Exportar CSV</a>
+        <button type="button" className="btn" onClick={() => { void authDownload(csvHref(), "arrecadacao.csv").catch((e) => toast(e instanceof Error ? e.message : "Falha na exportação", "error")); }}>Exportar CSV</button>
       </div>
 
       {data && (

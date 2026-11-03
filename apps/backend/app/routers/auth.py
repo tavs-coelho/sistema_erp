@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_user, get_tenant_id, oauth2_scheme
+from ..deps import get_access_token, get_current_user, get_tenant_id
 from ..limiter import limiter as _limiter
 from ..mfa import (
     consume_mfa_code, decrypt_secret, encrypt_secret, generate_totp_secret,
@@ -181,7 +181,7 @@ def refresh(
 def logout(
     request: Request,
     current_user: User = Depends(get_current_user),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_access_token),
     db: Session = Depends(get_db),
     tenant_id: int = Depends(get_tenant_id),
 ):
@@ -223,7 +223,7 @@ def logout_all(
 @router.get("/sessions", response_model=list[SessionOut])
 def list_sessions(
     current_user: User = Depends(get_current_user),
-    token: str = Depends(oauth2_scheme),
+    token: str = Depends(get_access_token),
     db: Session = Depends(get_db),
     tenant_id: int = Depends(get_tenant_id),
 ):

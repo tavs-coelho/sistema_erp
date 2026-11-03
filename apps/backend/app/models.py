@@ -90,9 +90,30 @@ class User(Base):
     role: Mapped[RoleEnum] = mapped_column(SqlEnum(RoleEnum), index=True)
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    session_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
     # Multi-tenancy: NULL means the row belongs to the default tenant (id=1).
     tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenant_branding.id"), nullable=True, index=True)
+
+
+
+class UserMfa(Base):
+    """Encrypted TOTP enrolment state; the secret is never stored in plaintext."""
+    __tablename__ = "user_mfa"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    encrypted_secret: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    encrypted_pending_secret: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    pending_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_used_counter: Mapped[int] = mapped_column(Integer, default=-1, nullable=False)
+
+
+class MfaRecoveryCode(Base):
+    """One-time recovery code hashes; generated codes are shown exactly once."""
+    __tablename__ = "mfa_recovery_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
 
 
 class Vendor(Base):

@@ -13,7 +13,7 @@ from ..db import get_db
 from ..deps import get_current_user, get_tenant_id, require_roles
 from ..middleware import invalidate_tenant_cache
 from ..models import AlertaEstoqueMinimo, Attachment, AuditLog, Contract, Department, FiscalYear, RoleEnum, TenantBranding, User
-from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
+from ..schemas import DepartmentCreate, DepartmentOut, DepartmentUpdate, FiscalYearCreate, FiscalYearOut, TenantCreate, TenantOut, UserCreate, UserOut, UserUpdate
 from ..security import hash_password
 
 router = APIRouter(prefix="/core", tags=["core"])
@@ -136,9 +136,29 @@ def update_department(
     return dep
 
 
-@router.get("/fiscal-years")
+@router.get("/fiscal-years", response_model=list[FiscalYearOut])
 def list_fiscal_years(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return db.query(FiscalYear).all()
+    return db.query(FiscalYear).order_by(FiscalYear.year.desc()).all()
+
+
+@router.post("/fiscal-years", response_model=FiscalYearOut, status_code=201)
+def create_fiscal_year(
+    payload: FiscalYearCreate,
+    db: Session = Depends(get_db),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant)),
+):
+    if db.query(FiscalYear).filter(FiscalYear.year == payload.year).first():
+        raise HTTPException(status_code=409, detail="Exercício financeiro já cadastrado")
+    year = FiscalYear(year=payload.year, active=payload.active)
+    db.add(year)
+    db.flush()
+    write_audit(
+        db, user_id=current.id, action="create", entity="fiscal_years",
+        entity_id=str(year.id), after_data={"year": year.year, "active": year.active},
+    )
+    db.commit()
+    db.refresh(year)
+    return year
 
 
 @router.get("/audit-logs")

@@ -354,7 +354,7 @@ function RGFTab() {
             <tr key={i}>
               <td>{l.descricao}</td>
               <td style={{ textAlign: "right" }}>
-                {(l as any).quadrimestre != null ? fmtBRL((l as any).quadrimestre) : "—"}
+                {l.quadrimestre != null ? fmtBRL(l.quadrimestre) : "—"}
               </td>
               <td style={{ textAlign: "right" }}><strong>{fmtBRL(l.acumulado)}</strong></td>
             </tr>

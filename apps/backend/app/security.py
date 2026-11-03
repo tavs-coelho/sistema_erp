@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import bcrypt
+import secrets
 from jose import jwt
 from passlib.context import CryptContext
 
@@ -29,12 +30,24 @@ def create_token(data: dict, minutes: int) -> str:
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
-def create_access_token(user_id: int, role: str, version: int = 0) -> str:
-    return create_token({"sub": str(user_id), "role": role, "type": "access", "ver": version}, settings.access_token_minutes)
+def create_access_token(
+    user_id: int, role: str, version: int = 0, session_id: str | None = None
+) -> str:
+    claims = {"sub": str(user_id), "role": role, "type": "access", "ver": version}
+    if session_id:
+        claims["sid"] = session_id
+    return create_token(claims, settings.access_token_minutes)
 
 
-def create_refresh_token(user_id: int, role: str, version: int = 0) -> str:
-    return create_token({"sub": str(user_id), "role": role, "type": "refresh", "ver": version}, settings.refresh_token_minutes)
+def create_refresh_token(
+    user_id: int, role: str, version: int = 0,
+    session_id: str | None = None, jti: str | None = None,
+) -> str:
+    claims = {"sub": str(user_id), "role": role, "type": "refresh", "ver": version}
+    if session_id:
+        claims["sid"] = session_id
+        claims["jti"] = jti or secrets.token_urlsafe(24)
+    return create_token(claims, settings.refresh_token_minutes)
 
 
 def create_mfa_challenge(user_id: int, tenant_id: int, version: int, nonce: str) -> str:

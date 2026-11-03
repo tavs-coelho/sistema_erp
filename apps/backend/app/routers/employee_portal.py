@@ -31,7 +31,7 @@ def income_statement(db: Session = Depends(get_db), user: User = Depends(require
 
 
 @router.post("/change-password")
-def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(require_roles(RoleEnum.employee, RoleEnum.admin, RoleEnum.hr))):
+def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
     user.session_version += 1

@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useTheme } from "@/components/theme-provider";
-import { API_URL, authToken, readCookie } from "@/lib/auth";
+import { API_URL, authJson, authToken, clearSessionCookies, readCookie } from "@/lib/auth";
+import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 
 type Session = { username: string; role: string };
@@ -141,6 +142,25 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, colorScheme, setColorScheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const { toast } = useToast();
+
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await authJson("/auth/logout", { method: "POST" });
+      window.localStorage.removeItem("access_token");
+      window.localStorage.removeItem("role");
+      window.localStorage.removeItem("username");
+      window.sessionStorage.removeItem("refresh_token");
+      clearSessionCookies();
+      window.location.href = "/login";
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Não foi possível encerrar a sessão", "error");
+      setSigningOut(false);
+    }
+  }
   const sessionRaw = useSyncExternalStore<string>(
     (onStoreChange) => {
       if (typeof window === "undefined") return () => {};
@@ -225,6 +245,14 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
             <span className="header-user" suppressHydrationWarning>
               {session.username || "usuário"} · {session.role || "perfil"}
             </span>
+            <button
+              type="button" className="btn btn-ghost btn-sm"
+              disabled={signingOut}
+              onClick={() => { void signOut(); }}
+              aria-label="Encerrar sessão atual"
+            >
+              {signingOut ? "Saindo..." : "Sair"}
+            </button>
           </div>
         </header>
         <div className="app-content">{children}</div>

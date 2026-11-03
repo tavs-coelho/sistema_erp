@@ -117,6 +117,15 @@ class MfaStatusResponse(BaseModel):
     recovery_codes_remaining: int
 
 
+class SessionOut(BaseModel):
+    id: str
+    user_agent: str
+    created_at: datetime
+    last_used_at: datetime
+    expires_at: datetime
+    current: bool
+
+
 class AuthMeResponse(BaseModel):
     id: int
     username: str

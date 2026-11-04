@@ -6,6 +6,7 @@ from slowapi.errors import RateLimitExceeded
 from .config import settings
 from .db import SessionLocal
 from .limiter import limiter
+from .operational import ApiSecurityHeadersMiddleware, router as operational_router
 from .middleware import TenantMiddleware
 from .browser_cookie import CsrfCookieMiddleware
 from .routers import accounting, almoxarifado, auth, browser_auth, branding, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
@@ -27,7 +28,9 @@ app.add_middleware(
 # Must be added AFTER CORSMiddleware so it runs closer to the route handler.
 app.add_middleware(TenantMiddleware)
 app.add_middleware(CsrfCookieMiddleware)
+app.add_middleware(ApiSecurityHeadersMiddleware)
 
+app.include_router(operational_router)
 app.include_router(auth.router)
 app.include_router(browser_auth.router)
 app.include_router(branding.router)

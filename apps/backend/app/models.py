@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from enum import Enum
 
-from sqlalchemy import JSON, Boolean, Date, DateTime, Enum as SqlEnum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Date, DateTime, Enum as SqlEnum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -56,9 +56,11 @@ class Municipality(Base):
 
 class Department(Base):
     __tablename__ = "departments"
+    __table_args__ = (UniqueConstraint("tenant_id", "name", name="uq_departments_tenant_name"),)
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(120), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True, default=1, server_default="1")
 
 
 class FiscalYear(Base):
@@ -568,6 +570,7 @@ class EnvioSiconfiLog(Base):
 class Attachment(Base):
     __tablename__ = "attachments"
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True, default=1, server_default="1")
     entity_type: Mapped[str] = mapped_column(String(80))
     entity_id: Mapped[int] = mapped_column(Integer)
     file_name: Mapped[str] = mapped_column(String(160))
@@ -600,6 +603,7 @@ class Protocolo(Base):
     """Protocolo de entrada de processo administrativo."""
     __tablename__ = "protocolos"
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True, default=1, server_default="1")
     numero: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     tipo: Mapped[str] = mapped_column(String(60))          # requerimento, oficio, recurso, etc.
     assunto: Mapped[str] = mapped_column(String(255))

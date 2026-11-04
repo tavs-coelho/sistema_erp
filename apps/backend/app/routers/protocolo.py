@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from ..audit import write_audit
 from ..config import settings
 from ..db import get_db
-from ..deps import get_current_user, require_roles
-from ..models import Attachment, Protocolo, TramitacaoProtocolo, RoleEnum, User
+from ..deps import get_current_user, get_tenant_id, require_roles
+from ..models import Attachment, Department, Protocolo, TramitacaoProtocolo, RoleEnum, User
 from ..schemas import (
     ProtocoloCreate,
     ProtocoloOut,
@@ -55,6 +55,34 @@ VALID_TRANSITIONS: dict[str, list[str]] = {
 }
 
 
+def _owned_protocol(db: Session, protocol_id: int, tenant_id: int) -> Protocolo:
+    obj = db.query(Protocolo).filter(
+        Protocolo.id == protocol_id, Protocolo.tenant_id == tenant_id
+    ).first()
+    if obj is None:
+        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    return obj
+
+
+def _owned_department(db: Session, department_id: int | None, tenant_id: int) -> None:
+    if department_id is not None and not db.query(Department).filter(
+        Department.id == department_id, Department.tenant_id == tenant_id
+    ).first():
+        raise HTTPException(status_code=404, detail="Departamento não encontrado")
+
+
+def _owned_attachment(db: Session, attachment_id: int, tenant_id: int) -> Attachment:
+    attachment = db.query(Attachment).filter(
+        Attachment.id == attachment_id,
+        Attachment.tenant_id == tenant_id,
+        Attachment.entity_type == "protocolo",
+    ).first()
+    if attachment is None:
+        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    _owned_protocol(db, attachment.entity_id, tenant_id)
+    return attachment
+
+
 def _paginate(query, page: int, size: int):
     total = query.count()
     items = query.offset((page - 1) * size).limit(size).all()
@@ -70,9 +98,10 @@ def list_protocolos(
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(get_current_user),
 ):
-    q = db.query(Protocolo)
+    q = db.query(Protocolo).filter(Protocolo.tenant_id == tenant_id)
     if status:
         q = q.filter(Protocolo.status == status)
     if tipo:
@@ -89,25 +118,31 @@ def list_protocolos(
 
 
 @router.get("/protocolos/{protocolo_id}", response_model=ProtocoloOut)
-def get_protocolo(protocolo_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
-    return obj
+def get_protocolo(
+    protocolo_id: int,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+    _: User = Depends(get_current_user),
+):
+    return _owned_protocol(db, protocolo_id, tenant_id)
 
 
 @router.post("/protocolos", response_model=ProtocoloOut)
 def create_protocolo(
     payload: ProtocoloCreate,
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
     requested_number = payload.numero.strip()
     if requested_number and db.query(Protocolo).filter(Protocolo.numero == requested_number).first():
         raise HTTPException(status_code=409, detail="Número de protocolo já existe")
+    _owned_department(db, payload.origem_department_id, tenant_id)
+    _owned_department(db, payload.destino_department_id, tenant_id)
     # Generate only after acquiring a database identity. Avoid the static
     # placeholder PROT-2026-001, which caused collisions in real deployments.
     data = payload.model_dump()
+    data["tenant_id"] = tenant_id
     data["numero"] = requested_number or ("PENDING-" + uuid.uuid4().hex)
     obj = Protocolo(**data)
     db.add(obj)
@@ -135,13 +170,14 @@ def update_protocolo(
     protocolo_id: int,
     payload: ProtocoloUpdate,
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    obj = _owned_protocol(db, protocolo_id, tenant_id)
     before = {"status": obj.status, "assunto": obj.assunto}
     for field, value in payload.model_dump(exclude_none=True).items():
+        if field in {"origem_department_id", "destino_department_id"}:
+            _owned_department(db, value, tenant_id)
         setattr(obj, field, value)
     write_audit(
         db, user_id=current.id, action="update",
@@ -158,12 +194,11 @@ def tramitar_protocolo(
     protocolo_id: int,
     payload: TramitacaoCreate,
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
     """Tramita o protocolo para um novo departamento, registrando o despacho."""
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    obj = _owned_protocol(db, protocolo_id, tenant_id)
 
     # Calcula o novo status com base na ação
     ACAO_PARA_STATUS = {
@@ -183,6 +218,7 @@ def tramitar_protocolo(
                        f"Transições válidas: {allowed}",
             )
 
+    _owned_department(db, payload.para_department_id, tenant_id)
     tram = TramitacaoProtocolo(
         protocolo_id=protocolo_id,
         de_department_id=obj.destino_department_id,
@@ -213,22 +249,26 @@ def tramitar_protocolo(
 def list_tramitacoes(
     protocolo_id: int,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(get_current_user),
 ):
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    obj = _owned_protocol(db, protocolo_id, tenant_id)
     return db.query(TramitacaoProtocolo).filter(
         TramitacaoProtocolo.protocolo_id == protocolo_id
     ).order_by(TramitacaoProtocolo.created_at).all()
 
 
 @router.get("/estatisticas")
-def estatisticas(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def estatisticas(
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+    _: User = Depends(get_current_user),
+):
     """Resumo quantitativo de protocolos por status."""
     from sqlalchemy import func
     rows = (
         db.query(Protocolo.status, func.count(Protocolo.id))
+        .filter(Protocolo.tenant_id == tenant_id)
         .group_by(Protocolo.status)
         .all()
     )
@@ -242,16 +282,15 @@ def upload_anexo(
     protocolo_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
     """Faz upload de um arquivo e vincula ao protocolo.
 
     - Tamanho máximo: 10 MB
     - Tipos permitidos: PDF, JPEG, PNG, DOCX, DOC, TXT
     """
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    obj = _owned_protocol(db, protocolo_id, tenant_id)
 
     if file.content_type not in ALLOWED_MIME:
         raise HTTPException(
@@ -271,6 +310,7 @@ def upload_anexo(
     dest.write_bytes(contents)
 
     attachment = Attachment(
+        tenant_id=tenant_id,
         entity_type="protocolo",
         entity_id=protocolo_id,
         file_name=file.filename or unique_name,
@@ -297,15 +337,17 @@ def upload_anexo(
 def list_anexos(
     protocolo_id: int,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(get_current_user),
 ):
     """Lista todos os anexos de um protocolo."""
-    obj = db.get(Protocolo, protocolo_id)
-    if not obj:
-        raise HTTPException(status_code=404, detail="Protocolo não encontrado")
+    obj = _owned_protocol(db, protocolo_id, tenant_id)
     anexos = (
         db.query(Attachment)
-        .filter(Attachment.entity_type == "protocolo", Attachment.entity_id == protocolo_id)
+        .filter(
+            Attachment.tenant_id == tenant_id,
+            Attachment.entity_type == "protocolo", Attachment.entity_id == protocolo_id
+        )
         .all()
     )
     return [{"id": a.id, "file_name": a.file_name} for a in anexos]
@@ -315,12 +357,11 @@ def list_anexos(
 def download_anexo(
     attachment_id: int,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(get_current_user),
 ):
     """Faz download de um anexo pelo ID."""
-    attachment = db.get(Attachment, attachment_id)
-    if not attachment:
-        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    attachment = _owned_attachment(db, attachment_id, tenant_id)
     if not Path(attachment.path).exists():
         raise HTTPException(status_code=404, detail="Arquivo não encontrado no servidor")
     return FileResponse(
@@ -334,12 +375,11 @@ def download_anexo(
 def delete_anexo(
     attachment_id: int,
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
     """Remove um anexo (arquivo e registro no banco)."""
-    attachment = db.get(Attachment, attachment_id)
-    if not attachment:
-        raise HTTPException(status_code=404, detail="Anexo não encontrado")
+    attachment = _owned_attachment(db, attachment_id, tenant_id)
     # Remove o arquivo do disco
     try:
         Path(attachment.path).unlink(missing_ok=True)

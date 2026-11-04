@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/nucleo/unidades", label: "Núcleo · Unidades", roles: ["admin", "accountant", "procurement", "read_only"] },
   { href: "/nucleo/pessoas", label: "Núcleo · Pessoas", roles: ["admin", "accountant", "procurement"] },
   { href: "/nucleo/lotacoes", label: "Núcleo · Lotações", roles: ["admin"] },
+  { href: "/nucleo/documentos", label: "Núcleo · Documentos", roles: ["admin", "accountant", "procurement", "hr", "patrimony", "read_only"] },
   { href: "/convenios", label: "Convênios", roles: ["admin", "accountant", "read_only"] },
   { href: "/tributario", label: "Tributário", roles: ["admin", "accountant", "read_only"] },
   { href: "/nfse-itbi", label: "NFS-e/ITBI", roles: ["admin", "accountant", "read_only"] },

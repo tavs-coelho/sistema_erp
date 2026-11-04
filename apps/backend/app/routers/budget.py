@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from ..appropriation_policy import require_draft, validate_amount, validate_execution, require_same_fiscal_year
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
@@ -157,6 +158,8 @@ def create_ldo(
     db: Session = Depends(get_db),
     current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant)),
 ):
+    if payload.status != "rascunho":
+        raise HTTPException(status_code=422, detail="LDO deve iniciar como rascunho")
     ldo = LDO(**payload.model_dump())
     db.add(ldo)
     db.flush()
@@ -176,6 +179,7 @@ def update_ldo(
     ldo = db.get(LDO, ldo_id)
     if not ldo:
         raise HTTPException(status_code=404, detail="LDO não encontrada")
+    require_draft(ldo.status, "LDO")
     before = {"status": ldo.status}
     if payload.description is not None:
         ldo.description = payload.description
@@ -197,6 +201,7 @@ def add_ldo_goal(
     ldo = db.get(LDO, ldo_id)
     if not ldo:
         raise HTTPException(status_code=404, detail="LDO não encontrada")
+    require_draft(ldo.status, "LDO")
     goal = LDOGoal(ldo_id=ldo_id, **payload.model_dump())
     db.add(goal)
     db.flush()
@@ -247,6 +252,15 @@ def create_loa(
     db: Session = Depends(get_db),
     current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant)),
 ):
+    if payload.status != "rascunho":
+        raise HTTPException(status_code=422, detail="LOA deve iniciar como rascunho")
+    if payload.ldo_id is not None:
+        ldo = db.get(LDO, payload.ldo_id)
+        if ldo is None:
+            raise HTTPException(status_code=404, detail="LDO não encontrada")
+        require_same_fiscal_year(payload.fiscal_year_id, ldo.fiscal_year_id)
+    validate_amount(payload.total_revenue)
+    validate_amount(payload.total_expenditure)
     loa = LOA(**payload.model_dump())
     db.add(loa)
     db.flush()
@@ -266,7 +280,12 @@ def update_loa(
     loa = db.get(LOA, loa_id)
     if not loa:
         raise HTTPException(status_code=404, detail="LOA não encontrada")
+    require_draft(loa.status, "LOA")
     before = {"status": loa.status, "total_expenditure": loa.total_expenditure}
+    if payload.total_revenue is not None:
+        validate_amount(payload.total_revenue)
+    if payload.total_expenditure is not None:
+        validate_amount(payload.total_expenditure)
     if payload.description is not None:
         loa.description = payload.description
     if payload.total_revenue is not None:
@@ -291,6 +310,8 @@ def add_loa_item(
     loa = db.get(LOA, loa_id)
     if not loa:
         raise HTTPException(status_code=404, detail="LOA não encontrada")
+    require_draft(loa.status, "LOA")
+    validate_execution(payload.authorized_amount, payload.executed_amount)
     item = LOAItem(loa_id=loa_id, **payload.model_dump())
     db.add(item)
     if payload.category == "despesa":
@@ -335,6 +356,11 @@ def update_loa_item(
     if not item or item.loa_id != loa_id:
         raise HTTPException(status_code=404, detail="Item de LOA não encontrado")
     loa = db.get(LOA, loa_id)
+    require_draft(loa.status, "LOA")
+    validate_execution(
+        payload.authorized_amount if payload.authorized_amount is not None else item.authorized_amount,
+        payload.executed_amount if payload.executed_amount is not None else item.executed_amount,
+    )
     before_amount = item.authorized_amount
     if payload.description is not None:
         item.description = payload.description

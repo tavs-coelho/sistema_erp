@@ -30,7 +30,9 @@ docker compose ps
 **Manual operacional e configuração de primeiro acesso:** [Instalação e
 operação](docs/manual/PR-011-INSTALACAO-E-OPERACAO.md).
 
-**Roadmap de entregas grandes:** [PRs #11–#40](docs/roadmap/ERP-EXECUCAO-PR-011-100.md).
+**Fluxo de protocolo, cadastro e tramitação:** [Guia operacional com Docker](docs/OPERAR-ERP-LOCAL.md).
+
+**Roadmap de entregas grandes:** [Planejamento de ~55 PRs abrangentes, #11–#65](docs/roadmap/ERP-EXECUCAO-PR-011-100.md).
 
 A migração browser usa cookies HttpOnly, CSRF assinado e refresh rotativo;
 o frontend anterior armazenava JWT em JavaScript. O modo de autenticação por
@@ -446,10 +448,8 @@ Endpoints: `POST /auth/mfa/setup`, `POST /auth/mfa/confirm`,
 quando MFA está ativo. Não armazene o desafio como access token.
 
 Migração: `alembic upgrade head` (revisão `0019_user_mfa_sessions`,
-dependente de `0006_multi_tenancy`). A cadeia anterior de Alembic ainda
-precisa de revisão em uma instalação limpa, pois `0001_initial` usa
-`Base.metadata.create_all()` do modelo atual. Testes em SQLite não
-substituem a validação de migração em PostgreSQL de homologação.
+dependente de `0006_multi_tenancy`). A instalação do zero já é validada em PostgreSQL 16 na CI; testes em SQLite
+não substituem o ensaio de atualização de bancos legados em homologação.
 
 **Aviso:** o sistema ainda não está liberado para produção. Revisar separação
 de todos os módulos por entidade, segredos de implantação, testes de migração

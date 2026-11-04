@@ -74,7 +74,7 @@ export function RegistryEditor({ title, description, endpoint, fields }: Props) 
       for (const field of fields) {
         if (editing !== null && field.readonlyOnEdit) continue;
         const raw = form[field.key] ?? "";
-        body[field.key] = field.kind === "number" ? Number(raw)
+        body[field.key] = field.kind === "number" ? (raw.trim() === "" ? null : Number(raw))
           : field.kind === "checkbox" ? raw === "true"
           : raw.trim();
       }

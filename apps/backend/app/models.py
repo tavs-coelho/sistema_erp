@@ -1256,3 +1256,37 @@ class MunicipalAssignment(Base):
     unit_id: Mapped[int] = mapped_column(ForeignKey("municipal_units.id"), nullable=False, index=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+
+class MunicipalDocument(Base):
+    """Tenant-owned and access-classified administrative document."""
+    __tablename__ = "municipal_documents"
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_municipal_documents_code"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(220), nullable=False)
+    classification: Mapped[str] = mapped_column(String(16), nullable=False, default="interno")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="ativo")
+    protocol_id: Mapped[int | None] = mapped_column(ForeignKey("protocolos.id"), nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    latest_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+class MunicipalDocumentVersion(Base):
+    """Immutable revision with integrity checksum; only safe relative keys."""
+    __tablename__ = "municipal_document_versions"
+    __table_args__ = (UniqueConstraint("document_id", "version", name="uq_municipal_document_version"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("municipal_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    original_name: Mapped[str] = mapped_column(String(180), nullable=False)
+    storage_key: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)

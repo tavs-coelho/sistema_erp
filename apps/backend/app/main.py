@@ -11,7 +11,7 @@ from .middleware import TenantMiddleware
 from .browser_cookie import CsrfCookieMiddleware
 from .routers import accounting, almoxarifado, auth, browser_auth, branding, budget, conciliacao, convenios, core, depreciacao, employee_portal, frota, hr, integracao_ponto_folha, nfse_itbi, patrimony, ponto, procurement, protocolo, public, relatorios, rreo_rgf, siconfi_siop, siconfi_xml, tributario
 from .seed import seed_data
-from .routers import nucleo_unidades, nucleo_pessoas, nucleo_lotacoes
+from .routers import nucleo_unidades, nucleo_pessoas, nucleo_lotacoes, nucleo_documentos
 
 app = FastAPI(title="Sistema ERP Municipal", version="0.1.0")
 
@@ -35,6 +35,7 @@ app.include_router(operational_router)
 app.include_router(nucleo_unidades.router)
 app.include_router(nucleo_pessoas.router)
 app.include_router(nucleo_lotacoes.router)
+app.include_router(nucleo_documentos.router)
 app.include_router(auth.router)
 app.include_router(browser_auth.router)
 app.include_router(branding.router)

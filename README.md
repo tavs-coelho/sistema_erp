@@ -8,6 +8,17 @@ Monorepo do ERP de Gestão Pública com frontend Next.js, backend FastAPI, Postg
 > integrações legais e o processo de homologação continuam pendentes.
 > Não utilizar como produção multi-município sem esses controles.
 
+## Núcleo Municipal e Processos (PRs #15 a #20)
+
+A etapa inclui unidades administrativas, pessoas e contatos de fornecedores,
+lotações de usuários, GED com versionamento, tarefas ligadas a protocolos,
+notificações e atendimento com FAQ. Consulte o
+[roteiro integrado, testes e limites de escopo](docs/roadmap/NUCLEO-PR-015-020.md).
+
+**Atenção:** essas funcionalidades estão distribuídas em PRs encadeados.
+Não presumir que estão disponíveis na `main` até a integração efetiva,
+CI completa e homologação.
+
 ## Como executar e operar o ERP
 
 Na branch com a migração de navegador (PR #11):

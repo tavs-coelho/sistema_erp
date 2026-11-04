@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from typing import Literal
 
 from ..audit import write_audit
+from .nucleo_central import send_notice
 from ..db import get_db
 from ..deps import get_current_user, get_tenant_id, require_roles
 from ..models import Department, MunicipalTask, Protocolo, RoleEnum, User, utc_now
@@ -134,6 +135,11 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db),
     task = MunicipalTask(**payload.model_dump(), tenant_id=tenant, created_by=current.id)
     db.add(task)
     db.flush()
+    if task.assigned_user_id:
+        send_notice(db, tenant, task.assigned_user_id,
+                    "Nova tarefa atribuída",
+                    f"Você recebeu a tarefa #{task.id}. Consulte o Núcleo Municipal.",
+                    "tarefa", "municipal_task", task.id)
     write_audit(db, user_id=current.id, action="create", entity="municipal_tasks",
                 entity_id=str(task.id), after_data={"tenant_id": tenant, "protocol_id": task.protocol_id,
                                                     "assignee": task.assigned_user_id})

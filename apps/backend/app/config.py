@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     login_rate_limit: str = "10/minute"
     mfa_encryption_key: str | None = None
 
+    # Opt-in browser cookie mode. Existing bearer-token API remains unchanged.
+    browser_cookie_auth_enabled: bool = False
+    browser_cookie_secure: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
 
     @model_validator(mode="after")
@@ -29,6 +33,8 @@ class Settings(BaseSettings):
                 raise ValueError("Default PostgreSQL credentials are forbidden outside demo mode")
             if "*" in self.cors_origins:
                 raise ValueError("Wildcard CORS origins are forbidden outside demo mode")
+            if self.browser_cookie_auth_enabled and not self.browser_cookie_secure:
+                raise ValueError("Secure cookies are required for browser authentication in production")
         return self
 
     @property

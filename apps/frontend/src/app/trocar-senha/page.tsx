@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
-import { API_URL, authToken, clearSessionCookies } from "@/lib/auth";
+import { authJson, clearBrowserCookies, logoutBrowser } from "@/lib/auth";
 
 export default function TrocarSenhaPage() {
   const { toast } = useToast();
@@ -14,11 +14,12 @@ export default function TrocarSenhaPage() {
   const [confirmacao, setConfirmacao] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Redirect to /login if not authenticated
   useEffect(() => {
-    if (!authToken()) {
-      window.location.href = "/login";
-    }
+    // Cookie validity is checked by the server, not by inspecting JS storage.
+    const task = setTimeout(() => {
+      void authJson("/auth/me").catch(() => window.location.replace("/login?expired=1"));
+    }, 0);
+    return () => clearTimeout(task);
   }, []);
 
   const submit = async (e: FormEvent) => {
@@ -33,22 +34,12 @@ export default function TrocarSenhaPage() {
     }
     setLoading(true);
     try {
-      const token = authToken();
-      const res = await fetch(`${API_URL}/employee-portal/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ new_password: novaSenha }),
+      await authJson("/employee-portal/change-password", {
+        method: "POST", body: JSON.stringify({ new_password: novaSenha }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast(data.detail || "Falha ao trocar a senha.", "error");
-        return;
-      }
-      toast("Senha alterada com sucesso!", "success");
-      window.location.href = "/";
+      await clearBrowserCookies();
+      toast("Senha alterada. Entre novamente com a nova senha.", "success");
+      window.location.replace("/login");
     } catch {
       toast("Erro de comunicação com o servidor.", "error");
     } finally {
@@ -56,12 +47,9 @@ export default function TrocarSenhaPage() {
     }
   };
 
-  const logout = () => {
-    window.localStorage.removeItem("access_token");
-    window.localStorage.removeItem("role");
-    window.localStorage.removeItem("username");
-    clearSessionCookies();
-    window.location.href = "/login";
+  const logout = async () => {
+    await logoutBrowser();
+    window.location.replace("/login");
   };
 
   return (

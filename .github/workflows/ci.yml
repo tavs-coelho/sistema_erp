@@ -66,6 +66,9 @@ jobs:
         working-directory: apps/frontend
         run: npm ci
 
+      - name: Impedir regressão de JWT no JavaScript
+        run: python3 scripts/check_frontend_auth_migration.py
+
       - name: Lint
         working-directory: apps/frontend
         run: npm run lint
@@ -113,7 +116,8 @@ jobs:
             tests/test_production_config.py \
             tests/test_mfa_sessions.py \
             tests/test_device_sessions.py \
-            tests/test_device_session_migration.py
+            tests/test_device_session_migration.py \
+            tests/test_browser_cookie_auth.py
 
   postgres-session-migration:
     name: PostgreSQL — migração de sessões e rotação
@@ -203,3 +207,69 @@ jobs:
         working-directory: apps/backend
         run: |
           python -c "from app.main import app; from app.db import SessionLocal; from sqlalchemy import text; s=SessionLocal(); print('db:',s.execute(text('select 1')).scalar()); s.close(); print('routes:', len(app.routes))"
+
+  browser-end-to-end:
+    name: E2E real — navegador, API, PostgreSQL e fluxos financeiros
+    # Playwright Chromium currently supports 24.04; runner latest is 26.04.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Subir ERP completo em modo demo isolado
+        run: |
+          docker compose up -d --build
+          # Containers may be "started" while Alembic/seed and Next are booting.
+          curl -fsS --max-time 5 --retry 45 --retry-delay 5 --retry-all-errors http://127.0.0.1:8000/
+          curl -fsS --max-time 5 --retry 45 --retry-delay 5 --retry-all-errors http://127.0.0.1/login
+      - name: Instalar Playwright e Chromium
+        working-directory: apps/frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Navegação e fluxo contábil real
+        working-directory: apps/frontend
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1
+        run: npm run test:e2e
+      - name: Capturar logs para diagnóstico
+        if: failure()
+        run: docker compose logs --no-color --tail=250
+      - name: Encerrar serviços temporários
+        if: always()
+        run: docker compose down -v --remove-orphans
+
+  erp-e2e-compose:
+    name: ERP real — login, protocolo e tramitação via Docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    env:
+      DEMO_MODE: "true"
+      BROWSER_COOKIE_AUTH_ENABLED: "true"
+      BROWSER_COOKIE_SECURE: "false"
+      ERP_SMOKE_ALLOW_DEMO: "1"
+      ERP_SMOKE_URL: "http://localhost"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build e inicialização dos quatro serviços
+        run: |
+          docker compose build backend frontend
+          docker compose up -d
+      - name: Fluxo real com dados persistidos no PostgreSQL
+        run: python3 scripts/smoke_browser_erp.py
+      - name: Diagnóstico de execução em caso de falha
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail=120 backend frontend nginx db
+      - name: Encerrar implantação efêmera
+        if: always()
+        run: docker compose down -v --remove-orphans

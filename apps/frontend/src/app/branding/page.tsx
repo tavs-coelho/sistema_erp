@@ -4,7 +4,6 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { useToast } from "@/components/ui/toast";
-import { authToken } from "@/lib/auth";
 import {
   BrandingTheme,
   contrastRatio,
@@ -263,8 +262,7 @@ export default function BrandingPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const token = authToken();
-      const saved = await saveBrandingToApi(draft, token);
+      const saved = await saveBrandingToApi(draft);
       updateTheme(saved);
       setDraft(saved);
       toast("Configurações de identidade visual salvas com sucesso.");

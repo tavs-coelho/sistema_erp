@@ -6,6 +6,7 @@ from ..deps import get_current_user, require_roles
 from ..models import Payslip, RoleEnum, User
 from ..schemas import ChangePasswordRequest
 from ..security import hash_password
+from ..session_service import revoke_user_sessions
 
 router = APIRouter(prefix="/employee-portal", tags=["employee_portal"])
 
@@ -30,8 +31,10 @@ def income_statement(db: Session = Depends(get_db), user: User = Depends(require
 
 
 @router.post("/change-password")
-def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(require_roles(RoleEnum.employee, RoleEnum.admin, RoleEnum.hr))):
+def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     user.hashed_password = hash_password(payload.new_password)
     user.must_change_password = False
+    user.session_version += 1
+    revoke_user_sessions(db, user.id)
     db.commit()
     return {"message": "Senha alterada"}

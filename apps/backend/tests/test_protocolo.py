@@ -410,3 +410,22 @@ def test_filter_convenios_by_tipo():
     assert resp.status_code == 200
     items = resp.json()["items"]
     assert all(i["tipo"] == "repasse" for i in items)
+
+
+def test_protocol_number_is_generated_by_backend_without_fixed_demo_placeholder():
+    headers = auth_headers("admin1")
+    payload = {
+        "tipo": "requerimento",
+        "assunto": "Processo de validação do fluxo real",
+        "interessado": "Solicitante automatizado",
+        "data_entrada": "2026-11-03",
+    }
+    first = client.post("/protocolo/protocolos", json=payload, headers=headers)
+    second = client.post("/protocolo/protocolos", json=payload, headers=headers)
+    assert first.status_code == 200
+    assert second.status_code == 200
+    a, b = first.json(), second.json()
+    assert a["numero"] == f"PROT-2026-{a['id']:08d}"
+    assert b["numero"] == f"PROT-2026-{b['id']:08d}"
+    assert a["numero"] != b["numero"]
+    assert client.get(f"/protocolo/protocolos/{a['id']}", headers=headers).json()["numero"] == a["numero"]

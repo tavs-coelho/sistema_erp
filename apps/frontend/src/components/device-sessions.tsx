@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
-import { authJson, clearSessionCookies } from "@/lib/auth";
+import { authJson, logoutBrowser } from "@/lib/auth";
 
 type DeviceSession = {
   id: string;
@@ -16,14 +16,7 @@ type DeviceSession = {
   current: boolean;
 };
 
-function clearLogin() {
-  window.localStorage.removeItem("access_token");
-  window.localStorage.removeItem("role");
-  window.localStorage.removeItem("username");
-  window.sessionStorage.removeItem("refresh_token");
-  clearSessionCookies();
-  window.location.href = "/login";
-}
+
 
 export function DeviceSessions() {
   const { toast } = useToast();
@@ -51,11 +44,12 @@ export function DeviceSessions() {
     if (busy) return;
     setBusy(true);
     try {
-      await authJson(`/auth/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
       if (session.current) {
-        clearLogin();
+        await logoutBrowser();
+        window.location.replace("/login");
         return;
       }
+      await authJson(`/auth/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
       await loadSessions();
       toast("Sessão encerrada", "success");
     } catch (error) {
@@ -70,8 +64,8 @@ export function DeviceSessions() {
     if (!window.confirm("Encerrar todas as sessões, inclusive a atual?")) return;
     setBusy(true);
     try {
-      await authJson("/auth/logout-all", { method: "POST" });
-      clearLogin();
+      await logoutBrowser(true);
+      window.location.replace("/login");
     } catch (error) {
       toast(error instanceof Error ? error.message : "Falha ao encerrar sessões", "error");
       setBusy(false);

@@ -38,13 +38,13 @@ export default function ProtocoloPage() {
   const [page, setPage] = useState(1);
 
   // Novo protocolo
-  const [numero, setNumero] = useState("PROT-2026-001");
+  const [numero, setNumero] = useState("");
   const [tipo, setTipo] = useState("requerimento");
   const [assunto, setAssunto] = useState("");
   const [interessado, setInteressado] = useState("");
   const [interessadoDoc, setInteressadoDoc] = useState("");
   const [prioridade, setPrioridade] = useState("normal");
-  const [dataEntrada, setDataEntrada] = useState("2026-01-01");
+  const [dataEntrada, setDataEntrada] = useState(() => new Date().toLocaleDateString("en-CA"));
   const [prazo, setPrazo] = useState("");
   const [originDeptId, setOriginDeptId] = useState<number>(1);
   const [destDeptId, setDestDeptId] = useState<number>(1);
@@ -107,7 +107,7 @@ export default function ProtocoloPage() {
   const submitProtocolo = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      await authJson("/protocolo/protocolos", {
+      const criado = await authJson("/protocolo/protocolos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,7 +117,7 @@ export default function ProtocoloPage() {
           destino_department_id: destDeptId || null,
         }),
       });
-      toast(`Protocolo ${numero} registrado.`);
+      toast(`Protocolo ${criado.numero} registrado.`);
       setNumero(""); setAssunto(""); setInteressado(""); setInteressadoDoc(""); setPrazo("");
       await loadProtocolos(); await loadStats();
       setTab("lista");
@@ -239,7 +239,7 @@ export default function ProtocoloPage() {
         <section className="card">
           <h2>Registrar novo protocolo</h2>
           <form onSubmit={submitProtocolo} style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-            <label className="field-group">Número<input value={numero} onChange={(e) => setNumero(e.target.value)} required /></label>
+            <label className="field-group">Número (opcional; gerado automaticamente)<input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="Deixe em branco para gerar" /></label>
             <label className="field-group">
               Tipo
               <select value={tipo} onChange={(e) => setTipo(e.target.value)}>

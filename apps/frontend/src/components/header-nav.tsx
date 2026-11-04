@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useTheme } from "@/components/theme-provider";
-import { API_URL, authJson, authToken, clearSessionCookies, readCookie } from "@/lib/auth";
+import { apiFetch, authJson, logoutBrowser, readCookie } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 
@@ -34,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/auditoria", label: "Auditoria", roles: ["admin", "read_only"] },
   { href: "/branding", label: "Identidade Visual", roles: ["admin"] },
   { href: "/seguranca", label: "Segurança da Conta", roles: ["admin", "accountant", "hr", "procurement", "patrimony", "employee", "read_only"] },
+  { href: "/ajuda", label: "Central de Ajuda", roles: [] as string[] },
   { href: "/public", label: "Transparência", roles: [] as string[] },
 ];
 
@@ -49,13 +50,10 @@ function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchAlerts = async () => {
-    const token = authToken();
-    if (!token) return;
+    if (!readCookie("role")) return;
     const collected: SseEvent[] = [];
     try {
-      const res = await fetch(`${API_URL}/core/events`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/core/events");
       if (!res.ok || !res.body) return;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -149,13 +147,8 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
     if (signingOut) return;
     setSigningOut(true);
     try {
-      await authJson("/auth/logout", { method: "POST" });
-      window.localStorage.removeItem("access_token");
-      window.localStorage.removeItem("role");
-      window.localStorage.removeItem("username");
-      window.sessionStorage.removeItem("refresh_token");
-      clearSessionCookies();
-      window.location.href = "/login";
+      await logoutBrowser();
+      window.location.replace("/login");
     } catch (error) {
       toast(error instanceof Error ? error.message : "Não foi possível encerrar a sessão", "error");
       setSigningOut(false);
@@ -231,7 +224,7 @@ export default function HeaderNav({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="topbar-right">
-            <span className="demo-badge">Ambiente de Demonstração</span>
+            <span className="demo-badge">Gestão Pública</span>
             <NotificationBell />
             <button
               type="button"

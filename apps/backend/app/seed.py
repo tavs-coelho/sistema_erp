@@ -37,12 +37,18 @@ from .models import (
     RevenueEntry,
     RoleEnum,
     User,
+    TenantBranding,
     Vendor,
 )
 from .security import hash_password
 
 
 def seed_data(db: Session):
+    # Device sessions reference tenant_branding; the default demo tenant must
+    # exist before any user logs in, not only after visiting the branding page.
+    if db.get(TenantBranding, 1) is None:
+        db.add(TenantBranding(id=1, org_name="Município de Vila Esperança"))
+        db.commit()
     if db.query(User).first():
         _seed_nfse_itbi(db)
         _seed_ponto(db)

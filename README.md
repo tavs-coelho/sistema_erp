@@ -1,6 +1,45 @@
 # Sistema ERP Municipal (MVP)
 
-Monorepo de demonstração para processo licitatório, com frontend Next.js, backend FastAPI, PostgreSQL, JWT (access + refresh), RBAC, Docker Compose e Nginx.
+Monorepo do ERP de Gestão Pública com frontend Next.js, backend FastAPI, PostgreSQL, autenticação MFA, sessões por dispositivo, RBAC, Docker Compose e Nginx.
+
+> **Estado do produto:** existem fluxos implementados, porém não há comprovação
+> de cobertura de 85% por módulo/100% dos requisitos tecnológicos do edital
+> de Dois Córregos. A segregação de dados de todos os módulos entre entidades,
+> integrações legais e o processo de homologação continuam pendentes.
+> Não utilizar como produção multi-município sem esses controles.
+
+## Como executar e operar o ERP
+
+Na branch com a migração de navegador (PR #11):
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose ps
+```
+
+- Interface: **http://localhost/login**, servida pelo Nginx.
+- Backend (diagnóstico local): **http://127.0.0.1:8000/**.
+- Next.js direto (proxy /api interno): **http://127.0.0.1:3000/login**.
+- Demonstração local: use contas de teste definidas em `app/seed.py`,
+  **nunca** essas credenciais em uma implantação real.
+- Primeira entidade real: desative o modo demo, configure TLS/segredos,
+  aplique migrações e execute o bootstrap offline de administrador.
+- Para diagnóstico: `docker compose logs --tail=150 backend frontend nginx`.
+
+**Manual operacional e configuração de primeiro acesso:** [Instalação e
+operação](docs/manual/PR-011-INSTALACAO-E-OPERACAO.md).
+
+**Fluxo de protocolo, cadastro e tramitação:** [Guia operacional com Docker](docs/OPERAR-ERP-LOCAL.md).
+
+**Roadmap de entregas grandes:** [Planejamento de ~55 PRs abrangentes, #11–#65](docs/roadmap/ERP-EXECUCAO-PR-011-100.md).
+
+A migração browser usa cookies HttpOnly, CSRF assinado e refresh rotativo;
+o frontend anterior armazenava JWT em JavaScript. O modo de autenticação por
+cookies deve ser habilitado por completo somente com proxy e frontend
+compatíveis; o cliente legado bearer segue disponível para integrações API.
+
+
 
 ## Estrutura
 
@@ -409,10 +448,8 @@ Endpoints: `POST /auth/mfa/setup`, `POST /auth/mfa/confirm`,
 quando MFA está ativo. Não armazene o desafio como access token.
 
 Migração: `alembic upgrade head` (revisão `0019_user_mfa_sessions`,
-dependente de `0006_multi_tenancy`). A cadeia anterior de Alembic ainda
-precisa de revisão em uma instalação limpa, pois `0001_initial` usa
-`Base.metadata.create_all()` do modelo atual. Testes em SQLite não
-substituem a validação de migração em PostgreSQL de homologação.
+dependente de `0006_multi_tenancy`). A instalação do zero já é validada em PostgreSQL 16 na CI; testes em SQLite
+não substituem o ensaio de atualização de bancos legados em homologação.
 
 **Aviso:** o sistema ainda não está liberado para produção. Revisar separação
 de todos os módulos por entidade, segredos de implantação, testes de migração

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master", "feature/erp-platform-tenant-boundaries-20261103"]
+    branches: ["main", "master", "feature/erp-nucleo-*"]
   pull_request:
-    branches: ["main", "master", "feature/erp-browser-cookie-csrf-20261103"]
+    branches: ["main", "master", "feature/erp-nucleo-*"]
 
 jobs:
   backend-test:

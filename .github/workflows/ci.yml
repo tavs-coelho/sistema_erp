@@ -241,3 +241,32 @@ jobs:
       - name: Encerrar serviços temporários
         if: always()
         run: docker compose down -v --remove-orphans
+
+  erp-e2e-compose:
+    name: ERP real — login, protocolo e tramitação via Docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 25
+    env:
+      DEMO_MODE: "true"
+      BROWSER_COOKIE_AUTH_ENABLED: "true"
+      BROWSER_COOKIE_SECURE: "false"
+      ERP_SMOKE_ALLOW_DEMO: "1"
+      ERP_SMOKE_URL: "http://localhost"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build e inicialização dos quatro serviços
+        run: |
+          docker compose build backend frontend
+          docker compose up -d
+      - name: Fluxo real com dados persistidos no PostgreSQL
+        run: python3 scripts/smoke_browser_erp.py
+      - name: Diagnóstico de execução em caso de falha
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail=120 backend frontend nginx db
+      - name: Encerrar implantação efêmera
+        if: always()
+        run: docker compose down -v --remove-orphans

@@ -113,10 +113,13 @@ def create_protocolo(
     db.add(obj)
     db.flush()
     if not requested_number:
-        obj.numero = f"PROT-{obj.data_entrada.year}-{obj.id:08d}"
-        if db.query(Protocolo).filter(Protocolo.numero == obj.numero, Protocolo.id != obj.id).first():
+        generated_number = f"PROT-{obj.data_entrada.year}-{obj.id:08d}"
+        # Check before changing the tracked column: SQLAlchemy autoflushes
+        # queries, which could otherwise surface a raw uniqueness exception.
+        if db.query(Protocolo).filter(Protocolo.numero == generated_number, Protocolo.id != obj.id).first():
             db.rollback()
             raise HTTPException(status_code=409, detail="Número de protocolo já existe")
+        obj.numero = generated_number
     write_audit(
         db, user_id=current.id, action="create",
         entity="protocolos", entity_id=str(obj.id),

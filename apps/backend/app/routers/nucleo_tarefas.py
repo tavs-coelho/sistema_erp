@@ -3,7 +3,7 @@
 Creator or assignee may view a task, admin sees all in tenant.
 Only the assignee or admin may advance its state; final states are terminal.
 """
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -52,7 +52,7 @@ class TaskOut(BaseModel):
     priority: str
     status: str
     due_date: date | None
-    completed_at: object | None
+    completed_at: datetime | None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -147,6 +147,8 @@ def change_state(task_id: int, payload: TaskState, db: Session = Depends(get_db)
                  tenant: int = Depends(get_tenant_id),
                  current: User = Depends(get_current_user)):
     task = _owner(db, tenant, task_id, current, lock=True)
+    if current.role == RoleEnum.read_only:
+        raise HTTPException(status_code=403, detail="Perfil somente leitura")
     if current.role != RoleEnum.admin and task.assigned_user_id != current.id:
         raise HTTPException(status_code=403, detail="Somente responsável ou administrador pode avançar")
     old = task.status

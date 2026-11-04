@@ -102,11 +102,21 @@ def create_protocolo(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    if db.query(Protocolo).filter(Protocolo.numero == payload.numero).first():
+    requested_number = payload.numero.strip()
+    if requested_number and db.query(Protocolo).filter(Protocolo.numero == requested_number).first():
         raise HTTPException(status_code=409, detail="Número de protocolo já existe")
-    obj = Protocolo(**payload.model_dump())
+    # Generate only after acquiring a database identity. Avoid the static
+    # placeholder PROT-2026-001, which caused collisions in real deployments.
+    data = payload.model_dump()
+    data["numero"] = requested_number or ("PENDING-" + uuid.uuid4().hex)
+    obj = Protocolo(**data)
     db.add(obj)
     db.flush()
+    if not requested_number:
+        obj.numero = f"PROT-{obj.data_entrada.year}-{obj.id:08d}"
+        if db.query(Protocolo).filter(Protocolo.numero == obj.numero, Protocolo.id != obj.id).first():
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Número de protocolo já existe")
     write_audit(
         db, user_id=current.id, action="create",
         entity="protocolos", entity_id=str(obj.id),

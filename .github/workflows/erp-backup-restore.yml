@@ -1,0 +1,19 @@
+name: ERP Backup Restore
+on:
+  push:
+    branches: [feature/erp-platform-backup-recovery-20261103]
+  pull_request:
+    branches: [main, feature/erp-browser-cookie-csrf-20261103]
+
+jobs:
+  encrypted-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validar scripts bash
+        run: bash -n scripts/backup_erp.sh scripts/restore_erp.sh scripts/verify_backup_restore.sh
+      - name: Backup criptografado e restauracao real em PostgreSQL descartavel
+        run: bash scripts/verify_backup_restore.sh

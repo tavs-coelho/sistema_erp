@@ -36,12 +36,6 @@ def multipart_upload(path: str, filename: str, data: bytes, mime: str, csrf: str
 def main():
     if os.environ.get("ERP_SMOKE_ALLOW_DEMO") != "1":
         raise SystemExit("Allowed exclusively for disposable demo CI")
-    for page in (
-        "/nucleo/unidades", "/nucleo/pessoas", "/nucleo/lotacoes",
-        "/nucleo/documentos", "/nucleo/tarefas", "/nucleo/central",
-    ):
-        status, payload = call("GET", page)
-        require(status, 200, payload, f"Next.js screen {page}")
     status, payload = call("GET", "/api/auth/browser/csrf")
     require(status, 200, payload, "issue CSRF for municipal core")
     csrf = payload["csrf_token"]
@@ -51,6 +45,12 @@ def main():
     status, me = call("GET", "/api/auth/browser/me")
     require(status, 200, me, "read current user")
     user_id = me["id"]
+    for page in (
+        "/nucleo/unidades", "/nucleo/pessoas", "/nucleo/lotacoes",
+        "/nucleo/documentos", "/nucleo/tarefas", "/nucleo/central",
+    ):
+        status, payload = call("GET", page)
+        require(status, 200, payload, f"Next.js screen {page}")
     status, deps = call("GET", "/api/core/departments")
     require(status, 200, deps, "list departments")
     department_id = (deps["items"] if isinstance(deps, dict) else deps)[0]["id"]

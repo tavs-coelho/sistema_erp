@@ -100,9 +100,7 @@ def main():
 
     status, data = call("GET", "/api/protocolo/protocolos?page=1&size=5")
     require(status, 200, data, "list existing administrative protocols")
-    number = "CI-" + uuid.uuid4().hex[:12]
     protocol = {
-        "numero": number,
         "tipo": "requerimento",
         "assunto": "Validação de fluxo completo da implantação",
         "interessado": "Solicitante de teste automatizado",
@@ -114,7 +112,7 @@ def main():
     status, data = call("POST", "/api/protocolo/protocolos", protocol, csrf=csrf)
     require(status, 200, data, "create administrative protocol")
     protocol_id = data["id"]
-    assert data["numero"] == number
+    assert data["numero"].startswith("PROT-2026-")
 
     status, data = call(
         "POST", f"/api/protocolo/protocolos/{protocol_id}/tramitar",

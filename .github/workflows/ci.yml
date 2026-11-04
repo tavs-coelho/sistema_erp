@@ -158,7 +158,7 @@ jobs:
         working-directory: apps/backend
         run: |
           alembic stamp 0019_user_mfa_sessions
-          alembic upgrade head
+          alembic upgrade 0020_device_sessions
       - name: Validar rotação e replay no PostgreSQL
         working-directory: apps/backend
         run: python -m scripts.verify_postgres_device_session verify

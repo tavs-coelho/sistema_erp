@@ -23,8 +23,15 @@ def main() -> None:
             missing_columns[name] = sorted(expected - actual)
     with engine.connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    if version != "0021_tenant_core":
-        raise AssertionError(f"Unexpected schema version: {version}")
+    # The latest revision changes as the six Core Municipal PRs land.
+    # Resolve Alembic's actual head instead of hardcoding a historical version.
+    from pathlib import Path
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    expected_head = ScriptDirectory.from_config(config).get_current_head()
+    if version != expected_head:
+        raise AssertionError(f"Expected {expected_head}, found {version}")
     if missing_tables or missing_columns:
         raise AssertionError(
             f"ORM mismatch after migrations. Missing tables: {missing_tables}; "

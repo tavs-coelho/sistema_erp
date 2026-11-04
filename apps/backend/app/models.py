@@ -1212,3 +1212,18 @@ class LancamentoBancario(Base):
     payment = relationship("Payment", foreign_keys=[payment_id])
     revenue_entry = relationship("RevenueEntry", foreign_keys=[revenue_entry_id])
     conciliado_por = relationship("User", foreign_keys=[conciliado_por_id])
+
+
+
+class MunicipalUnit(Base):
+    """Administrative unit belonging to one entity and its department."""
+    __tablename__ = "municipal_units"
+    __table_args__ = (UniqueConstraint("tenant_id", "code", name="uq_municipal_units_tenant_code"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False)
+    name: Mapped[str] = mapped_column(String(180), nullable=False)
+    address: Mapped[str] = mapped_column(String(350), nullable=False, default="")
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)

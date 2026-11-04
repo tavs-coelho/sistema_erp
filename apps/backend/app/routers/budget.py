@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from ..budget_policy import ppa_transition, require_ppa_editable, validate_ppa_period
 from ..audit import write_audit
 from ..db import get_db
 from ..deps import get_current_user, require_roles
@@ -65,8 +66,9 @@ def create_ppa(
     db: Session = Depends(get_db),
     current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.accountant)),
 ):
-    if payload.period_end < payload.period_start:
-        raise HTTPException(status_code=422, detail="period_end deve ser >= period_start")
+    validate_ppa_period(payload.period_start, payload.period_end)
+    if payload.status != "rascunho":
+        raise HTTPException(status_code=422, detail="Novo PPA deve iniciar como rascunho")
     ppa = PPA(**payload.model_dump())
     db.add(ppa)
     db.flush()
@@ -88,8 +90,10 @@ def update_ppa(
         raise HTTPException(status_code=404, detail="PPA não encontrado")
     before = {"status": ppa.status}
     if payload.description is not None:
+        require_ppa_editable(ppa.status)
         ppa.description = payload.description
     if payload.status is not None:
+        ppa_transition(ppa.status, payload.status)
         ppa.status = payload.status
     write_audit(db, user_id=current.id, action="update", entity="ppas", entity_id=str(ppa.id), before_data=before, after_data=payload.model_dump(exclude_none=True))
     db.commit()
@@ -107,6 +111,11 @@ def add_ppa_program(
     ppa = db.get(PPA, ppa_id)
     if not ppa:
         raise HTTPException(status_code=404, detail="PPA não encontrado")
+    require_ppa_editable(ppa.status)
+    if payload.estimated_amount < 0:
+        raise HTTPException(status_code=422, detail="Valor estimado não pode ser negativo")
+    if db.query(PPAProgram).filter(PPAProgram.ppa_id == ppa_id, PPAProgram.code == payload.code).first():
+        raise HTTPException(status_code=409, detail="Código de programa duplicado no PPA")
     prog = PPAProgram(ppa_id=ppa_id, **payload.model_dump())
     db.add(prog)
     db.flush()

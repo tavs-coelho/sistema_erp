@@ -293,9 +293,12 @@ def _build_events(db: Session) -> list[dict]:
 @router.get("/tenants", response_model=list[TenantOut])
 def list_tenants(
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(require_roles(RoleEnum.admin)),
 ):
-    """List all registered tenants (admin only)."""
+    """Registry-wide operations are restricted to the platform tenant."""
+    if tenant_id != 1:
+        raise HTTPException(status_code=403, detail="Administração de entidades restrita")
     return db.query(TenantBranding).order_by(TenantBranding.id).all()
 
 
@@ -303,6 +306,7 @@ def list_tenants(
 def create_tenant(
     payload: TenantCreate,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current: User = Depends(require_roles(RoleEnum.admin)),
 ):
     """Provision a new tenant identified by its subdomain slug (admin only).
@@ -311,6 +315,8 @@ def create_tenant(
     created, requests arriving with the matching subdomain in the ``Host``
     header will automatically resolve to this tenant via ``TenantMiddleware``.
     """
+    if tenant_id != 1:
+        raise HTTPException(status_code=403, detail="Administração de entidades restrita")
     existing = db.query(TenantBranding).filter(TenantBranding.subdomain == payload.subdomain).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Subdomínio '{payload.subdomain}' já está em uso.")
@@ -348,6 +354,8 @@ def delete_tenant(
     """Remove a tenant (admin only).  Cannot delete the currently active tenant."""
     if tenant_id == 1:
         raise HTTPException(status_code=400, detail="Não é possível remover o tenant padrão.")
+    if current_tenant_id != 1:
+        raise HTTPException(status_code=403, detail="Administração de entidades restrita")
     if tenant_id == current_tenant_id:
         raise HTTPException(status_code=400, detail="Não é possível remover o tenant ativo.")
     tenant = db.get(TenantBranding, tenant_id)
@@ -367,9 +375,9 @@ def delete_tenant(
     invalidate_tenant_cache(subdomain)
 
 
-async def _event_generator(request: Request, db: Session):
-    """Yield SSE-formatted messages then close."""
-    events = _build_events(db)
+async def _event_generator(request: Request, db: Session, tenant_id: int):
+    """Do not stream global legacy-table data to non-default entities."""
+    events = _build_events(db) if tenant_id == 1 else []
     if not events:
         # Send a heartbeat so the client knows the connection is alive
         yield "event: heartbeat\ndata: {}\n\n"
@@ -388,6 +396,7 @@ async def _event_generator(request: Request, db: Session):
 def sse_events(
     request: Request,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current_user: User = Depends(get_current_user),
 ):
     """Server-Sent Events stream of operational alerts.
@@ -402,7 +411,7 @@ def sse_events(
     a long-lived connection.
     """
     return StreamingResponse(
-        _event_generator(request, db),
+        _event_generator(request, db, tenant_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

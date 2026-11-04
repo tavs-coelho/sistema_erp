@@ -118,7 +118,13 @@ jobs:
             tests/test_device_sessions.py \
             tests/test_device_session_migration.py \
             tests/test_browser_cookie_auth.py \
-            tests/test_platform_tenant.py
+            tests/test_platform_tenant.py \
+            tests/test_nucleo_unidades.py \
+            tests/test_nucleo_pessoas.py \
+            tests/test_nucleo_lotacoes.py \
+            tests/test_nucleo_documentos.py \
+            tests/test_nucleo_tarefas.py \
+            tests/test_nucleo_central.py
 
   postgres-session-migration:
     name: PostgreSQL — migração de sessões e rotação

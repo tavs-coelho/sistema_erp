@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "feature/erp-platform-tenant-boundaries-20261103"]
   pull_request:
-    branches: ["main", "master"]
+    branches: ["main", "master", "feature/erp-browser-cookie-csrf-20261103"]
 
 jobs:
   backend-test:
@@ -117,7 +117,8 @@ jobs:
             tests/test_mfa_sessions.py \
             tests/test_device_sessions.py \
             tests/test_device_session_migration.py \
-            tests/test_browser_cookie_auth.py
+            tests/test_browser_cookie_auth.py \
+            tests/test_platform_tenant.py
 
   postgres-session-migration:
     name: PostgreSQL — migração de sessões e rotação

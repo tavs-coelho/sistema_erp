@@ -25,11 +25,13 @@ def upgrade() -> None:
 
     # The legacy global name uniqueness prevents different municipalities from
     # having a department called "Administração". Enforce per-entity uniqueness.
-    if op.get_bind().dialect.name == "postgresql":
-        op.drop_constraint("departments_name_key", "departments", type_="unique")
-    else:
-        with op.batch_alter_table("departments") as batch:
-            batch.drop_constraint("departments_name_key", type_="unique")
+    # Some historical 0001 installs do not have the original unique constraint
+    # (ORM metadata.create_all and explicit baseline produced distinct schemas).
+    # Inspect instead of assuming its name/existence.
+    old_constraints = sa.inspect(op.get_bind()).get_unique_constraints("departments")
+    for constraint in old_constraints:
+        if constraint.get("column_names") == ["name"] and constraint.get("name"):
+            op.drop_constraint(constraint["name"], "departments", type_="unique")
     op.create_unique_constraint(
         "uq_departments_tenant_name", "departments", ["tenant_id", "name"]
     )

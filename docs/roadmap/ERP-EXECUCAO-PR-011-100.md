@@ -1,83 +1,90 @@
-# Roadmap atualizado — PRs grandes, com fluxos operacionais completos
+# ERP Público — Plano de entregas completas e verificáveis
 
-**Substitui a estimativa anterior de 90 PRs pequenos.**
-Produto: ERP Público próprio da G. COELHO DE MELO LTDA.
-Meta: órgãos efetivamente conseguirem operar fluxos com persistência,
-autorização, relatórios e trilha de auditoria.
+**Produto da G. COELHO DE MELO LTDA.** Replanejamento de 03/11/2026.
+Substitui a proposta anterior de pequenos PRs até o número 100.
 
-A previsão é de **30 PRs de grande porte no roteiro-base (PR #11–#40)**,
-com **faixa de 30–55 PRs** caso validações normativas, integrações e
-requisitos específicos exijam desmembramento. A numeração posterior é
-indicativa: PR real depende dos merges e de conflitos do GitHub.
+## Nova dimensão de entregas
 
-Essa não é uma estimativa de prazo nem comprovação de cobertura:
-o Termo de Referência de Dois Córregos/SP informa 2.420 requisitos funcionais,
-52 tecnológicos, 85% por módulo e 100% tecnológicos. Há 21 módulos, muitos
-com regulações e homologações próprias. Não é tecnicamente correto usar
-quantidade de PRs para estimar automaticamente atendimento à POC.
+Estimativa inicial: **45 a 70 PRs de integração funcional a partir do PR #11**,
+com referência de planejamento de **aproximadamente 55 PRs abrangentes**.
+A quantidade será reestimada quando cada item da matriz de 2.420 requisitos
+funcionais e 52 tecnológicos estiver vinculado a código e teste.
 
-## Critério obrigatório para cada PR grande
+Cada PR de negócio deve oferecer um ou mais **fluxos operacionais completos**,
+com migração/modelos SQL, APIs, RBAC/multi-entidade, UI, auditoria,
+documentação de operação e execução de testes. Não criar PRs só para mover
+arquivos, pintar dashboards ou adicionar endpoints sem experiência utilizável.
+As correções de incidentes de segurança e de produção podem justificar
+PRs menores excepcionais.
 
-Nenhuma entrega é só visual. O PR deve conter, conforme aplicável, modelos,
-migrações, API, interface navegável, negócio, RBAC, tenant, auditoria, testes
-unitários + integrações + navegador real, migração testada em PostgreSQL,
-manual/FAQ e evidência verificável. A CI deve testar o fluxo completo.
+## Sequência de trabalho integrada (números são identificadores provisórios)
 
-Para uma funcionalidade ser **demonstrável** na matriz da POC, exigir código
-de requisito do TR, arquivos, endpoint/tela, caso de teste, log de execução,
-cenário de demonstração e validação na entidade correta. Não substituir isso
-por capturas de tela ou total de testes automatizados.
+| Faixa | Qtde. planejada | Fluxos que precisam funcionar de ponta a ponta |
+| --- | ---: | --- |
+| 11–14 | 4 | Instalação e navegação reais, login/MFA/CSRF/HttpOnly, sessão renovável, tenant/usuários/permissões, dados e backup/restauração, smoke e2e em Docker |
+| 15–20 | 6 | Núcleo municipal: entidades, unidades, pessoas/fornecedores, exercícios, documentos e assinaturas, processos/tarefas/notificações e central de suporte/FAQ |
+| 21–29 | 9 | Contabilidade e planejamento PPA/LDO/LOA, empenho/liquidação/pagamento, tesouraria, conciliação e prestação de contas com normas verificadas |
+| 30–37 | 8 | Requisição/compra/licitação/contrato, nota fiscal, recebimento, almoxarifado, patrimônio e integrações com execução financeira |
+| 38–45 | 8 | RH e folha, ponto, servidor, eSocial, tributação, protestos, arrecadação e cobrança |
+| 46–51 | 6 | Portal do cidadão/transparência, protocolo/tramitação, GED, obras, frotas e cemitérios |
+| 52–57 | 6 | Educação, saúde, BI, assistente virtual, integrações intermodulares e painéis |
+| 58–65 | 8 | Hardening, dados legados, teste de carga, acessibilidade, homologação, LGPD, requisitos do TR e POC por módulo |
 
-## Sequência orientada por dependência
+**Total de referência dessa divisão: 55 PRs (#11–#65).**
+Dependendo da profundidade da matriz e das integrações externas,
+a faixa real pode ser maior ou menor. Não equiparar número de PRs
+ao percentual de atendimento à licitação.
 
-| PR de referência | Entrega abrangente (escopo previsto) |
-| --- | --- |
-| #11 | **Aplicação utilizável no navegador:** login+MFA+sessões HttpOnly, CSRF, frontend inteiro sem JWT em storage, proxy Next/Nginx, Docker, primeiro admin, exercício financeiro, ciclo de despesa testado de ponta a ponta |
-| #12 | **Segregação multi-entidade real:** migrações e FK de tenant para núcleo contábil e administrativo; consultas/exports/RBAC; testes de acesso cruzado e migração de legado |
-| #13 | **Administração institucional:** cadastro de órgãos/unidades, usuários, cargos, permissões granulares, responsáveis, configuração por entidade e auditoria |
-| #14 | **Execução contábil:** lançamento, dotação, empenho, liquidação, pagamento, estornos, validações, relatórios e rastreabilidade |
-| #15 | **Planejamento completo:** PPA, LDO, LOA, ações, programas, créditos, alterações, vínculo com execução e relatórios |
-| #16 | **Tesouraria:** contas, lançamentos, conciliação, fluxo de caixa, pagamento, classificação e trilhas |
-| #17 | **Compras e planejamento:** requisições, pesquisa de preço, processos e planejamento de contratação |
-| #18 | **Licitações:** edital, julgamento, propostas, homologação e integração com contratos (sem alegar integrações externas não testadas) |
-| #19 | **Contratos e convênios:** prazos, aditivos, execução, atestos, medições, notificações e pagamentos vinculados |
-| #20 | **Almoxarifado:** pedidos, recebimentos, conferência, saldos, requisições, movimentações, alertas e inventário |
-| #21 | **Patrimônio:** registro, movimentação, localização, depreciação, inventário, tombamento e baixa |
-| #22 | **Monitoramento de NF-e/NFS-e:** documentos fiscais, consulta, validações, entrada e vinculação a recebimentos |
-| #23 | **Gestão tributária:** cadastro fiscal, lançamentos, guias, arrecadação, parcelamentos, dívida ativa e fiscalização |
-| #24 | **Protestos e cobrança:** integração jurídica, remessas, notificações, histórico e status |
-| #25 | **RH e cadastro funcional:** vínculos, cargos, lotação, benefícios, férias e histórico |
-| #26 | **Folha:** cálculo, rubricas, eventos, conferências, fechamento, demonstrativos e exportações |
-| #27 | **eSocial e obrigações trabalhistas:** eventos, validações de leiaute, filas, recibos e auditoria |
-| #28 | **Ponto e portal do servidor:** jornada, exceções, abonos, integração folha, contracheques e solicitações |
-| #29 | **Prestação de contas:** AUDESP e relatórios de responsabilidade fiscal, validação de regras e lotes |
-| #30 | **Atendimento e protocolo:** requerimentos, cadastro cidadão, tramitação, prazos, responsáveis e notificações |
-| #31 | **Transparência:** publicação segura por entidade, filtros, exportação, acessibilidade e dados agregados |
-| #32 | **Documentos:** versionamento, classificação, pesquisa, anexos, assinatura, integridade e guarda |
-| #33 | **Frotas e cemitérios:** fluxos operacionais completos, inventário e permissões próprias |
-| #34 | **Obras:** projetos, contratos, fiscalização, boletins, medições, cronogramas e registros |
-| #35 | **Educação:** cadastro de redes/unidades, turmas, matrículas, professores, frequência e relatórios |
-| #36 | **Saúde:** unidades/equipes, atendimento e integrações, LGPD e controles de acesso reforçados |
-| #37 | **BI:** painéis, indicadores, drill-down, exportação e segregação por entidade |
-| #38 | **Assistente e central de ajuda:** pesquisa autorizada, trilhas de suporte, FAQ e manuais em cada fluxo |
-| #39 | **Operação comercial:** implantação, backups/restauração, observabilidade, migração legada, desempenho e suporte |
-| #40 | **Homologação e POC:** evidência por requisito, automação dos cenários dos 21 módulos, segurança, acessibilidade e desempenho |
+## PR #11 — novo escopo: migração de navegador + aplicação realmente utilizável
 
-Reavaliar após cada PR operacional. Não comprimir módulos complexos para
-ajustar uma quantidade arbitrária de PRs. Na POC, a cobertura deverá ser
-calculada individualmente por módulo e tecnologia, não por média geral.
+Exige, antes de aprovação:
+1. Endpoints FastAPI de sessão por cookie HttpOnly + CSRF, MFA e refresh.
+2. Substituição de armazenamento de JWT por chamadas de mesma origem no frontend.
+3. Proxy correto via Nginx e Next.js direto (sem URL API inválida).
+4. Teste de stack completa em containers com banco PostgreSQL inicializado;
+   GET login, CSRF, autenticação, leitura do usuário e departamento, criação,
+   consulta e tramitação de protocolo, renovação e logout.
+5. Testes unitários/integrados de MFA, cookies, isolamento e compatibilidade.
+6. FAQ de execução, segredos e protocolo. Evidência real da CI.
+7. Nenhum merge na main e nenhum deploy automático.
 
-## Gates antes de declarar "funcionando"
+## PRs amplos subsequentes (planejamento técnico)
 
-1. Instalar em PostgreSQL vazio (já coberto parcialmente pela CI anterior).
-2. Ter primeiro administrador e autenticar via navegador sem credenciais fixas.
-3. Concluir operação de ponta a ponta por interface + API + banco, não só
-   renderizar uma tela.
-4. Preservar dados após reinicialização do container.
-5. Testar permissões e isolamento entre municípios; até esse gate, não
-   afirmar produto multi-entidade pronto.
-6. Ter restauração real de backup e alertas de infraestrutura.
-7. Validar integrações normativas e fiscais com fontes e ambiente de teste.
-8. Demonstrar pessoalmente cada requisito da matriz, com evidências auditáveis.
+- #12: eliminar dependências restantes de token JS, finalizar sessão browser
+  e tratamento de erros/reconexão; homologar navegador real com Playwright,
+  uploads/downloads, abas simultâneas e fluxos em todos os menus.
+- #13: segregação multi-entidade transversal, RBAC por operação, testes
+  negativos IDOR em endpoints de negócio e migrações sem perda de dados.
+- #14: instalação/homologação/backup-restauração em PostgreSQL, política
+  de segredos, logging, métricas e procedimentos de recuperação.
+- #15–#17: cadastro de entidades, fornecedores, equipes e usuários,
+  cadastros unificados e documentos, tudo com pesquisa e auditoria.
+- #18–#20: protocolo/GED/tramitação/assinatura, notificações e suporte,
+  integrados com os cadastros, interface e FAQ.
+- #21–#23: orçamento PPA/LDO/LOA e ciclo contábil com regras normativas.
+- #24–#26: tesouraria/contas/conciliação/execução financeira.
+- #27–#29: prestação de contas e integrações externas verificadas.
 
-**Nenhum merge em main ou publicação de produção apenas por CI verde.**
+## Portão de aceite por PR
+
+- A funcionalidade existe e utiliza banco de dados real.
+- Execução válida de migrations, incluindo PostgreSQL.
+- Usuário consegue realizar o processo do início ao fim no frontend.
+- Permissões, segregação de órgão e logs de auditoria implementados.
+- Testes automatizados executados, com falhas bloqueantes corrigidas.
+- Pelo menos um teste de integração de ponta a ponta para a entrega.
+- Manual/FAQ de utilização e limitações documentadas.
+- PR com links para commits e resultados, sem afirmações genéricas.
+
+## Critérios de licitação
+
+A prova de conceito de Dois Córregos requer demonstração de pelo menos
+**85% de cada módulo** e **100% dos requisitos tecnológicos**.
+Não há ainda cobertura por requisito oficial apurada nesta execução.
+As 21 áreas são um mapa funcional, não prova de 21 módulos prontos.
+Ao ampliar a matriz, registrar para cada requisito: identificador do
+TR, unidade, API/tela, fonte/migração, teste executado e evidência de
+demonstração. Só então calcular cobertura por módulo.
+
+**Princípio:** menos PRs superficiais; mais entregas completas com
+funcionamento reproduzido, sem confundir CI verde com produção pronta.

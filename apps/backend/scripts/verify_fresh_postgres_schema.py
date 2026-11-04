@@ -23,7 +23,7 @@ def main() -> None:
             missing_columns[name] = sorted(expected - actual)
     with engine.connect() as conn:
         version = conn.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-    if version != "0020_device_sessions":
+    if version != "0021_tenant_core":
         raise AssertionError(f"Unexpected schema version: {version}")
     if missing_tables or missing_columns:
         raise AssertionError(

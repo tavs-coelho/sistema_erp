@@ -96,17 +96,25 @@ def update_user(
 def list_departments(
     active: bool | None = None,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     _: User = Depends(get_current_user),
 ):
-    q = db.query(Department)
+    q = db.query(Department).filter(Department.tenant_id == tenant_id)
     if active is not None:
         q = q.filter(Department.active == active)
     return q.order_by(Department.name).all()
 
 
 @router.post("/departments", response_model=DepartmentOut)
-def create_department(payload: DepartmentCreate, db: Session = Depends(get_db), current: User = Depends(require_roles(RoleEnum.admin))):
-    dep = Department(name=payload.name)
+def create_department(
+    payload: DepartmentCreate,
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin)),
+):
+    if db.query(Department).filter(Department.tenant_id == tenant_id, Department.name == payload.name).first():
+        raise HTTPException(status_code=409, detail="Departamento já cadastrado nesta entidade")
+    dep = Department(name=payload.name, tenant_id=tenant_id)
     db.add(dep)
     db.flush()
     write_audit(db, user_id=current.id, action="create", entity="departments", entity_id=str(dep.id), after_data={"name": dep.name})
@@ -120,13 +128,23 @@ def update_department(
     department_id: int,
     payload: DepartmentUpdate,
     db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
     current: User = Depends(require_roles(RoleEnum.admin)),
 ):
-    dep = db.get(Department, department_id)
+    dep = db.query(Department).filter(
+        Department.id == department_id, Department.tenant_id == tenant_id
+    ).first()
     if not dep:
         raise HTTPException(status_code=404, detail="Departamento não encontrado")
     before = {"name": dep.name, "active": dep.active}
     if payload.name is not None:
+        duplicate = db.query(Department).filter(
+            Department.tenant_id == tenant_id,
+            Department.name == payload.name,
+            Department.id != department_id,
+        ).first()
+        if duplicate:
+            raise HTTPException(status_code=409, detail="Departamento já cadastrado nesta entidade")
         dep.name = payload.name
     if payload.active is not None:
         dep.active = payload.active
@@ -191,8 +209,13 @@ def upload_attachment(
     entity_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current: User = Depends(get_current_user),
+    tenant_id: int = Depends(get_tenant_id),
+    current: User = Depends(require_roles(RoleEnum.admin, RoleEnum.procurement, RoleEnum.accountant)),
 ):
+    # Protocol attachments must be uploaded through the protocol route,
+    # which verifies ownership. Reject bypass via this generic endpoint.
+    if entity_type == "protocolo":
+        raise HTTPException(status_code=422, detail="Use o endpoint de anexos do protocolo")
     upload_dir = Path(settings.upload_dir)
     upload_dir.mkdir(parents=True, exist_ok=True)
     if not file.filename:
@@ -200,9 +223,13 @@ def upload_attachment(
     safe_name = Path(file.filename).name
     if not safe_name:
         raise HTTPException(status_code=400, detail="Arquivo inválido")
-    path = upload_dir / safe_name
-    path.write_bytes(file.file.read())
-    att = Attachment(entity_type=entity_type, entity_id=entity_id, file_name=safe_name, path=str(path))
+    import uuid
+    path = upload_dir / f"{uuid.uuid4().hex}{Path(safe_name).suffix}"
+    data = file.file.read(10 * 1024 * 1024 + 1)
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Arquivo excede o limite de 10 MB")
+    path.write_bytes(data)
+    att = Attachment(entity_type=entity_type, entity_id=entity_id, file_name=safe_name, path=str(path), tenant_id=tenant_id)
     db.add(att)
     db.flush()
     write_audit(db, user_id=current.id, action="create", entity="attachments", entity_id=str(att.id), after_data={"file": safe_name})

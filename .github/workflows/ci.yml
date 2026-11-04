@@ -66,6 +66,9 @@ jobs:
         working-directory: apps/frontend
         run: npm ci
 
+      - name: Impedir regressão de JWT no JavaScript
+        run: python3 scripts/check_frontend_auth_migration.py
+
       - name: Lint
         working-directory: apps/frontend
         run: npm run lint

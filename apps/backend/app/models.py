@@ -1227,3 +1227,19 @@ class MunicipalUnit(Base):
     address: Mapped[str] = mapped_column(String(350), nullable=False, default="")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+
+class MunicipalParty(Base):
+    """Entity-scoped person or supplier contact (distinct from legacy vendors)."""
+    __tablename__ = "municipal_parties"
+    __table_args__ = (UniqueConstraint("tenant_id", "document", name="uq_municipal_parties_document"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str] = mapped_column(String(180), nullable=False)
+    document: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)

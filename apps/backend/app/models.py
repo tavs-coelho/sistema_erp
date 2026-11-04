@@ -1243,3 +1243,16 @@ class MunicipalParty(Base):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+
+class MunicipalAssignment(Base):
+    """Grant a user's organizational unit membership, not a global role elevation."""
+    __tablename__ = "municipal_assignments"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", "unit_id", name="uq_municipal_assignment"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("municipal_units.id"), nullable=False, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)

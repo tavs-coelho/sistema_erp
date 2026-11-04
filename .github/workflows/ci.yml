@@ -266,6 +266,8 @@ jobs:
           docker compose up -d
       - name: Fluxo real com dados persistidos no PostgreSQL
         run: python3 scripts/smoke_browser_erp.py
+      - name: Fluxo integrado dos seis módulos do Núcleo Municipal
+        run: python3 scripts/smoke_nucleo_erp.py
       - name: Diagnóstico de execução em caso de falha
         if: failure()
         run: |

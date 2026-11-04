@@ -1290,3 +1290,22 @@ class MunicipalDocumentVersion(Base):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+
+
+class MunicipalTask(Base):
+    """Track accountable administrative work related to a tenant-owned protocol."""
+    __tablename__ = "municipal_tasks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant_branding.id"), nullable=False, index=True)
+    protocol_id: Mapped[int] = mapped_column(ForeignKey("protocolos.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(220), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    priority: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="aberta")
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
